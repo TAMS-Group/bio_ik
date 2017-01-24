@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package>
+
+    <name>bio_ik_kinematics_plugin</name>
+    <version>0.0.0</version>
+    <description>Bio IK for ROS</description>
+    <maintainer email="0ruppel@informatik.uni-hamburg.de">Philipp Ruppel</maintainer>
+    <license>TODO</license>
+
+    <buildtool_depend>catkin</buildtool_depend>
+
+    <build_depend>moveit_core</build_depend>
+    <build_depend>pluginlib</build_depend>
+    <build_depend>actionlib</build_depend>
+    <build_depend>eigen</build_depend>
+    <build_depend>moveit_ros_planning</build_depend>
+
+    <run_depend>moveit_core</run_depend>
+    <run_depend>pluginlib</run_depend>
+    <run_depend>actionlib</run_depend>
+    <run_depend>moveit_ros_planning</run_depend>
+
+    <build_depend>roscpp</build_depend>
+    <run_depend>roscpp</run_depend>
+
+    <export>
+        <moveit_core plugin="${prefix}/bio_ik_desc.xml"/>
+    </export>
+    
+</package>
