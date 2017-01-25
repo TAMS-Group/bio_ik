@@ -983,7 +983,7 @@ class Evolution
 
     struct Individual
     {
-        vector<double> genes;
+        vector<double> genes; 
         vector<double> gradients;
         double extinction;
         double fitness;
@@ -1039,14 +1039,17 @@ class Evolution
         n.param("adjustment_steps", adjustment_steps, 50);
         n.param("fitness_randomization", fitness_randomization, 0.6);*/
          
-        n.param("quadratic_error", opt_quadratic_error, true);
+        n.param("quadratic", opt_quadratic_error, true);
+        
         //n.param("final_adjustment", opt_final_adjustment, false);
+        
         n.param("full_circle", opt_angular_scale_full_circle, true);
         n.param("no_wipeout", opt_no_wipeout, false);
         //n.param("evolution_steps", evolution_steps, 25);
         //n.param("adjustment_steps", adjustment_steps, 50);
         n.param("fitness_randomization", fitness_randomization, 0.0);
-        n.param("linear_adjustment", opt_adjustment2, true);
+        
+        n.param("bisection", opt_adjustment2, true);
         
         //n.param("population_size", populationSize, 12);
         //n.param("elite_count", eliteCount, 4);
@@ -2076,8 +2079,13 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                     node_handle = NodeHandle(rdesc + "_kinematics/" + end_effector.component_group_);
             
                     ikparams.tip_infos.emplace_back();
-                    ikparams.tip_infos.back().position_only_ik = node_handle.param("position_only_ik", false);
-                    ikparams.tip_infos.back().weight = node_handle.param("weight", 1.0);
+                    
+                    //ikparams.tip_infos.back().position_only_ik = node_handle.param("position_only_ik", false);
+                    //ikparams.tip_infos.back().weight = node_handle.param("weight", 1.0);
+                    
+                    node_handle.param("position_only_ik", ikparams.tip_infos.back().position_only_ik, false);
+                    node_handle.param("weight", ikparams.tip_infos.back().weight, 1.0);
+                    
                     LOG_VAR(ikparams.tip_infos.back().position_only_ik);
                 }
             }
