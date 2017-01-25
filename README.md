@@ -13,8 +13,8 @@
 ### IK Group Parameters
 - `population_size`
 - `elite_count`
-- `quadratic_error`
+- `quadratic`
 - `full_circle`
 - `no_wipeout`
 - `fitness_randomization`
-- `linear_adjustment`
+- `bisection`
