@@ -293,7 +293,7 @@ inline void quatRotateFast(const tf::Quaternion& q, const tf::Vector3& v, tf::Ve
 
 
 
-
+/*
 inline Frame operator * (const Frame& a, const Frame& b)
 {
     //return Frame(a.pos + quatRotateFast(a.rot, b.pos), a.rot * b.rot);
@@ -301,14 +301,20 @@ inline Frame operator * (const Frame& a, const Frame& b)
     quatRotateFast(a.rot, b.pos, dp);
     return Frame(a.pos + dp, a.rot * b.rot);
 }
+*/
 
-inline Frame inverse(const Frame& f)
+inline void concatenate(const Frame& a, const Frame& b, Frame& rs)
 {
-    Frame ret;
+    tf::Vector3 dp;
+    quatRotateFast(a.rot, b.pos, dp);
+    rs.pos = a.pos + dp;
+    rs.rot = a.rot * b.rot;
+}
+
+inline void invert(const Frame& f, Frame& ret)
+{
     ret.rot = f.rot.inverse();
-    //ret.pos = quatRotateFast(ret.rot, -f.pos);
     quatRotateFast(ret.rot, -f.pos, ret.pos);
-    return ret;
 }
 
 inline bool operator == (const Frame& a, const Frame& b)
@@ -665,10 +671,24 @@ private:
         for(auto* linkModel : linkSchedule)
         {
             auto* jointModel = linkModel->getParentJointModel();
-            if(linkModel->getParentLinkModel())
+            
+            /*if(linkModel->getParentLinkModel())
                 globalFrames[linkModel->getLinkIndex()] = globalFrames[linkModel->getParentLinkModel()->getLinkIndex()] * getLinkFrame(linkModel) * getJointFrame(jointModel);
             else
                 globalFrames[linkModel->getLinkIndex()] = getLinkFrame(linkModel) * getJointFrame(jointModel);
+            */
+            
+            if(linkModel->getParentLinkModel())
+            {
+                Frame tmp;
+                concatenate(globalFrames[linkModel->getParentLinkModel()->getLinkIndex()], getLinkFrame(linkModel), tmp);
+                concatenate(tmp, getJointFrame(jointModel), globalFrames[linkModel->getLinkIndex()]);
+            }
+            else
+            {
+                concatenate(getLinkFrame(linkModel), getJointFrame(jointModel), globalFrames[linkModel->getLinkIndex()]);
+            }
+            
             //if(linkModel->getParentLinkModel() && linkModel->getParentLinkModel()->getLinkIndex() > linkModel->getLinkIndex()) { LOG("wrong link order"); throw runtime_error("wrong link order"); }
         }
         for(size_t itip = 0; itip < tipLinks.size(); itip++)
@@ -677,8 +697,21 @@ private:
         }
     }
 public:
+    bool last_use_incremental = false;
     void applyConfiguration(const vector<double>& jj0)
     {
+        bool changed = false;
+        if(useIncremental != last_use_incremental)
+            changed = true;
+        last_use_incremental = useIncremental;
+        if(variables.size() != jj0.size())
+            changed = true;
+        if(!changed)
+            for(auto& vi : activeVariables) 
+                if(variables[vi] != jj0[vi])
+                    changed = true;
+        if(!changed) return;
+        
         if(useIncremental)
             updateIncremental(jj0);
         else
@@ -687,6 +720,10 @@ public:
     inline const Frame& getTipFrame(size_t fi) const
     {
         return tipFrames[fi];
+    }
+    inline const vector<Frame>& getTipFrames() const
+    {
+        return tipFrames;
     }
 private:
     vector<vector<Frame>> chainCache;
@@ -763,10 +800,20 @@ private:
                     }
                     else
                     {
-                        if(ipos > 0)
+                        /*if(ipos > 0)
                             before = cacheChain[ipos - 1] * getLinkFrame(linkModel) * getJointFrame(jointModel);
                         else
-                            before = getLinkFrame(linkModel) * getJointFrame(jointModel);
+                            before = getLinkFrame(linkModel) * getJointFrame(jointModel);*/
+                        if(ipos > 0)
+                        {
+                            Frame tmp;
+                            concatenate(cacheChain[ipos - 1], getLinkFrame(linkModel), tmp);
+                            concatenate(tmp, getJointFrame(jointModel), before);
+                        }
+                        else
+                        {
+                            concatenate(getLinkFrame(linkModel), getJointFrame(jointModel), before);
+                        }
                     }
                     
                     chainCache[ichain].resize(ipos + 1);
@@ -788,10 +835,21 @@ private:
                                 for(size_t vi = vstart; vi < vstart + vcount; vi++)
                                     variables[vi] = vars[vi];
                                 
-                            if(ipos > 0)
+                            /*if(ipos > 0)
                                 after = cacheChain[ipos - 1] * getLinkFrame(linkModel) * getJointFrame(jointModel);
                             else
-                                after = getLinkFrame(linkModel) * getJointFrame(jointModel);
+                                after = getLinkFrame(linkModel) * getJointFrame(jointModel);*/
+                                
+                            if(ipos > 0)
+                            {
+                                Frame temp;
+                                concatenate(cacheChain[ipos - 1], getLinkFrame(linkModel), temp);
+                                concatenate(temp, getJointFrame(jointModel), after);
+                            }
+                            else
+                            {
+                                concatenate(getLinkFrame(linkModel), getJointFrame(jointModel), after);
+                            }
                                 
                             if(vcount == 1)
                                 variables[vstart] = variables0[vstart];
@@ -806,7 +864,15 @@ private:
                         //tipFrames[ichain] = inverse(before) * tipFrames[ichain];
                         //tipFrames[ichain] = after * tipFrames[ichain];
                         
-                        tipFrames[ichain] = after * inverse(before) * tipFrames[ichain];
+                        Frame before_inverse;
+                        invert(before, before_inverse);
+                        
+                        //tipFrames[ichain] = after * before_inverse * tipFrames[ichain];
+                        {
+                            Frame temp;
+                            concatenate(after, before_inverse, temp);
+                            concatenate(temp, tipFrames[ichain], tipFrames[ichain]);
+                        }
                     }
                     else
                     {
@@ -1453,6 +1519,12 @@ public:
         return f;
     }
     
+    const vector<Frame>& getSolutionTipFrames()
+    {
+        model.applyConfiguration(solution);
+        return model.getTipFrames();
+    }
+    
     bool evolve()
     {
         FNPROFILE();
@@ -1573,7 +1645,7 @@ public:
             temp = solution;
             double dir;
             {
-                double f = 0.0001;
+                double f = 0.00001;
 
                 temp[ivar] = modelInfo.clip(solution[ivar] + f, ivar);
                 double up_fitness = computeFitness(temp, true);
@@ -1584,7 +1656,7 @@ public:
                 dir = (up_fitness > dn_fitness) ? 1 : -1;
             }
             double f = modelInfo.getSpan(ivar);
-            while(f > 0.0001)
+            while(f > 0.00001)
             {
                 temp[ivar] = modelInfo.clip(solution[ivar] - f * dir, ivar);
                 double temp_fitness = computeFitness(temp, true);
@@ -2274,7 +2346,31 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 {
                     solvers[i]->step();
                     
-                    if(solvers[i]->getSolutionFitness() < 0.00001)
+                    //double p_dist_2 = 0;
+                    //double r_dist_cos = 0;
+                    
+                    double p_dist = 0;
+                    double r_dist = 0;
+                    
+                    auto& solution_tip_frames = solvers[i]->getSolutionTipFrames();
+                    
+                    for(int i = 0; i < tipFrames.size(); i++)
+                    {
+                        auto& a = solution_tip_frames[i];
+                        auto& b = tipFrames[i];
+                        p_dist = max(p_dist, (b.pos - a.pos).length());
+                        r_dist = max(r_dist, b.rot.angle(a.rot));
+                    }
+                    
+                    double max_p_dist = 0.0001;
+                    double max_r_dist = 0.5;
+                    
+                    //double max_p_dist_2 = max_p_dist * max_p_dist;
+                    //double max_r_dist_cos = cos(max_r_dist / 180 * M_PI);
+                    
+                    if(p_dist <= max_p_dist && r_dist >= max_r_dist)
+                    //if(p_dist_2 <= max_p_dist && r_dist_cos >= max_r_dist_cos)
+                    //if(solvers[i]->getSolutionFitness() < 0.00001)
                     //if(solvers[i]->getSolutionFitness() < 0.000001)
                     {
                         finished = 1;
