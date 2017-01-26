@@ -40,8 +40,6 @@ namespace bio_ik_kinematics_plugin
 
 //#define ENABLE_LOG
 
-#ifdef ENABLE_LOG
-
 template<class T>
 inline void vprint(const T& a) {
     cerr << a << endl;
@@ -51,21 +49,25 @@ inline void vprint(const T& a, AA... aa) {
     cerr << a << " ";
     vprint(aa...);
 };
-#define LOG(...) vprint("ikbio ", __VA_ARGS__)
 
+#define LOG_ALWAYS(...) vprint("ikbio ", __VA_ARGS__)
+
+#ifdef ENABLE_LOG
+#define LOG(...) LOG_ALWAYS(__VA_ARGS__)
 #else
-
 #define LOG(...) 
-
 #endif
-
 
 #define LOG_VAR(v) LOG(#v, (v));
 #define LOG_FNC() LOG("fun", __func__, __LINE__)
 
-#define ERROR(...) { LOG("ERROR", __VA_ARGS__); exit(-1); }
+// #define ERROR(...) { LOG("ERROR", __VA_ARGS__); exit(-1); }
 
+// #define ERROR(a) { throw runtime_error(a); }
 
+#include <signal.h>
+
+#define ERROR(...) { LOG_ALWAYS(__VA_ARGS__); raise(SIGINT); }
 
 
 
@@ -157,7 +159,7 @@ struct Frame
 {
     tf::Vector3 pos;
     tf::Quaternion rot;
-    inline Frame() : pos(0,0,0), rot(0,0,0,1)
+    inline Frame() //: pos(0, 0, 0), rot(0, 0, 0, 1)
     {
     }
     inline Frame(const tf::Vector3& pos, const tf::Quaternion& rot) : pos(pos), rot(rot)
@@ -181,13 +183,23 @@ struct Frame
         Eigen::Quaterniond q(f.rotation());
         rot = tf::Quaternion(q.x(), q.y(), q.z(), q.w());
     }
+private:
+    static const Frame identity_frame;
+public:
+    static inline const Frame& identity()
+    {
+        return identity_frame;
+    }
 };
 
+const Frame Frame::identity_frame(tf::Vector3(0, 0, 0), tf::Quaternion(0, 0, 0, 1));
 
 
 
-
-
+ostream& operator << (ostream& os, const Frame& f)
+{
+    return os << "(" << f.pos.x() << "," << f.pos.y() << "," << f.pos.z() << ";" << f.rot.x() << "," << f.rot.y() << "," << f.rot.z() << "," << f.rot.w() << ")";
+}
 
 
 
@@ -243,6 +255,10 @@ inline tf::Vector3 quatRotateFast(const tf::Quaternion& q, const tf::Vector3& v)
 
 inline void quatRotateFast(const tf::Quaternion& q, const tf::Vector3& v, tf::Vector3& rs)
 {
+#ifdef CHECK_NAN
+    if(!isfinite(q.x()) || !isfinite(v.x())) ERROR("NAN");
+#endif
+
     double v_x = v.x();
     double v_y = v.y();
     double v_z = v.z();
@@ -305,6 +321,10 @@ inline Frame operator * (const Frame& a, const Frame& b)
 
 inline void concatenate(const Frame& a, const Frame& b, Frame& rs)
 {
+#ifdef CHECK_NAN
+    if(!isfinite(a.rot.x()) || !isfinite(a.pos.x()) || !isfinite(b.rot.x()) || !isfinite(b.pos.x())) ERROR("NAN Frame", a, b);
+#endif
+    
     tf::Vector3 dp;
     quatRotateFast(a.rot, b.pos, dp);
     rs.pos = a.pos + dp;
@@ -324,7 +344,8 @@ inline bool operator == (const Frame& a, const Frame& b)
 
 inline bool operator != (const Frame& a, const Frame& b)
 {
-    return a.pos != b.pos || a.rot != b.rot;
+    //return a.pos != b.pos || a.rot != b.rot;
+    return !(a == b);
 }
 
 
@@ -477,6 +498,10 @@ public:
     {
         return tipFrames[fi];
     }
+    const vector<Frame>& getTipFrames() const
+    {
+        return tipFrames;
+    }
 };
 
 class ModelFK_MoveIt
@@ -512,6 +537,10 @@ public:
     const Frame& getTipFrame(size_t fi) const
     {
         return tipFrames[fi];
+    }
+    const vector<Frame>& getTipFrames() const
+    {
+        return tipFrames;
     }
 };
 
@@ -556,9 +585,13 @@ private:
     }
     inline const Frame& getJointFrame(const moveit::core::JointModel* jointModel)
     {
+        auto jointType = jointModel->getType();
+        if(jointType == moveit::core::JointModel::FIXED)
+        {
+            return Frame::identity();
+        }
         size_t jointIndex = jointModel->getJointIndex();
         if(!checkJointMoved(jointModel)) return jointCacheFrames[jointIndex];
-        auto jointType = jointModel->getType();
         switch(jointType)
         {
         case moveit::core::JointModel::REVOLUTE:
@@ -618,7 +651,7 @@ public:
             tipLinks.push_back(robot_model->getLinkModel(n));
         for(auto* linkModel : model->getLinkModels())
             linkFrames.push_back(Frame(linkModel->getJointOriginTransform()));
-        jointCacheVariables.resize(model->getVariableCount());
+        jointCacheVariables.resize(model->getVariableCount(), DBL_MAX);
         jointCacheFrames.resize(model->getJointModelCount());
         globalFrames.resize(model->getLinkModelCount());
         
@@ -661,6 +694,7 @@ public:
             }
         }
 
+        last_use_incremental = false;
     }
 private:
     void updateFull(const vector<double>& jj0)
@@ -697,7 +731,7 @@ private:
         }
     }
 public:
-    bool last_use_incremental = false;
+    bool last_use_incremental;
     void applyConfiguration(const vector<double>& jj0)
     {
         bool changed = false;
@@ -816,7 +850,7 @@ private:
                         }
                     }
                     
-                    chainCache[ichain].resize(ipos + 1);
+                    chainCache[ichain].resize(ipos + 1, Frame::identity());
                         
                     if(changed)
                     {
@@ -1215,12 +1249,19 @@ class Evolution
     
     double getHeuristicError(size_t variable_index, bool balanced)
     {
+        //return modelInfo.getSpan(variable_index) * random(-1, 1) * (1 << uniform_int_distribution<int>(0, 4)(rng)) * (1.0 / (1 << 4));
+        //return modelInfo.getSpan(variable_index) * (1 << uniform_int_distribution<int>(0, 20)(rng)) * (1.0 / (1 << 20));
+                
+        //return modelInfo.getSpan(variable_index) * random(-1, 1) * random() * random() * random();
+        
         //if(in_final_adjustment_loop) if(random() < 0.5) return random();
         double heuristic_error = 0;
         for(size_t tip_index = 0; tip_index < tipObjectives.size(); tip_index++)
            heuristic_error += heuristicErrorTree.getInfluence(variable_index, tip_index) * computeTipFitness(tip_index, model.getTipFrame(tip_index), balanced, true); 
         //if(in_final_adjustment_loop) heuristic_error *= random() * random() * 5;
         //if(in_final_adjustment_loop) heuristic_error *= 2;
+        //heuristic_error *= 2;
+        //heuristic_error *= random() * random() * 5;
         return heuristic_error;
     }
     
@@ -1389,7 +1430,7 @@ class Evolution
     
     
     void exploit(Individual& individual)
-    { 
+    {
         FNPROFILE();
         double fitness_sum = 0;
         //for(size_t i = 0; i < individual.genes.size(); i++)
@@ -1745,6 +1786,12 @@ public:
     double getSolutionFitness()
     {
         return computeFitness(solution);
+    }
+    
+    const vector<Frame>& getSolutionTipFrames()
+    {
+        model.applyConfiguration(solution);
+        return model.getTipFrames();
     }
     
     void initialize(const vector<double>& initialGuess, const vector<Frame>& tipObjectives)
@@ -2358,6 +2405,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                     {
                         auto& a = solution_tip_frames[i];
                         auto& b = tipFrames[i];
+                        //LOG_VAR(a);
+                        //LOG_VAR(b);
                         p_dist = max(p_dist, (b.pos - a.pos).length());
                         r_dist = max(r_dist, b.rot.angle(a.rot));
                     }
