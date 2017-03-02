@@ -320,7 +320,7 @@ protected:
     std::vector<double> vars, variables0;
     std::vector<Frame> test_tips;
     std::vector<uint8_t> links_changed;
-    bool use_incremental = false;
+    bool use_incremental;
     bool last_use_incremental;
     void updateIncremental(const std::vector<double>& vars0)
     {
@@ -472,7 +472,7 @@ protected:
     }
 public:
     RobotFK_Fast(MoveItRobotModelConstPtr model, const std::vector<std::string>& tip_names) 
-        : RobotFK_Fast_Base(model, tip_names)
+        : RobotFK_Fast_Base(model, tip_names), use_incremental(false)
     {
     }
     inline void incrementalBegin(const std::vector<double>& jj)

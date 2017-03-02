@@ -201,6 +201,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         
         robot_info = RobotInfo(ikparams.robot_model, ikparams.tip_frames);
 
+        LOG("init ready");
+
         return true;
     }
 
@@ -386,7 +388,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
     //virtual const bool supportsGroup(const moveit::core::JointModelGroup* jmg, std::string* error_text_out = NULL) const
     virtual supportsGroup_Result supportsGroup(const moveit::core::JointModelGroup* jmg, std::string* error_text_out = 0) const
     {
-        //LOG_FNC();
+        LOG_FNC();
         //LOG_VAR(jmg->getName());
         return true;
     }
