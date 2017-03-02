@@ -56,8 +56,8 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
 
 
 
-//#define LOG_FNC() LOG("fun", __func__, __LINE__)
-#define LOG_FNC() 
+#define LOG_FNC() LOG("fun", __func__, __LINE__)
+//#define LOG_FNC() 
 
 
 
