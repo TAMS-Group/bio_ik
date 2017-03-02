@@ -1,6 +1,8 @@
 #cmake_minimum_required(VERSION 2.8.3)
 project(bio_ik_kinematics_plugin)
 
+set(ROS_BUILD_TYPE Release)
+
 #add_compile_options(-std=c++11 -O3)
 
 #set(CMAKE_CXX_FLAGS "-std=c++0x")
@@ -12,7 +14,6 @@ project(bio_ik_kinematics_plugin)
 
 #set(CMAKE_CXX_COMPILER "/usr/bin/g++-4.8")
 #set(CMAKE_C_COMPILER "/usr/bin/gcc-4.8")
-
 
 if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -46,13 +47,31 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_library(bio_ik_kinematics_plugin src/ikbio.cpp)
+add_library(bio_ik_kinematics_plugin 
+    src/kinematics_plugin.cpp
+    src/ik_solvers.cpp
+    )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_FLAGS}")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")  
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")  
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast") 
+
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2") 
+
+#set(CMAKE_CXX_FLAGS "-O0 ${CMAKE_CXX_FLAGS}") 
+
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx") 
+
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2 -ftree-vectorize -ffast-math -ftree-vectorizer-verbose=5") 
+
+
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frecord-gcc-switches") # readelf -p .GCC.command.line ...
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")  
 
@@ -62,7 +81,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++11-extensions")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -pedantic-errors")
 
-catkin_add_gtest(utest test/utest.cpp)
+#catkin_add_gtest(utest test/utest.cpp)
 
 message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}")
 
@@ -73,7 +92,26 @@ add_dependencies(bio_ik_kinematics_plugin ${${PROJECT_NAME}_EXPORTED_TARGETS} ${
 target_link_libraries(bio_ik_kinematics_plugin
   ${catkin_LIBRARIES}
   ${OpenMP_LIBS}
+  gcc_s
+  gcc
+  #fann
+  #doublefann
 )
+
+
+#if(CATKIN_ENABLE_TESTING)
+#  find_package(rostest REQUIRED)
+#  add_rostest_gtest(bio_ik_test test/utest.launch test/utest.cpp)
+#  target_link_libraries(bio_ik_test ${catkin_LIBRARIES})
+#endif()
+
+
+if(CATKIN_ENABLE_TESTING)
+    catkin_add_gtest(utest test/utest.cpp)
+    target_link_libraries(utest ${PROJECT_NAME})
+endif()
+
+
 
 
 
