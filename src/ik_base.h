@@ -17,9 +17,9 @@ struct IKTipInfo
 {
     bool position_only_ik;
     double weight;
-    IKTipInfo() :
-        position_only_ik(0),
-        weight(1)
+    double rotation_scale;
+    double rotation_scale_sq;
+    IKTipInfo()
     {
     }
 };
@@ -199,6 +199,10 @@ struct IKBase : IKBase2, RandomBase
         FNPROFILER();
     
         double fitness_sum = 0.0;
+        
+        /*LOG_VAR(frames.size());
+        LOG_VAR(tipObjectives.size());
+        LOG_VAR(params.tip_infos.size());*/
 
         for(size_t tip_index = 0; tip_index < tipObjectives.size(); tip_index++)
         {
@@ -222,8 +226,12 @@ struct IKBase : IKBase2, RandomBase
                 
             double rdist = (fa.rot - fa.rot.nearest(fb.rot)).length2();
             
-            double rscale = heuristicErrorTree.getChainLength(tip_index) * (0.5 / M_PI);
-            rdist *= rscale * rscale;
+            //double rscale = heuristicErrorTree.getChainLength(tip_index) * (0.5 / M_PI);
+            //rdist *= rscale * rscale;
+            
+            rdist *= params.tip_infos[tip_index].rotation_scale_sq;
+            
+            //if(params.tip_infos[tip_index].position_only_ik) rdist = 0;
             
             double f = tdist + rdist;
             

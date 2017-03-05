@@ -93,6 +93,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
     {
         LOG_FNC();
         
+        LOG_VAR(robot_description);
+        LOG_VAR(group_name);
 
         rdf_loader::RDFLoader rdf_loader(robot_description_);
         auto srdf = rdf_loader.getSRDF();
@@ -166,34 +168,95 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         ikparams.active_variables = mutable_genes;
         
         ikparams.tip_infos.clear();
+        
+        HeuristicErrorTree heuristic_error_tree(robot_model, tip_frames_);
+        
+        auto load_tip = [&] (const std::string& name)
+        {
+            LOG("load tip", name);
+        
+            ros::NodeHandle node_handle("~");
+            std::string rdesc;
+            node_handle.searchParam(robot_description_, rdesc);
+            node_handle = ros::NodeHandle(rdesc + "_kinematics/" + name);
+            
+            size_t tip_index = ikparams.tip_infos.size();
+    
+            ikparams.tip_infos.emplace_back();
+            
+            //ikparams.tip_infos.back().position_only_ik = node_handle.param("position_only_ik", false);
+            //ikparams.tip_infos.back().weight = node_handle.param("weight", 1.0);
+            
+            node_handle.param("position_only_ik", ikparams.tip_infos.back().position_only_ik, false);
+            node_handle.param("weight", ikparams.tip_infos.back().weight, 1.0);
+            
+            node_handle.param("rotation_scale", ikparams.tip_infos.back().rotation_scale, heuristic_error_tree.getChainLength(tip_index) * (0.5 / M_PI));
+            if(ikparams.tip_infos.back().position_only_ik) ikparams.tip_infos.back().rotation_scale = 0;
+            ikparams.tip_infos.back().rotation_scale_sq = ikparams.tip_infos.back().rotation_scale * ikparams.tip_infos.back().rotation_scale;
+            
+            LOG_VAR(ikparams.tip_infos.back().position_only_ik);
+        };
+        
+        // TODO: per-tip config ???
+        
+        for(auto& tip_name : tip_frames_)
+            load_tip(group_name);
+        
+        /*std::vector<const moveit::core::JointModelGroup*> groups;
+        joint_model_group->getSubgroups(groups);
+        groups.push_back(joint_model_group);
         for(auto& tip_name : tip_frames_)
         {
-            for(auto& end_effector : robot_model->getSRDF()->getEndEffectors())
+            LOG_VAR(tip_name);
+            for(auto* group : groups)
             {
-                if(tip_name == end_effector.parent_link_)
+                auto n = group->getEndEffectorName();
+                LOG_VAR(group->getEndEffectorName());
+                LOG_VAR(group->getName());
+                if(!n.empty() && n == tip_name)
                 {
-                    LOG_VAR(end_effector.name_);
-                    LOG_VAR(end_effector.component_group_);
-                    LOG_VAR(end_effector.parent_group_);
-                    LOG_VAR(end_effector.parent_link_);
-                    
-                    ros::NodeHandle node_handle("~");
-                    std::string rdesc;
-                    node_handle.searchParam(robot_description_, rdesc);
-                    node_handle = ros::NodeHandle(rdesc + "_kinematics/" + end_effector.component_group_);
-            
-                    ikparams.tip_infos.emplace_back();
-                    
-                    //ikparams.tip_infos.back().position_only_ik = node_handle.param("position_only_ik", false);
-                    //ikparams.tip_infos.back().weight = node_handle.param("weight", 1.0);
-                    
-                    node_handle.param("position_only_ik", ikparams.tip_infos.back().position_only_ik, false);
-                    node_handle.param("weight", ikparams.tip_infos.back().weight, 1.0);
-                    
-                    LOG_VAR(ikparams.tip_infos.back().position_only_ik);
+                    load_tip(group->getName());
+                goto _finish;
                 }
             }
+            for(auto* group : robot_model->getJointModelGroups())
+            {
+                std::vector<std::string> tips;
+                group->getEndEffectorTips(tips);
+                for(auto& tip : tips)
+                {
+                    LOG_VAR(tip);
+                    if(tip == tip_name)
+                    {
+                        load_tip(group->getName());
+                goto _finish;
+                    }
+                }
+            }
+            ERROR("tip not found", tip_name);
         }
+    _finish:
+        0;*/
+        
+        /*for(auto& tip_name : tip_frames_)
+        {
+            LOG_VAR(tip_name);
+            for(auto& end_effector : robot_model->getSRDF()->getEndEffectors())
+            {
+                LOG_VAR(end_effector.name_);
+                LOG_VAR(end_effector.component_group_);
+                LOG_VAR(end_effector.parent_group_);
+                LOG_VAR(end_effector.parent_link_);
+                if(tip_name == end_effector.parent_link_)
+                {
+                    load_tip(end_effector.component_group_);
+                }
+            }
+        }*/
+        
+        LOG_VAR(ikparams.tip_infos.size());
+        
+        //ERROR("");
 
         temp_state.reset(new moveit::core::RobotState(robot_model));
         
