@@ -4,17 +4,6 @@
 
 
 ## Parameters
-(can be set via `rosparam` or `kinematics.yaml`)
-
-### End Effector Parameters
-- `position_only_ik` (just like the `position_only_ik` parameter already supported by some other MoveIt IK solvers)
-- `weight`
-
-### IK Group Parameters
-- `population_size`
-- `elite_count`
-- `quadratic`
-- `full_circle`
-- `no_wipeout`
-- `fitness_randomization`
-- `bisection`
+- `position_only_ik`: ignore tip rotation / only solve for position
+- `rotation_scale`: how to mix translational and rotational errors (default is proportional to average chain length)
+- `threads`: number of threads / evolutionary islands
