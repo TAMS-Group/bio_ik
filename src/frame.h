@@ -195,8 +195,15 @@ inline Frame& operator *= (Frame& a, const Frame& b)
 }
 
 
-
-
+__attribute__((always_inline))
+inline void normalizeFast(Quaternion& q)
+{
+    double f = (3.0 - q.length2()) * 0.5;
+    q.setX(q.x() * f);
+    q.setY(q.y() * f);
+    q.setZ(q.z() * f);
+    q.setW(q.w() * f);
+}
 
 
 

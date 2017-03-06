@@ -58,13 +58,29 @@ public:
             
             info.min = bounds.min_position_;
             info.max = bounds.max_position_;
+
             
             info.clip_min = bounded ? info.min : -DBL_MAX;
             info.clip_max = bounded ? info.max : +DBL_MAX;
             
+            
+            //if(info.max == DBL_MAX) info.min = -1, info.max = 1, info.clip_min = -1, info.clip_max = 1;
+            //if(info.max == DBL_MAX) info.min = -1, info.max = 1;
+            
+            
+            
             info.span = info.max - info.min;
             
-            //LOG("joint variable", variables.size(), name, info.bounded, info.min, info.max);
+            
+            LOG("joint variable", name, info.min, info.max);
+            
+            
+            //if(info.span == DBL_MAX || !std::isfinite(info.span)) info.span = 0;
+            if(info.span == DBL_MAX || !std::isfinite(info.span)) info.span = 1;
+            //if(info.span == DBL_MAX || !std::isfinite(info.span)) info.span = 32;
+            //if(info.span == DBL_MAX || !std::isfinite(info.span) || variables.size() < 7) info.span = 0;
+            
+            
             
             variables.push_back(info);
         }

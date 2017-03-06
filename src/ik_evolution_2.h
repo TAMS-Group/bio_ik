@@ -36,6 +36,7 @@ struct IKEvolution2 : IKBase
     std::vector<double*> genotypes;
     std::vector<Frame> phenotype;
     std::vector<size_t> gene_resets;
+    std::vector<size_t> quaternion_genes;
     
     struct GeneInfo
     {
@@ -70,6 +71,15 @@ struct IKEvolution2 : IKBase
                 while(mutation_cost_sat[i] < f) i++;
                 if(i >= mutation_cost_sat.size()) i = mutation_cost_sat.size() - 1;
                 gene_resets.push_back(i);
+            }
+
+            for(size_t igene = 0; igene < active_variables.size(); igene++)
+            {
+                size_t ivar = active_variables[igene];
+                auto* joint_model = p.robot_model->getJointOfVariable(ivar);
+                if(joint_model->getFirstVariableIndex() != ivar + 3) continue;
+                if(joint_model->getType() != moveit::core::JointModel::FLOATING) continue;
+                quaternion_genes.push_back(igene);
             }
         }
     }
@@ -176,6 +186,7 @@ struct IKEvolution2 : IKBase
             auto& parent = population[0];
             auto& parent2 = population[1];
             double fmix = (child_index % 2 == 0) * 0.2;
+            
             for(size_t gene_index = 0; gene_index < gene_count; gene_index++)
             {
                 auto& gene_info = gene_infos[gene_index];
@@ -200,6 +211,15 @@ struct IKEvolution2 : IKBase
                 auto& dp = children[child_index].gradients[gene_index];
                 dp = mix(dp, p2 - p1, 0.1);
                 p1 = p2;
+            }
+            
+            for(auto quaternion_gene_index : quaternion_genes)
+            {
+                auto& qpos = (*(Quaternion*)&(children[child_index].genes[quaternion_gene_index]));
+                //qpos.normalize();
+                normalizeFast(qpos);
+                /*auto& qvel = (*(Quaternion*)&(children[child_index].gradients[quaternion_gene_index]));
+                qvel -= qvel * qvel.dot(qpos);*/
             }
         }
     }

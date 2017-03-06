@@ -161,7 +161,9 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 }
             }
         }
-            
+        
+        robot_info = RobotInfo(robot_model, tip_frames_);
+        
         ikparams.robot_model = robot_model;
         ikparams.node_handle = node_handle;
         ikparams.tip_frames = tip_frames_;
@@ -198,6 +200,9 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         };
         
         // TODO: per-tip config ???
+        
+        for(auto& tip_name : tip_frames_)
+            LOG("tip", tip_name);
         
         for(auto& tip_name : tip_frames_)
             load_tip(group_name);
@@ -261,8 +266,6 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         temp_state.reset(new moveit::core::RobotState(robot_model));
         
         ik.reset(new PluginIKSolver(ikparams));
-        
-        robot_info = RobotInfo(ikparams.robot_model, ikparams.tip_frames);
 
         LOG("init ready");
 
@@ -403,6 +406,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
             v *= 2 * M_PI;
             if(v > M_PI) v -= 2 * M_PI;*/
             
+            //LOG_VAR(ivar);
+            
             if(robot_info.isRevolute(ivar) && robot_info.getClipMax(ivar) == DBL_MAX)
             {
                 v *= (1.0 / (2 * M_PI));
@@ -413,10 +418,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
             }
             
             state[ivar] = v;
-            
-            //LOG(ivar, v, modelInfo.getMin(ivar), modelInfo.getMax(ivar));
         }
-        
+
         // wrap angles
         robot_model->enforcePositionBounds(state.data());
 

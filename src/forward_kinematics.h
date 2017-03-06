@@ -67,6 +67,13 @@ public:
             frame = Frame(axis * v, Quaternion(0.0, 0.0, 0.0, 1.0));
             return;
         }
+        case moveit::core::JointModel::FLOATING:
+        {
+            auto* vv = variables + joint_model->getFirstVariableIndex();
+            frame.pos = Vector3(vv[0], vv[1], vv[2]);
+            frame.rot = Quaternion(vv[3], vv[4], vv[5], vv[6]).normalized();
+            return;
+        }
         default:
         {
             auto* joint_variables = variables + joint_model->getFirstVariableIndex();
