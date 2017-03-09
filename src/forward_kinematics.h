@@ -796,8 +796,7 @@ public:
 private:
 
     Eigen::MatrixXd mutation_approx_jacobian;
-    std::vector<std::vector<Vector3>> mutation_approx_translations;
-    std::vector<std::vector<Quaternion>> mutation_approx_rotations;
+    std::vector<std::vector<Frame>> mutation_approx_frames;
     std::vector<size_t> mutation_indices_1;
     std::vector<double> mutation_values_1;
     std::vector<std::vector<Frame>> tip_frame_mutations;
@@ -811,14 +810,9 @@ public:
         auto tip_count = tip_names.size();
         mutated_tip_frames.resize(tip_count);
         
-        mutation_approx_translations.resize(tip_count);
-        mutation_approx_rotations.resize(tip_count);
-        
+        mutation_approx_frames.resize(tip_count);
         for(size_t itip = 0; itip < tip_count; itip++)
-        {
-            mutation_approx_translations[itip].resize(robot_model->getVariableCount());
-            mutation_approx_rotations[itip].resize(robot_model->getVariableCount());
-        }
+            mutation_approx_frames[itip].resize(robot_model->getVariableCount());
     
         computeJacobian(variable_indices, mutation_approx_jacobian);
         
@@ -833,7 +827,7 @@ public:
                     t.setY(mutation_approx_jacobian(itip * 6 + 1, icol));
                     t.setZ(mutation_approx_jacobian(itip * 6 + 2, icol));
                     quat_mul_vec(tip_frames[itip].rot, t, t);
-                    mutation_approx_translations[itip][ivar] = t;
+                    mutation_approx_frames[itip][ivar].pos = t;
                 }
 
                 {
@@ -843,9 +837,8 @@ public:
                     q.setZ(mutation_approx_jacobian(itip * 6 + 5, icol) * 0.5);
                     q.setW(1.0);
                     quat_mul_quat(tip_frames[itip].rot, q, q);
-                    //q = tip_frames[itip].rot.nearest(q);
                     q -= tip_frames[itip].rot;
-                    mutation_approx_rotations[itip][ivar] = q;
+                    mutation_approx_frames[itip][ivar].rot = q;
                 }
             }
         }
@@ -865,9 +858,8 @@ public:
         while(tip_frame_mutations.size() < mutation_count) tip_frame_mutations.emplace_back(tip_count);
         for(size_t itip = 0; itip < tip_count; itip++)
         {
-            auto& joint_delta_pos = mutation_approx_translations[itip];
-            auto& joint_delta_rot = mutation_approx_rotations[itip];
-        
+            auto& joint_deltas = mutation_approx_frames[itip];
+            
             const Frame& tip_frame = tip_frames[itip];
             for(size_t imutation = 0; imutation < mutation_count; imutation++)
             {
@@ -885,14 +877,14 @@ public:
                     size_t variable_index = variable_indices[vii];
                     double variable_delta = mutation_values[imutation][vii] - variables[variable_index];
                     
-                    px += joint_delta_pos[variable_index].x() * variable_delta;
-                    py += joint_delta_pos[variable_index].y() * variable_delta;
-                    pz += joint_delta_pos[variable_index].z() * variable_delta;
+                    px += joint_deltas[variable_index].pos.x() * variable_delta;
+                    py += joint_deltas[variable_index].pos.y() * variable_delta;
+                    pz += joint_deltas[variable_index].pos.z() * variable_delta;
                     
-                    rx += joint_delta_rot[variable_index].x() * variable_delta;
-                    ry += joint_delta_rot[variable_index].y() * variable_delta;
-                    rz += joint_delta_rot[variable_index].z() * variable_delta;
-                    rw += joint_delta_rot[variable_index].w() * variable_delta;
+                    rx += joint_deltas[variable_index].rot.x() * variable_delta;
+                    ry += joint_deltas[variable_index].rot.y() * variable_delta;
+                    rz += joint_deltas[variable_index].rot.z() * variable_delta;
+                    rw += joint_deltas[variable_index].rot.w() * variable_delta;
                 }
 
                 auto& tip_mutation = tip_frame_mutations[imutation][itip];

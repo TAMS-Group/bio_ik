@@ -40,6 +40,8 @@ typedef IKParallel PluginIKSolver;
 
 struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 {
+    uint8_t test;
+
     std::vector<std::string> joint_names, link_names;
     MoveItRobotModelConstPtr robot_model;
     const moveit::core::JointModelGroup* joint_model_group;
@@ -51,6 +53,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
     BioIKKinematicsPlugin()
     {
+        test = 0;
     }
 
     virtual const std::vector<std::string>& getJointNames() const
@@ -192,7 +195,9 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
             node_handle.param("position_only_ik", ikparams.tip_infos.back().position_only_ik, false);
             node_handle.param("weight", ikparams.tip_infos.back().weight, 1.0);
             
-            node_handle.param("rotation_scale", ikparams.tip_infos.back().rotation_scale, heuristic_error_tree.getChainLength(tip_index) * (0.5 / M_PI));
+            //ikparams.tip_infos.back().rotation_scale = heuristic_error_tree.getChainLength(tip_index) * (0.5 / M_PI);
+            ikparams.tip_infos.back().rotation_scale = 0.5;
+            node_handle.param("rotation_scale", ikparams.tip_infos.back().rotation_scale, ikparams.tip_infos.back().rotation_scale);
             if(ikparams.tip_infos.back().position_only_ik) ikparams.tip_infos.back().rotation_scale = 0;
             ikparams.tip_infos.back().rotation_scale_sq = ikparams.tip_infos.back().rotation_scale * ikparams.tip_infos.back().rotation_scale;
             
@@ -336,6 +341,11 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         LOG_FNC();
         return false;
     }
+    
+    /*struct OptMod : kinematics::KinematicsQueryOptions
+    {
+        int test;
+    };*/
 
     virtual bool searchPositionIK(const std::vector<geometry_msgs::Pose>& ik_poses,
                                 const std::vector<double>& ik_seed_state,
@@ -352,6 +362,9 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         LOG_FNC();
 
         FNPROFILER();
+        
+        //LOG(typeid(options).name());
+        //LOG(((OptMod*)&options)->test);
 
         // get variable default positions / context state
         state.resize(robot_model->getVariableCount());
@@ -387,10 +400,14 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         }
 
         // run ik solver
+        //if(!test)
         ik->solve(state, tipFrames, t0 + timeout);
         
         // get solution
+        //if(!test)
         state = ik->getSolution();
+        
+        //if(test) for(auto ivar : ikparams.active_variables) state[ivar] = 0;
         
         //for(auto ivar : ikparams.active_variables) LOG(ivar, state[ivar]);
         

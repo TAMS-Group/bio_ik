@@ -16,9 +16,9 @@ typedef tf::Vector3 Vector3;
 
 struct Frame
 {
-    tf::Vector3 pos;
-    //double __padding;
-    tf::Quaternion rot;
+    Vector3 pos;
+    double __padding[4 - (sizeof(Vector3) / sizeof(double))];
+    Quaternion rot;
     inline Frame()
     {
     }
@@ -55,6 +55,15 @@ public:
         return IdentityFrameTemplate<0>::identity_frame;
     }
 };
+
+inline void frameToKDL(const Frame& frame, KDL::Frame& kdl_frame)
+{
+    KDL::Rotation kdl_rot;
+    KDL::Vector kdl_pos;
+    tf::quaternionTFToKDL(frame.rot, kdl_rot);
+    tf::vectorTFToKDL(frame.pos, kdl_pos);
+    kdl_frame = KDL::Frame(kdl_rot, kdl_pos);
+}
 
 template<size_t i>
 const Frame Frame::IdentityFrameTemplate<i>::identity_frame(Vector3(0, 0, 0), Quaternion(0, 0, 0, 1));
@@ -228,47 +237,6 @@ inline KDL::Twist frameTwist(const Frame& a, const Frame& b)
     
     return t;
 }
-
-
-
-
-
-
-
-/*
-__attribute__((always_inline))
-inline KDL::Twist frameTwist(const Frame& a, const Frame& b)
-{
-    KDL::Twist t;
-    
-    t.vel.x(b.pos.x() - a.pos.x());
-    t.vel.y(b.pos.y() - a.pos.y());
-    t.vel.z(b.pos.z() - a.pos.z());
-    
-    Quaternion b_rot = a.rot.nearest(b.rot);
-    
-    t.rot.x(b_rot.x() - a.rot.x());
-    t.rot.y(b_rot.y() - a.rot.y());
-    t.rot.z(b_rot.z() - a.rot.z());
-    
-    return t;
-}
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -77,6 +77,7 @@ struct IKParallel
     std::vector<double> result;
     std::vector<std::thread> threads;
     std::unique_ptr<ParallelExecutor> par;
+    double dpos, drot, dtwist;
     
     IKParallel(const IKParams& params) : params(params)
     {
@@ -87,6 +88,10 @@ struct IKParallel
         
         thread_count = solvers.front()->concurrency();
         params.node_handle.param("threads", thread_count, thread_count);
+        
+        params.node_handle.param("dpos", dpos, 0.0001);
+        params.node_handle.param("drot", drot, 0.5);
+        params.node_handle.param("dtwist", dtwist, DBL_MAX);
 
         while(solvers.size() < thread_count) solvers.emplace_back(IKFactory::clone(solvers.front().get()));
         
@@ -109,20 +114,37 @@ private:
 
     bool checkSolution(const std::vector<Frame>& tips) const
     {
-        //return false;
-        double p_dist = 0;
-        double r_dist = 0;
-        for(int i = 0; i < tip_goals.size(); i++)
+        //LOG_VAR(dtwist);
+    
+        if(dpos != DBL_MAX || drot != DBL_MAX)
         {
-            auto& a = tips[i];
-            auto& b = tip_goals[i];
-            p_dist = std::max(p_dist, (b.pos - a.pos).length());
-            r_dist = std::max(r_dist, b.rot.angleShortestPath(a.rot));
+            double p_dist = 0;
+            double r_dist = 0;
+            for(int i = 0; i < tip_goals.size(); i++)
+            {
+                auto& a = tips[i];
+                auto& b = tip_goals[i];
+                p_dist = std::max(p_dist, (b.pos - a.pos).length());
+                r_dist = std::max(r_dist, b.rot.angleShortestPath(a.rot));
+            }
+            r_dist = r_dist * 180 / M_PI;
+            if(!(p_dist <= dpos)) return false;
+            if(!(r_dist <= drot)) return false;
         }
-        r_dist = r_dist * 180 / M_PI;
-        double max_p_dist = 0.0001;
-        double max_r_dist = 0.5;
-        return p_dist < max_p_dist && r_dist < max_r_dist;
+        
+        if(dtwist != DBL_MAX)
+        {
+            for(int i = 0; i < tip_goals.size(); i++)
+            {
+                KDL::Frame fk_kdl, ik_kdl;
+                frameToKDL(tip_goals[i], fk_kdl);
+                frameToKDL(tips[i], ik_kdl);
+                KDL::Twist kdl_diff(fk_kdl.M.Inverse() * KDL::diff(fk_kdl.p, ik_kdl.p), fk_kdl.M.Inverse() * KDL::diff(fk_kdl.M, ik_kdl.M));
+                if(!KDL::Equal(kdl_diff, KDL::Twist::Zero(), dtwist)) return false;
+            }
+        }
+        
+        return true;
     }
     
     void solverthread(size_t i)

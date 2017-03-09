@@ -128,18 +128,18 @@ struct IKEvolution2 : IKBase
                 v.genes.resize(active_variables.size());
                 //if(thread_index == 0) // on first island?
                 //if(thread_index % 2 == 0) // on every second island...
-                //if(1)
+                if(1)
                 {
-                    // set population to initial_guess
+                    // set to initial_guess
                     for(size_t i = 0; i < v.genes.size(); i++)
                         v.genes[i] = initial_guess[active_variables[i]];
                 } 
-                /*else 
+                else 
                 {
                     // initialize populations on other islands randomly
                     for(size_t i = 0; i < v.genes.size(); i++)
                         v.genes[i] = random(modelInfo.getMin(active_variables[i]), modelInfo.getMax(active_variables[i]));
-                }*/
+                }
                 
                 // set gradients to zero
                 v.gradients.clear();
@@ -182,7 +182,7 @@ struct IKEvolution2 : IKBase
         auto* rr = fast_random_gauss_n((children.size() - population.size()) * gene_count);
         for(size_t child_index = population.size(); child_index < children.size(); child_index++)
         {
-            double mutation_rate = (1 << fast_random_index(16)) * (1.0 / (1 << 20));
+            double mutation_rate = (1 << fast_random_index(16)) * (1.0 / (1 << 23));
             auto& parent = population[0];
             auto& parent2 = population[1];
             double fmix = (child_index % 2 == 0) * 0.2;
@@ -200,10 +200,10 @@ struct IKEvolution2 : IKBase
                 gene += gradient;
                 gene = clamp2(gene, gene_info.clip_min, gene_info.clip_max);
                 children[child_index].genes[gene_index] = gene;
-                children[child_index].gradients[gene_index] = mix(parent_gradient, gene - parent_gene, 0.1);
+                children[child_index].gradients[gene_index] = mix(parent_gradient, gene - parent_gene, 0.3);
             }
             
-            if(thread_index == 0 && fast_random_index(4) == 0)
+            /*if(thread_index == 0 && fast_random_index(4) == 0)
             {
                 auto gene_index = fast_random_element(gene_resets);
                 auto& p1 = children[child_index].genes[gene_index];
@@ -211,15 +211,15 @@ struct IKEvolution2 : IKBase
                 auto& dp = children[child_index].gradients[gene_index];
                 dp = mix(dp, p2 - p1, 0.1);
                 p1 = p2;
-            }
+            }*/
             
             for(auto quaternion_gene_index : quaternion_genes)
             {
                 auto& qpos = (*(Quaternion*)&(children[child_index].genes[quaternion_gene_index]));
                 //qpos.normalize();
                 normalizeFast(qpos);
-                /*auto& qvel = (*(Quaternion*)&(children[child_index].gradients[quaternion_gene_index]));
-                qvel -= qvel * qvel.dot(qpos);*/
+                //auto& qvel = (*(Quaternion*)&(children[child_index].gradients[quaternion_gene_index]));
+                //qvel -= qvel * qvel.dot(qpos);
             }
         }
     }
@@ -373,7 +373,7 @@ struct IKEvolution2 : IKBase
                             if(best_mutation_index >= 0)
                             {
                                 individual.fitness = best_mutation_fitness;
-                                individual.gradients[gene_index] = mix(individual.gradients[gene_index], mutation_values[best_mutation_index] - individual.genes[gene_index], 0.1);
+                                //individual.gradients[gene_index] = mix(individual.gradients[gene_index], mutation_values[best_mutation_index] - individual.genes[gene_index], 0.1);
                                 individual.genes[gene_index] = mutation_values[best_mutation_index];
                                 solution[active_variables[gene_index]] = individual.genes[gene_index];
                                 phenotype = phenotypes[best_mutation_index];
@@ -407,9 +407,15 @@ struct IKEvolution2 : IKBase
             for(size_t species_index = 1; species_index < species.size(); species_index++)
             {
                 if(fast_random() < 0.1 || !species[species_index].improved)
-                    for(auto& individual : species[species_index].individuals)
+                {
+                    {
+                        auto& individual = species[species_index].individuals[0];
                         for(size_t i = 0; i < individual.genes.size(); i++)
                             individual.genes[i] = random(modelInfo.getMin(active_variables[i]), modelInfo.getMax(active_variables[i]));
+                    }
+                    for(size_t i = 0; i < species[species_index].individuals.size(); i++)
+                        species[species_index].individuals[i] = species[species_index].individuals[0];
+                }
             }
 
             // update solution
