@@ -476,7 +476,7 @@ struct aligned_allocator : public std::allocator<T>
     T* allocate(size_t s, const void* hint = 0)
     {
         void* p;
-        if(posix_memalign(&p, A, s)) throw std::bad_alloc();
+        if(posix_memalign(&p, A, sizeof(T) * s)) throw std::bad_alloc();
         return (T*)p;
     }
     void deallocate(T* ptr, size_t s)
