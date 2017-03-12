@@ -698,9 +698,8 @@ public:
 // fast linear fk approximation
 class RobotFK_Mutator : public RobotFK_Jacobian
 {
-    std::vector<Frame> mutated_tip_frames;
-    std::vector<double> mutated_variables;
-    std::vector<Frame> mutated_global_link_frames;
+    Eigen::MatrixXd mutation_approx_jacobian;
+    aligned_vector<std::vector<Frame>> mutation_approx_frames;
     struct TipInfo
     {
         size_t tip_index;
@@ -718,11 +717,6 @@ public:
     RobotFK_Mutator(MoveItRobotModelConstPtr model, const std::vector<std::string>& tip_names) 
         : RobotFK_Jacobian(model, tip_names)
     {
-        mutation_indices_1.resize(1);
-        mutation_values_1.resize(1);
-        mutated_variables.resize(robot_model->getVariableCount());
-        mutated_tip_frames.resize(tip_names.size());
-        mutated_global_link_frames.resize(robot_model->getLinkModelCount());
         variable_infos.resize(robot_model->getVariableCount());
         for(size_t ivar = 0; ivar < robot_model->getVariableCount(); ivar++)
         {
@@ -792,23 +786,15 @@ public:
             ERROR("X");
         }
     }
-    
-private:
 
-    Eigen::MatrixXd mutation_approx_jacobian;
-    std::vector<std::vector<Frame>> mutation_approx_frames;
-    std::vector<size_t> mutation_indices_1;
-    std::vector<double> mutation_values_1;
-    std::vector<std::vector<Frame>> tip_frame_mutations;
-    
-public:
+
+
 
     void initializeMutationApproximator(const std::vector<size_t>& variable_indices)
     {
         FNPROFILER();
     
         auto tip_count = tip_names.size();
-        mutated_tip_frames.resize(tip_count);
         
         mutation_approx_frames.resize(tip_count);
         for(size_t itip = 0; itip < tip_count; itip++)
@@ -844,16 +830,27 @@ public:
         }
     }
     
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    __attribute__ ((hot))
+    __attribute__ ((noinline))
+    __attribute__ ((target ("default")))
     void computeApproximateMutations(
         size_t variable_count,
         const size_t* variable_indices, 
         size_t mutation_count,
         const double * const * mutation_values,
-        const std::vector<double>& variables, 
-        const std::vector<Frame>& tip_frames, 
         std::vector<std::vector<Frame>>& tip_frame_mutations) const
     {
-        FNPROFILER();
+        //FNPROFILER();
+        const double* p_variables = variables.data();
         auto tip_count = tip_names.size();
         while(tip_frame_mutations.size() < mutation_count) tip_frame_mutations.emplace_back(tip_count);
         for(size_t itip = 0; itip < tip_count; itip++)
@@ -875,7 +872,7 @@ public:
                 for(size_t vii = 0; vii < variable_count; vii++)
                 {
                     size_t variable_index = variable_indices[vii];
-                    double variable_delta = mutation_values[imutation][vii] - variables[variable_index];
+                    double variable_delta = mutation_values[imutation][vii] - p_variables[variable_index];
                     
                     px += joint_deltas[variable_index].pos.x() * variable_delta;
                     py += joint_deltas[variable_index].pos.y() * variable_delta;
@@ -901,15 +898,216 @@ public:
         }
     }
     
-    inline void computeApproximateMutations(
+    
+    
+    
+    __attribute__ ((hot))
+    __attribute__ ((noinline))
+    __attribute__ ((target ("sse2")))
+    void computeApproximateMutations(
         size_t variable_count,
-        const size_t* variable_indices, 
+        const size_t* __restrict__ variable_indices, 
         size_t mutation_count,
         const double * const * mutation_values,
         std::vector<std::vector<Frame>>& tip_frame_mutations) const
     {
-        computeApproximateMutations(variable_count, variable_indices, mutation_count, mutation_values, variables, tip_frames, tip_frame_mutations);
+        auto* __restrict__ variables_ptr = variables.data();
+        auto tip_count = tip_names.size();
+        while(tip_frame_mutations.size() < mutation_count) tip_frame_mutations.emplace_back(tip_count);
+        for(size_t itip = 0; itip < tip_count; itip++)
+        {
+            auto* __restrict__ joint_deltas = mutation_approx_frames[itip].data();
+            const Frame& tip_frame = tip_frames[itip];
+            const double* tip_frame_ptr = (const double*)&tip_frame;
+            __m128d pxy0 = _mm_load_pd(tip_frame_ptr + 0);
+            __m128d pzw0 = _mm_load_pd(tip_frame_ptr + 2);
+            __m128d rxy0 = _mm_load_pd(tip_frame_ptr + 4);
+            __m128d rzw0 = _mm_load_pd(tip_frame_ptr + 6);
+            for(size_t imutation = 0; imutation < mutation_count; imutation++)
+            {
+                auto* __restrict__ mutation_ptr = mutation_values[imutation];
+                __m128d pxy = pxy0;
+                __m128d pzw = pzw0;
+                __m128d rxy = rxy0;
+                __m128d rzw = rzw0;
+                for(size_t vii = 0; vii < variable_count; vii++)
+                {
+                    auto variable_index = variable_indices[vii];
+                    double variable_delta = mutation_ptr[vii] - variables_ptr[variable_index];
+                    __m128d ff = _mm_set1_pd(variable_delta);
+                    auto joint_delta_ptr = (const double* __restrict__)&(joint_deltas[variable_index]);
+                    pxy = _mm_add_pd(pxy, _mm_mul_pd(ff, _mm_load_pd(joint_delta_ptr + 0)));
+                    pzw = _mm_add_pd(pzw, _mm_mul_pd(ff, _mm_load_pd(joint_delta_ptr + 2)));
+                    rxy = _mm_add_pd(rxy, _mm_mul_pd(ff, _mm_load_pd(joint_delta_ptr + 4)));
+                    rzw = _mm_add_pd(rzw, _mm_mul_pd(ff, _mm_load_pd(joint_delta_ptr + 6)));
+                }
+                auto& tip_mutation = tip_frame_mutations[imutation][itip];
+                double* __restrict__ tip_mutation_ptr = (double*)&tip_mutation;
+                _mm_store_pd(tip_mutation_ptr + 0, pxy);
+                _mm_store_pd(tip_mutation_ptr + 2, pzw);
+                _mm_store_pd(tip_mutation_ptr + 4, rxy);
+                _mm_store_pd(tip_mutation_ptr + 6, rzw);
+            }
+        }
     }
+    
+    
+    
+    
+    __attribute__ ((hot))
+    __attribute__ ((noinline))
+    __attribute__ ((target ("avx")))
+    void computeApproximateMutations(
+        size_t variable_count,
+        const size_t* __restrict__ variable_indices, 
+        size_t mutation_count,
+        const double * const * mutation_values,
+        std::vector<std::vector<Frame>>& tip_frame_mutations) const
+    {
+        auto* __restrict__ variables_ptr = variables.data();
+        auto tip_count = tip_names.size();
+        while(tip_frame_mutations.size() < mutation_count) tip_frame_mutations.emplace_back(tip_count);
+        for(size_t itip = 0; itip < tip_count; itip++)
+        {
+            auto* __restrict__ joint_deltas = mutation_approx_frames[itip].data();
+            const Frame& tip_frame = tip_frames[itip];
+            const double* tip_frame_ptr = (const double*)&tip_frame;
+            __m256d p0 = _mm256_loadu_pd(tip_frame_ptr + 0);
+            __m256d r0 = _mm256_loadu_pd(tip_frame_ptr + 4);
+            for(size_t imutation = 0; imutation < mutation_count; imutation++)
+            {
+                auto* __restrict__ mutation_ptr = mutation_values[imutation];
+                __m256d p = p0;
+                __m256d r = r0;
+                for(size_t vii = 0; vii < variable_count; vii++)
+                {
+                    auto variable_index = variable_indices[vii];
+                    double variable_delta = mutation_ptr[vii] - variables_ptr[variable_index];
+                    __m256d ff = _mm256_set1_pd(variable_delta);
+                    auto joint_delta_ptr = (const double* __restrict__)&(joint_deltas[variable_index]);
+                    p = _mm256_add_pd(p, _mm256_mul_pd(ff, _mm256_load_pd(joint_delta_ptr + 0)));
+                    r = _mm256_add_pd(r, _mm256_mul_pd(ff, _mm256_load_pd(joint_delta_ptr + 4)));
+                }
+                auto& tip_mutation = tip_frame_mutations[imutation][itip];
+                double* __restrict__ tip_mutation_ptr = (double*)&tip_mutation;
+                _mm256_storeu_pd(tip_mutation_ptr + 0, p);
+                _mm256_storeu_pd(tip_mutation_ptr + 4, r);
+            }
+        }
+    }
+    
+    
+    
+    
+    
+    __attribute__ ((hot))
+    __attribute__ ((noinline))
+    __attribute__ ((target ("fma", "avx")))
+    void computeApproximateMutations(
+        size_t variable_count,
+        const size_t* __restrict__ variable_indices, 
+        size_t mutation_count,
+        const double * const * mutation_values,
+        std::vector<std::vector<Frame>>& tip_frame_mutations) const
+    {
+        //LOG("fma");
+        auto* __restrict__ variables_ptr = variables.data();
+        auto tip_count = tip_names.size();
+        while(tip_frame_mutations.size() < mutation_count) tip_frame_mutations.emplace_back(tip_count);
+        for(size_t itip = 0; itip < tip_count; itip++)
+        {
+            auto* __restrict__ joint_deltas = mutation_approx_frames[itip].data();
+            const Frame& tip_frame = tip_frames[itip];
+            const double* tip_frame_ptr = (const double*)&tip_frame;
+            __m256d p0 = _mm256_loadu_pd(tip_frame_ptr + 0);
+            __m256d r0 = _mm256_loadu_pd(tip_frame_ptr + 4);
+            for(size_t imutation = 0; imutation < mutation_count; imutation++)
+            {
+                auto* __restrict__ mutation_ptr = mutation_values[imutation];
+                __m256d p = p0;
+                __m256d r = r0;
+                for(size_t vii = 0; vii < variable_count; vii++)
+                {
+                    auto variable_index = variable_indices[vii];
+                    double variable_delta = mutation_ptr[vii] - variables_ptr[variable_index];
+                    __m256d ff = _mm256_set1_pd(variable_delta);
+                    auto joint_delta_ptr = (const double* __restrict__)&(joint_deltas[variable_index]);
+                    p = _mm256_fmadd_pd(ff, _mm256_load_pd(joint_delta_ptr + 0), p);
+                    r = _mm256_fmadd_pd(ff, _mm256_load_pd(joint_delta_ptr + 4), r);
+                }
+                auto& tip_mutation = tip_frame_mutations[imutation][itip];
+                double* __restrict__ tip_mutation_ptr = (double*)&tip_mutation;
+                _mm256_storeu_pd(tip_mutation_ptr + 0, p);
+                _mm256_storeu_pd(tip_mutation_ptr + 4, r);
+            }
+        }
+    }
+    
+    
+    
+     
+    
+    
+    
+    
+    
+    /*    //__attribute__((target("default")))
+    __attribute__((noinline))
+    __attribute__((hot))*/
+    
+    /*
+    //typedef double double8 __attribute__ ((vector_size (8 * 8)));
+    typedef double double8 __attribute__ ((vector_size (8 * 8)));
+    typedef double8* __attribute__ ((aligned (16))) double8ptr;
+    
+     __attribute__((noinline))
+    void computeApproximateMutations(
+        size_t variable_count,
+        const size_t* __restrict__ variable_indices, 
+        size_t mutation_count,
+        const double * const * __restrict__ mutation_values,
+        std::vector<std::vector<Frame>>& tip_frame_mutations) const
+    {
+        const double* __restrict__ p_variables = variables.data();
+        auto tip_count = tip_names.size();
+        while(tip_frame_mutations.size() < mutation_count) tip_frame_mutations.emplace_back(tip_count);
+        for(size_t itip = 0; itip < tip_count; itip++)
+        {
+        
+            auto& joint_deltas = mutation_approx_frames[itip];
+            double8ptr __restrict__ joint_delta_data = (double8ptr)joint_deltas.data();
+            //joint_delta_data = (const double8*)__builtin_assume_aligned(joint_delta_data, 32);
+            
+            double8ptr __restrict__ input = (double8ptr)&(tip_frames[itip]);
+            //input = (const double8*)__builtin_assume_aligned(input, 32);
+            auto tip_frame = *input;
+            
+            for(size_t imutation = 0; imutation < mutation_count; imutation++)
+            {
+                auto p = tip_frame;
+                
+                for(size_t vii = 0; vii < variable_count; vii++)
+                {
+                    size_t variable_index = variable_indices[vii];
+                    double variable_delta = mutation_values[imutation][vii] - p_variables[variable_index];
+                    p += joint_delta_data[variable_index] * variable_delta;
+                }
+                
+                double8ptr __restrict__ output = (double8ptr)&(tip_frame_mutations[imutation][itip]);
+                //output = (double8*)__builtin_assume_aligned(output, 32);
+                *output = p;
+            }
+        }
+    }
+    */
+    
+    
+    
+    
+    
+    
+    
+    
     
 };
 

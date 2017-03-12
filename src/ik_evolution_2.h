@@ -13,8 +13,8 @@ struct IKEvolution2 : IKBase
 {
     struct Individual
     {
-        std::vector<double> genes;
-        std::vector<double> gradients;
+        aligned_vector<double> genes;
+        aligned_vector<double> gradients;
         double fitness;
     };
 
@@ -38,11 +38,13 @@ struct IKEvolution2 : IKBase
     std::vector<size_t> gene_resets;
     std::vector<size_t> quaternion_genes;
     
-    struct GeneInfo
+    /*struct GeneInfo
     {
         double clip_min, clip_max, span;
     };
-    std::vector<GeneInfo> gene_infos;
+    std::vector<GeneInfo> gene_infos;*/
+    
+    aligned_vector<double> genes_min, genes_max, genes_span;
     
     IKEvolution2(const IKParams& p) : IKBase(p)
     {
@@ -84,8 +86,9 @@ struct IKEvolution2 : IKBase
         }
     }
     
-    void genesToJointVariables(const std::vector<double>& genes, std::vector<double>& variables)
+    void genesToJointVariables(const Individual& individual, std::vector<double>& variables)
     {
+        auto& genes = individual.genes;
         for(size_t i = 0; i < active_variables.size(); i++)
             variables[active_variables[i]] = genes[i];
     }
@@ -163,19 +166,108 @@ struct IKEvolution2 : IKBase
         }
         
         // init gene infos
-        if(gene_infos.empty())
+        if(genes_min.empty())
         {
-            gene_infos.resize(active_variables.size());
+            genes_min.resize(active_variables.size());
+            genes_max.resize(active_variables.size());
+            genes_span.resize(active_variables.size());
             for(size_t i = 0; i < active_variables.size(); i++)
             {
-                gene_infos[i].clip_min = modelInfo.getClipMin(active_variables[i]);
-                gene_infos[i].clip_max = modelInfo.getClipMax(active_variables[i]);
-                gene_infos[i].span = modelInfo.getSpan(active_variables[i]);
+                genes_min[i] = modelInfo.getClipMin(active_variables[i]);
+                genes_max[i] = modelInfo.getClipMax(active_variables[i]);
+                genes_span[i] = modelInfo.getSpan(active_variables[i]);
             }
         }
     }
     
     // create offspring and mutate
+    
+
+    
+    __attribute__((hot))
+    __attribute__((noinline))
+    //__attribute__((target_clones("avx2", "avx", "sse2", "default")))
+    //__attribute__((target("avx")))
+    void reproduce(const std::vector<Individual>& population)
+    {
+        const auto __attribute__((aligned(32))) * __restrict__ genes_span = this->genes_span.data();
+        const auto __attribute__((aligned(32))) * __restrict__ genes_min = this->genes_min.data();
+        const auto __attribute__((aligned(32))) * __restrict__ genes_max = this->genes_max.data();
+    
+        auto gene_count = children[0].genes.size();
+        
+        auto* __restrict__ rr = fast_random_gauss_n((children.size() - population.size()) * gene_count + children.size() * 4 + 4);
+        rr = (const double*)(((size_t)rr + 3) / 4 * 4);
+        
+        for(size_t child_index = population.size(); child_index < children.size(); child_index++)
+        {
+            double mutation_rate = (1 << fast_random_index(16)) * (1.0 / (1 << 23));
+            auto& parent = population[0];
+            auto& parent2 = population[1];
+            double fmix = (child_index % 2 == 0) * 0.2;
+            double gradient_factor = child_index % 3;
+            
+            auto __attribute__((aligned(32))) * __restrict__ parent_genes = parent.genes.data();
+            auto __attribute__((aligned(32))) * __restrict__ parent_gradients = parent.gradients.data();
+            
+            auto __attribute__((aligned(32))) * __restrict__ parent2_genes = parent2.genes.data();
+            auto __attribute__((aligned(32))) * __restrict__ parent2_gradients = parent2.gradients.data();
+            
+            auto& child = children[child_index];
+            
+            auto __attribute__((aligned(32))) * __restrict__ child_genes = child.genes.data();
+            auto __attribute__((aligned(32))) * __restrict__ child_gradients = child.gradients.data();
+            
+            /*genes_span = (const double*)__builtin_assume_aligned(genes_span, 32);
+            genes_min = (const double*)__builtin_assume_aligned(genes_min, 32);
+            genes_max = (const double*)__builtin_assume_aligned(genes_max, 32);
+            parent_genes = (double*)__builtin_assume_aligned(parent_genes, 32);
+            parent_gradients = (double*)__builtin_assume_aligned(parent_gradients, 32);
+            parent2_genes = (double*)__builtin_assume_aligned(parent2_genes, 32);
+            parent2_gradients = (double*)__builtin_assume_aligned(parent2_gradients, 32);
+            child_genes = (double*)__builtin_assume_aligned(child_genes, 32);
+            child_gradients = (double*)__builtin_assume_aligned(child_gradients, 32);
+            rr = (double*)__builtin_assume_aligned(rr, 32);*/
+            
+            #pragma unroll
+            #pragma omp simd \
+                aligned(genes_span:32), \
+                aligned(genes_min:32), \
+                aligned(genes_max:32), \
+                aligned(parent_genes:32), \
+                aligned(parent_gradients:32), \
+                aligned(parent2_genes:32), \
+                aligned(parent2_gradients:32), \
+                aligned(child_genes:32), \
+                aligned(child_gradients:32) \
+                aligned(rr:32)
+            for(size_t gene_index = 0; gene_index < gene_count; gene_index++)
+            {
+                double r = rr[gene_index];
+                double f = mutation_rate * genes_span[gene_index];
+                double gene = parent_genes[gene_index];
+                double parent_gene = gene;
+                gene += r * f;
+                double parent_gradient = mix(parent_gradients[gene_index], parent2_gradients[gene_index], fmix);
+                double gradient = parent_gradient * gradient_factor;
+                gene += gradient;
+                gene = clamp(gene, genes_min[gene_index], genes_max[gene_index]);
+                child_genes[gene_index] = gene;
+                child_gradients[gene_index] = mix(parent_gradient, gene - parent_gene, 0.3);
+            }
+            
+            rr += (gene_count + 3) / 4 * 4;
+            
+            for(auto quaternion_gene_index : quaternion_genes)
+            {
+                auto& qpos = (*(Quaternion*)&(children[child_index].genes[quaternion_gene_index]));
+                normalizeFast(qpos);
+            }
+        }
+    }
+    
+    /*__attribute__((hot))
+    __attribute__((noinline))
     void reproduce(const std::vector<Individual>& population)
     {
         auto gene_count = children[0].genes.size();
@@ -186,32 +278,25 @@ struct IKEvolution2 : IKBase
             auto& parent = population[0];
             auto& parent2 = population[1];
             double fmix = (child_index % 2 == 0) * 0.2;
+            double gradient_factor = child_index % 3;
             
+            #pragma omp simd
             for(size_t gene_index = 0; gene_index < gene_count; gene_index++)
             {
-                auto& gene_info = gene_infos[gene_index];
-                double r = (*(rr++));
-                double f = mutation_rate * gene_info.span;
+                double r = rr[gene_index];
+                double f = mutation_rate * genes_span[gene_index];
                 double gene = parent.genes[gene_index];
                 double parent_gene = gene;
                 gene += r * f;
                 double parent_gradient = mix(parent.gradients[gene_index], parent2.gradients[gene_index], fmix);
-                double gradient = parent_gradient * (child_index % 3);
+                double gradient = parent_gradient * gradient_factor;
                 gene += gradient;
-                gene = clamp2(gene, gene_info.clip_min, gene_info.clip_max);
+                gene = clamp(gene, genes_min[gene_index], genes_max[gene_index]);
                 children[child_index].genes[gene_index] = gene;
                 children[child_index].gradients[gene_index] = mix(parent_gradient, gene - parent_gene, 0.3);
             }
             
-            /*if(thread_index == 0 && fast_random_index(4) == 0)
-            {
-                auto gene_index = fast_random_element(gene_resets);
-                auto& p1 = children[child_index].genes[gene_index];
-                auto p2 = mix(p1, initial_guess[active_variables[0]], fast_random());
-                auto& dp = children[child_index].gradients[gene_index];
-                dp = mix(dp, p2 - p1, 0.1);
-                p1 = p2;
-            }*/
+            rr += gene_count;
             
             for(auto quaternion_gene_index : quaternion_genes)
             {
@@ -222,7 +307,7 @@ struct IKEvolution2 : IKBase
                 //qvel -= qvel * qvel.dot(qpos);
             }
         }
-    }
+    }*/
 
     void step()
     {
@@ -237,7 +322,7 @@ struct IKEvolution2 : IKBase
             auto& population = species.individuals;
             
             // initialize forward kinematics approximator
-            genesToJointVariables(species.individuals[0].genes, temp_joint_variables);
+            genesToJointVariables(species.individuals[0], temp_joint_variables);
             model.applyConfiguration(temp_joint_variables);
             model.initializeMutationApproximator(active_variables);
             
@@ -394,7 +479,7 @@ struct IKEvolution2 : IKBase
             // compute species fitness
             for(auto& species : this->species)
             {
-                genesToJointVariables(species.individuals[0].genes, temp_joint_variables);
+                genesToJointVariables(species.individuals[0], temp_joint_variables);
                 double fitness = computeFitness(temp_joint_variables);
                 species.improved = (fitness != species.fitness);
                 species.fitness = fitness;
@@ -421,7 +506,7 @@ struct IKEvolution2 : IKBase
             // update solution
             if(species[0].fitness < solution_fitness)
             {
-                genesToJointVariables(species[0].individuals[0].genes, solution);
+                genesToJointVariables(species[0].individuals[0], solution);
                 solution_fitness = species[0].fitness;
             }
         }

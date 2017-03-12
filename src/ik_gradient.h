@@ -10,6 +10,8 @@
 namespace bio_ik
 {
 
+/*
+
 // pseudoinverse jacobian solver
 // (mainly for testing RobotFK_Jacobian::computeJacobian)
 template<class BASE>
@@ -129,7 +131,8 @@ static IKFactory::Class<IKJacobian> cIKJacobian("jac");
 
 
 
-// combining evolution and pseudoinverse jacobian
+// experiment: combining evolution and pseudoinverse jacobian
+// (fail. worse than bio2 evolution only.)
 template<class BASE>
 struct IKHybrid : IKJacobianBase<BASE>
 {
@@ -173,8 +176,7 @@ struct IKHybrid : IKJacobianBase<BASE>
 static IKFactory::Class<IKHybrid<IKEvolution>> bio1jac("bio1jac");
 static IKFactory::Class<IKHybrid<IKEvolution2>> bio2jac("bio2jac");
 
-
-
+*/
 
 }
 
