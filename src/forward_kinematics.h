@@ -9,6 +9,8 @@
 #include <kdl_parser/kdl_parser.hpp>
 
 #include <emmintrin.h>
+#include <immintrin.h>
+#include <x86intrin.h>
 
 namespace bio_ik
 {
@@ -831,17 +833,22 @@ public:
     }
     
     
+
+
+
+    // use function multiversioning if compiled with GCC 4.8 or newer
+#if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8))
+    #define FUNCTION_MULTIVERSIONING 1
+#endif
     
     
     
-    
-    
-    
-    
-    
+#ifndef __SSE2_MATH__
     __attribute__ ((hot))
     __attribute__ ((noinline))
+#ifdef FUNCTION_MULTIVERSIONING
     __attribute__ ((target ("default")))
+#endif
     void computeApproximateMutations(
         size_t variable_count,
         const size_t* variable_indices, 
@@ -897,13 +904,16 @@ public:
             }
         }
     }
+#endif
     
-    
-    
-    
+
+
+#ifdef __SSE2_MATH__
     __attribute__ ((hot))
     __attribute__ ((noinline))
-    __attribute__ ((target ("sse2")))
+#ifdef FUNCTION_MULTIVERSIONING
+    __attribute__ ((target ("default")))
+#endif
     void computeApproximateMutations(
         size_t variable_count,
         const size_t* __restrict__ variable_indices, 
@@ -950,10 +960,11 @@ public:
             }
         }
     }
+#endif
     
     
     
-    
+#ifdef FUNCTION_MULTIVERSIONING
     __attribute__ ((hot))
     __attribute__ ((noinline))
     __attribute__ ((target ("avx")))
@@ -995,11 +1006,7 @@ public:
             }
         }
     }
-    
-    
-    
-    
-    
+
     __attribute__ ((hot))
     __attribute__ ((noinline))
     __attribute__ ((target ("fma", "avx")))
@@ -1042,7 +1049,7 @@ public:
             }
         }
     }
-    
+#endif
     
     
      

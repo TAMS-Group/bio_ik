@@ -15,9 +15,13 @@
 #include <unordered_set>
 #include <typeindex>
 
-#include <link.h>
+#include <stdlib.h>
+#include <malloc.h>
 
-#include <boost/align/aligned_allocator.hpp>
+//#include <link.h>
+
+//#include <boost/align/aligned_allocator.hpp>
+//#include <Eigen/Eigen>
 
 namespace bio_ik
 {
@@ -459,13 +463,55 @@ public:
 
 
 
+template<class T, size_t A>
+struct aligned_allocator : public std::allocator<T>
+{
+    typedef size_t size_type;
+    typedef ptrdiff_t difference_type;
+    typedef T* pointer;
+    typedef const T* const_pointer;
+    typedef T& reference;
+    typedef const T& const_reference;
+    typedef T value_type;
+    T* allocate(size_t s, const void* hint = 0)
+    {
+        void* p;
+        if(posix_memalign(&p, A, s)) throw std::bad_alloc();
+        return (T*)p;
+    }
+    void deallocate(T* ptr, size_t s)
+    {
+        free(ptr);
+    }
+    template<class U>
+    struct rebind
+    {
+        typedef aligned_allocator<U, A> other;
+    };
+};
+
 template<class T>
-using aligned_vector = std::vector<T, boost::alignment::aligned_allocator<T, 32>>;
-
-
+struct aligned_vector : std::vector<T, aligned_allocator<T, 32>>
+{
+};
 
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
