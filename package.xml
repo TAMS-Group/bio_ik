@@ -24,7 +24,7 @@
     <run_depend>roscpp</run_depend>
 
     <export>
-        <moveit_core plugin="${prefix}/bio_ik_desc.xml"/>
+        <moveit_core plugin="${prefix}/bio_ik_kinematics_description.xml"/>
     </export>
     
 </package>

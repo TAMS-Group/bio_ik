@@ -81,8 +81,6 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
 
 // profiler
 
-struct ProfilerBin;
-
 #ifdef ENABLE_PROFILER
 
     // embeddable sampling profiler
@@ -476,7 +474,7 @@ struct aligned_allocator : public std::allocator<T>
     T* allocate(size_t s, const void* hint = 0)
     {
         void* p;
-        if(posix_memalign(&p, A, sizeof(T) * s)) throw std::bad_alloc();
+        if(posix_memalign(&p, A, sizeof(T) * s + 64)) throw std::bad_alloc();
         return (T*)p;
     }
     void deallocate(T* ptr, size_t s)

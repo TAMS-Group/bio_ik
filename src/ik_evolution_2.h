@@ -35,7 +35,6 @@ struct IKEvolution2 : IKBase
     std::vector<size_t> child_indices;
     std::vector<double*> genotypes;
     std::vector<Frame> phenotype;
-    std::vector<size_t> gene_resets;
     std::vector<size_t> quaternion_genes;
     
     /*struct GeneInfo
@@ -48,47 +47,13 @@ struct IKEvolution2 : IKBase
     
     IKEvolution2(const IKParams& p) : IKBase(p)
     {
-        if(active_variables.size())
-        {
-            // init gene reset buffer
-            // for preferring solutions close to initial guess
-            // weighted by inverse max joint velocity
-            std::vector<double> mutation_cost_sat;
-            for(size_t gi = 0; gi < active_variables.size(); gi++)
-            {
-                auto& var_bounds = params.robot_model->getVariableBounds(params.robot_model->getVariableNames()[active_variables[gi]]);
-                double c = var_bounds.max_velocity_ ? 1.0 / var_bounds.max_velocity_ : 0.0;
-                if(mutation_cost_sat.empty())
-                    mutation_cost_sat.push_back(c);
-                else
-                    mutation_cost_sat.push_back(mutation_cost_sat.back() + c);
-            }
-            if(mutation_cost_sat.back() == 0)
-                for(size_t gi = 0; gi < active_variables.size(); gi++)
-                    mutation_cost_sat[gi] = gi;
-            for(size_t iter = 0; iter < 1024; iter++)
-            {
-                double f = random() * mutation_cost_sat.back();
-                size_t i = 0;
-                while(mutation_cost_sat[i] < f) i++;
-                if(i >= mutation_cost_sat.size()) i = mutation_cost_sat.size() - 1;
-                gene_resets.push_back(i);
-            }
-
-            for(size_t igene = 0; igene < active_variables.size(); igene++)
-            {
-                size_t ivar = active_variables[igene];
-                auto* joint_model = p.robot_model->getJointOfVariable(ivar);
-                if(joint_model->getFirstVariableIndex() != ivar + 3) continue;
-                if(joint_model->getType() != moveit::core::JointModel::FLOATING) continue;
-                quaternion_genes.push_back(igene);
-            }
-        }
     }
+    
     
     void genesToJointVariables(const Individual& individual, std::vector<double>& variables)
     {
         auto& genes = individual.genes;
+        variables.resize(params.robot_model->getVariableCount());
         for(size_t i = 0; i < active_variables.size(); i++)
             variables[active_variables[i]] = genes[i];
     }
@@ -98,14 +63,24 @@ struct IKEvolution2 : IKBase
         return solution;
     }
 
-    void initialize(const std::vector<double>& initial_guess, const std::vector<Frame>& tipObjectives)
+    void initialize(const IKRequest& request)
     {
         BLOCKPROFILER("initialization");
     
-        IKBase::initialize(initial_guess, tipObjectives);
+        IKBase::initialize(request);
+        
+        quaternion_genes.clear();
+        for(size_t igene = 0; igene < active_variables.size(); igene++)
+        {
+            size_t ivar = active_variables[igene];
+            auto* joint_model = params.robot_model->getJointOfVariable(ivar);
+            if(joint_model->getFirstVariableIndex() + 3 != ivar) continue;
+            if(joint_model->getType() != moveit::core::JointModel::FLOATING) continue;
+            quaternion_genes.push_back(igene);
+        }
         
         // set solution to initial guess
-        this->initial_guess = initial_guess;
+        initial_guess = request.initial_guess;
         solution = initial_guess;
         solution_fitness = computeFitness(solution);
         
@@ -166,7 +141,7 @@ struct IKEvolution2 : IKBase
         }
         
         // init gene infos
-        if(genes_min.empty())
+        //if(genes_min.empty())
         {
             genes_min.resize(active_variables.size());
             genes_max.resize(active_variables.size());
@@ -176,6 +151,7 @@ struct IKEvolution2 : IKBase
                 genes_min[i] = modelInfo.getClipMin(active_variables[i]);
                 genes_max[i] = modelInfo.getClipMax(active_variables[i]);
                 genes_span[i] = modelInfo.getSpan(active_variables[i]);
+                //LOG("genes_span", i, genes_span[i]);
             }
         }
     }
@@ -325,6 +301,8 @@ struct IKEvolution2 : IKBase
             genesToJointVariables(species.individuals[0], temp_joint_variables);
             model.applyConfiguration(temp_joint_variables);
             model.initializeMutationApproximator(active_variables);
+            
+            //LOG_VAR(model.getTipFrames()[0]);
             
             // run evolution for a few generations
             for(size_t generation = 0; generation < 16; generation++)

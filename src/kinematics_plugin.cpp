@@ -40,8 +40,6 @@ typedef IKParallel PluginIKSolver;
 
 struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 {
-    uint8_t test;
-
     std::vector<std::string> joint_names, link_names;
     MoveItRobotModelConstPtr robot_model;
     const moveit::core::JointModelGroup* joint_model_group;
@@ -53,7 +51,6 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
     BioIKKinematicsPlugin()
     {
-        test = 0;
     }
 
     virtual const std::vector<std::string>& getJointNames() const
@@ -89,8 +86,12 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
     }
 
     std::vector<Eigen::Affine3d> tip_reference_frames;
+    
+    mutable std::vector<std::unique_ptr<Goal>> default_goals;
 
     IKParams ikparams;
+    
+    mutable IKRequest ikrequest;
     
     bool load(std::string robot_description, std::string group_name)
     {
@@ -133,14 +134,6 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         for(auto& n : joint_names) LOG("joint", n);
         for(auto& n : link_names) LOG("link", n);
 
-        moveit::core::RobotState robot_state(robot_model);
-        tip_reference_frames.clear();
-        for(auto& tip : tip_frames_)
-        {
-            auto ref = robot_state.getGlobalLinkTransform(getBaseFrame());
-            tip_reference_frames.push_back(ref);
-        }
-        
         ros::NodeHandle node_handle("~");
         std::string rdesc;
         node_handle.searchParam(robot_description_, rdesc);
@@ -149,34 +142,48 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         bool enable_profiler;
         node_handle.param("profiler", enable_profiler, false);
         if(enable_profiler) Profiler::start();
-
-        std::vector<size_t> mutable_genes;
-        RobotInfo model_info(robot_model, tip_frames_);
-
-        for(size_t j : model_info.getActiveVariables())
-        {
-            for(auto& vname : joint_model_group->getVariableNames())
-            {
-                size_t i = robot_model->getVariableIndex(vname);
-                if(i == j)
-                {
-                    mutable_genes.push_back(i);
-                }
-            }
-        }
         
-        robot_info = RobotInfo(robot_model, tip_frames_);
+        robot_info = RobotInfo(robot_model);
         
         ikparams.robot_model = robot_model;
         ikparams.node_handle = node_handle;
-        ikparams.tip_frames = tip_frames_;
-        ikparams.active_variables = mutable_genes;
+        ikparams.joint_model_group = joint_model_group;
+
+        temp_state.reset(new moveit::core::RobotState(robot_model));
         
-        ikparams.tip_infos.clear();
+        ik.reset(new PluginIKSolver(ikparams));
         
-        HeuristicErrorTree heuristic_error_tree(robot_model, tip_frames_);
         
-        auto load_tip = [&] (const std::string& name)
+        
+        
+        
+        
+        
+        
+        
+        /*
+        //ikrequest.tip_frames = tip_frames_;
+        
+        ikrequest.tip_link_indices.clear();
+        for(auto& name : tip_frames_)
+            ikrequest.tip_link_indices.push_back(robot_model->getLinkModel(name)->getLinkIndex());
+            
+        std::vector<int> joint_usage;
+        joint_usage.resize(robot_model->getJointModelCount());
+        for(auto& u : joint_usage) u = 0;
+        for(auto tip_index : ikrequest.tip_link_indices)
+            for(auto* link_model = robot_model->getLinkModels()[tip_index]; link_model; link_model = link_model->getParentLinkModel())
+                joint_usage[link_model->getParentJointModel()->getJointIndex()] = 1;
+        ikrequest.active_variables.clear();
+        for(auto* joint_model : joint_model_group->getActiveJointModels())
+            if(joint_usage[joint_model->getJointIndex()] && !joint_model->getMimic())
+                for(size_t ivar = joint_model->getFirstVariableIndex(); ivar < joint_model->getFirstVariableIndex() + joint_model->getVariableCount(); ivar++)
+                    ikrequest.active_variables.push_back(ivar);
+        std::random_shuffle(ikrequest.active_variables.begin(), ikrequest.active_variables.end()); // TODO: remove
+        std::reverse(ikrequest.active_variables.begin(), ikrequest.active_variables.end()); // TODO: remove
+
+        ikrequest.goals.clear();
+        for(auto& name : tip_frames_)
         {
             LOG("load tip", name);
         
@@ -185,92 +192,49 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
             node_handle.searchParam(robot_description_, rdesc);
             node_handle = ros::NodeHandle(rdesc + "_kinematics/" + name);
             
-            size_t tip_index = ikparams.tip_infos.size();
+            size_t tip_index = ikrequest.goals.size();
     
-            ikparams.tip_infos.emplace_back();
+            ikrequest.goals.emplace_back();
             
-            //ikparams.tip_infos.back().position_only_ik = node_handle.param("position_only_ik", false);
-            //ikparams.tip_infos.back().weight = node_handle.param("weight", 1.0);
-            
-            node_handle.param("position_only_ik", ikparams.tip_infos.back().position_only_ik, false);
-            node_handle.param("weight", ikparams.tip_infos.back().weight, 1.0);
-            
-            //ikparams.tip_infos.back().rotation_scale = heuristic_error_tree.getChainLength(tip_index) * (0.5 / M_PI);
-            ikparams.tip_infos.back().rotation_scale = 0.5;
-            node_handle.param("rotation_scale", ikparams.tip_infos.back().rotation_scale, ikparams.tip_infos.back().rotation_scale);
-            if(ikparams.tip_infos.back().position_only_ik) ikparams.tip_infos.back().rotation_scale = 0;
-            ikparams.tip_infos.back().rotation_scale_sq = ikparams.tip_infos.back().rotation_scale * ikparams.tip_infos.back().rotation_scale;
-            
-            LOG_VAR(ikparams.tip_infos.back().position_only_ik);
-        };
-        
-        // TODO: per-tip config ???
-        
-        for(auto& tip_name : tip_frames_)
-            LOG("tip", tip_name);
-        
-        for(auto& tip_name : tip_frames_)
-            load_tip(group_name);
-        
-        /*std::vector<const moveit::core::JointModelGroup*> groups;
-        joint_model_group->getSubgroups(groups);
-        groups.push_back(joint_model_group);
-        for(auto& tip_name : tip_frames_)
-        {
-            LOG_VAR(tip_name);
-            for(auto* group : groups)
-            {
-                auto n = group->getEndEffectorName();
-                LOG_VAR(group->getEndEffectorName());
-                LOG_VAR(group->getName());
-                if(!n.empty() && n == tip_name)
-                {
-                    load_tip(group->getName());
-                goto _finish;
-                }
-            }
-            for(auto* group : robot_model->getJointModelGroups())
-            {
-                std::vector<std::string> tips;
-                group->getEndEffectorTips(tips);
-                for(auto& tip : tips)
-                {
-                    LOG_VAR(tip);
-                    if(tip == tip_name)
-                    {
-                        load_tip(group->getName());
-                goto _finish;
-                    }
-                }
-            }
-            ERROR("tip not found", tip_name);
-        }
-    _finish:
-        0;*/
-        
-        /*for(auto& tip_name : tip_frames_)
-        {
-            LOG_VAR(tip_name);
-            for(auto& end_effector : robot_model->getSRDF()->getEndEffectors())
-            {
-                LOG_VAR(end_effector.name_);
-                LOG_VAR(end_effector.component_group_);
-                LOG_VAR(end_effector.parent_group_);
-                LOG_VAR(end_effector.parent_link_);
-                if(tip_name == end_effector.parent_link_)
-                {
-                    load_tip(end_effector.component_group_);
-                }
-            }
-        }*/
-        
-        LOG_VAR(ikparams.tip_infos.size());
-        
-        //ERROR("");
+            ikrequest.goals.back().tip_index = ikrequest.goals.size() - 1;
 
-        temp_state.reset(new moveit::core::RobotState(robot_model));
+            node_handle.param("position_only_ik", ikrequest.goals.back().position_only_ik, false);
+            node_handle.param("weight", ikrequest.goals.back().weight, 1.0);
+
+            ikrequest.goals.back().rotation_scale = 0.5; // TODO: change ????
+            //ikrequest.tip_infos.back().rotation_scale = 0.1; // TODO: change ????
+            node_handle.param("rotation_scale", ikrequest.goals.back().rotation_scale, ikrequest.goals.back().rotation_scale);
+            if(ikrequest.goals.back().position_only_ik) ikrequest.goals.back().rotation_scale = 0;
+            ikrequest.goals.back().rotation_scale_sq = ikrequest.goals.back().rotation_scale * ikrequest.goals.back().rotation_scale;
+        }
+        */
         
-        ik.reset(new PluginIKSolver(ikparams));
+        
+        {
+            BLOCKPROFILER("default ik goals");
+            
+            default_goals.clear();
+
+            for(size_t i = 0; i < tip_frames_.size(); i++)
+            {
+                PoseGoal* goal = new PoseGoal();
+                
+                goal->link_name = tip_frames_[i];
+                
+                //LOG_VAR(goal->link_name);
+                
+                goal->rotation_scale = 0.5;
+                
+                node_handle.param("rotation_scale", goal->rotation_scale, goal->rotation_scale);
+                
+                bool position_only_ik = false;
+                node_handle.param("position_only_ik", position_only_ik, position_only_ik);
+                if(position_only_ik) goal->rotation_scale = 0;
+                
+                default_goals.emplace_back(goal);
+            }
+        }
+        
 
         LOG("init ready");
 
@@ -358,6 +322,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                                 const moveit::core::RobotState* context_state = NULL) const
     {
         double t0 = ros::Time::now().toSec();
+        
+        //timeout = 0.1;
 
         LOG_FNC();
 
@@ -393,38 +359,83 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
             Eigen::Affine3d p, r;
             tf::poseMsgToEigen(ik_poses[i], p);
             if(context_state)
+            {
                 r = context_state->getGlobalLinkTransform(getBaseFrame());
+            }
             else
-                r = tip_reference_frames[i];
+            {
+                if(i == 0) temp_state->setToDefaultValues();
+                r = temp_state->getGlobalLinkTransform(getBaseFrame());
+            }
             tipFrames.emplace_back(r * p);
         }
-
+        
+        // init ik
+        
+        ikrequest.timeout = t0 + timeout;
+        ikrequest.initial_guess = state;
+        
+        //for(auto& v : state) LOG("var", &v - &state.front(), v);
+        
+        //ikrequest.tip_objectives = tipFrames;
+        
+        /*for(size_t i = 0; i < ikrequest.goals.size(); i++)
+        {
+            ikrequest.goals[i].frame = tipFrames[i];
+        }*/
+        
+        //LOG("---");
+        
+        /*{
+            BLOCKPROFILER("ik goals");
+            std::vector<std::unique_ptr<Goal>> goals;
+            for(size_t i = 0; i < tip_frames_.size(); i++)
+            {
+                //if(rand() % 2) break;
+                PoseGoal* goal = new PoseGoal();
+                goal->link_name = tip_frames_[i];
+                goal->position = tipFrames[i].pos;
+                goal->orientation = tipFrames[i].rot;
+                goals.emplace_back(goal);
+                //if(rand() % 20) break;
+            }
+            //std::random_shuffle(goals.begin(), goals.end());
+            //LOG_VAR(goals.size());
+            setRequestGoals(ikrequest, goals, ikparams);
+        }*/
+        
+        {
+            for(size_t i = 0; i < tip_frames_.size(); i++)
+            {
+                auto* goal = (PoseGoal*)default_goals[i].get();
+                goal->position = tipFrames[i].pos;
+                goal->orientation = tipFrames[i].rot;
+            }
+            ikrequest.setGoals(default_goals, ikparams);
+        }
+        
+        {
+            BLOCKPROFILER("ik init");
+            ik->initialize(ikrequest);
+        }
+        
         // run ik solver
-        //if(!test)
-        ik->solve(state, tipFrames, t0 + timeout);
+        ik->solve();
+        
+        //LOG_VAR(state.size());
         
         // get solution
-        //if(!test)
         state = ik->getSolution();
         
-        //if(test) for(auto ivar : ikparams.active_variables) state[ivar] = 0;
-        
-        //for(auto ivar : ikparams.active_variables) LOG(ivar, state[ivar]);
-        
+        /*LOG_VAR(robot_model->getVariableCount());
+        LOG_VAR(state.size());
+        LOG_VAR(ikrequest.active_variables.size());
+        LOG_VAR(ikrequest.initial_guess.size());*/
+
         // wrap angles
-        for(auto ivar : ikparams.active_variables)
+        for(auto ivar : ikrequest.active_variables)
         {
             auto v = state[ivar];
-            
-            //LOG(ivar, v, modelInfo.getMin(ivar), modelInfo.getMax(ivar));
-            
-            /*v /= 2 * M_PI;
-            v -= std::floor(v);
-            v *= 2 * M_PI;
-            if(v > M_PI) v -= 2 * M_PI;*/
-            
-            //LOG_VAR(ivar);
-            
             if(robot_info.isRevolute(ivar) && robot_info.getClipMax(ivar) == DBL_MAX)
             {
                 v *= (1.0 / (2 * M_PI));
@@ -433,7 +444,6 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 if(v < robot_info.getMin(ivar)) v += 2 * M_PI;
                 v *= (2 * M_PI);
             }
-            
             state[ivar] = v;
         }
 

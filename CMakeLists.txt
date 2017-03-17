@@ -39,18 +39,21 @@ else()
 endif()
 
 catkin_package(
-    DEPENDS
-        OpenMP
+    DEPENDS OpenMP
+    CATKIN_DEPENDS moveit_core moveit_ros_planning actionlib roscpp pluginlib
+    INCLUDE_DIRS include
+    LIBRARIES bio_ik_kinematics_plugin
 )
-
+ 
 include_directories(
-  ${catkin_INCLUDE_DIRS}
+    include
+    ${catkin_INCLUDE_DIRS}
 )
 
 add_library(bio_ik_kinematics_plugin 
     src/kinematics_plugin.cpp
     src/ik_solvers.cpp
-    )
+)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_FLAGS}")
 
@@ -117,8 +120,11 @@ if(CATKIN_ENABLE_TESTING)
 endif()
 
 
+install(DIRECTORY include/ DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION})
 
+install(TARGETS bio_ik_kinematics_plugin LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
+install(FILES bio_ik_kinematics_description.xml DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 
 

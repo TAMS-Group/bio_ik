@@ -10,7 +10,7 @@
 namespace bio_ik
 {
 
-/*
+
 
 // pseudoinverse jacobian solver
 // (mainly for testing RobotFK_Jacobian::computeJacobian)
@@ -20,10 +20,12 @@ struct IKJacobianBase : BASE
     using BASE::modelInfo;
     using BASE::model;
     using BASE::params;
-    using BASE::tipObjectives;
     using BASE::computeFitness;
     using BASE::getGenes;
     using BASE::active_variables;
+    using BASE::request;
+    
+    std::vector<Frame> tipObjectives;
     
     Eigen::VectorXd tip_diffs;
     Eigen::VectorXd joint_diffs;
@@ -34,11 +36,19 @@ struct IKJacobianBase : BASE
     {
     }
     
+    void initialize(const IKRequest& request)
+    {
+        BASE::initialize(request);
+        tipObjectives.resize(request.tip_link_indices.size());
+        for(auto& goal : request.goals)
+            tipObjectives[goal.tip_index] = goal.frame;
+    }
+    
     void optimizeJacobian(std::vector<double>& solution)
     {
         FNPROFILER();
 
-        int tip_count = params.tip_frames.size();
+        int tip_count = request.tip_link_indices.size();
         tip_diffs.resize(tip_count * 6);
         joint_diffs.resize(getGenes().size());
 
@@ -109,10 +119,10 @@ struct IKJacobian : IKJacobianBase<IKBase>
     IKJacobian(const IKParams& p) : IKJacobianBase<IKBase>(p)
     {
     }
-    void initialize(const std::vector<double>& initial_guess, const std::vector<Frame>& tipObjectives)
+    void initialize(const IKRequest& request)
     {
-        IKJacobianBase<IKBase>::initialize(initial_guess, tipObjectives);
-        solution = initial_guess;
+        IKJacobianBase<IKBase>::initialize(request);
+        solution = request.initial_guess;
         if(thread_index > 0)
             for(auto& vi : active_variables)
                 solution[vi] = random(modelInfo.getMin(vi), modelInfo.getMax(vi));
@@ -143,10 +153,10 @@ struct IKHybrid : IKJacobianBase<BASE>
     IKHybrid(const IKParams& p) : IKJacobianBase<BASE>(p)
     {
     }
-    void initialize(const std::vector<double>& initial_guess, const std::vector<Frame>& tip_objectives)
+    void initialize(const IKRequest& request)
     {
-        BASE::initialize(initial_guess, tip_objectives);
-        best_solution = initial_guess;
+        BASE::initialize(request);
+        best_solution = request.initial_guess;
         best_fitness = computeFitness(best_solution);
         optimized_solution = best_solution;
         optimized_fitness = best_fitness;
@@ -173,10 +183,10 @@ struct IKHybrid : IKJacobianBase<BASE>
     }
     size_t concurrency() const { return 4; }
 };
-static IKFactory::Class<IKHybrid<IKEvolution>> bio1jac("bio1jac");
+//static IKFactory::Class<IKHybrid<IKEvolution>> bio1jac("bio1jac");
 static IKFactory::Class<IKHybrid<IKEvolution2>> bio2jac("bio2jac");
 
-*/
+
 
 }
 

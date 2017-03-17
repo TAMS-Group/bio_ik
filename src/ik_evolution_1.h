@@ -8,6 +8,8 @@
 namespace bio_ik
 {
 
+#if 0
+
 struct IKEvolution : IKBase
 {
     struct Individual
@@ -60,11 +62,11 @@ struct IKEvolution : IKBase
     
     double computeAngularScale(size_t tip_index, const Frame& tip_frame)
     {
-        //return 1;
-        double angular_scale = sqrt(heuristicErrorTree.getChainLength(tip_index) * tip_frame.pos.length()) / M_PI;
+        return 1;
+        /*double angular_scale = sqrt(heuristicErrorTree.getChainLength(tip_index) * tip_frame.pos.length()) / M_PI;
         //double angular_scale = heuristicErrorTree.getChainLength(tip_index) * (1.0 / M_PI);
         if(opt_angular_scale_full_circle) angular_scale *= 0.5;
-        return angular_scale;
+        return angular_scale;*/
     }
     
     double computeTipFitness(size_t tip_index, const Frame& tip_frame, bool balanced, bool for_heuristic_error)
@@ -496,5 +498,7 @@ struct IKEvolution : IKBase
 };
 
 static IKFactory::Class<IKEvolution> cIKEvolution("bio1");
+
+#endif
 
 }

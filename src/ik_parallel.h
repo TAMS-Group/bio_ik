@@ -67,10 +67,9 @@ struct IKParallel
     std::vector<int> solver_success;
     std::vector<double> solver_fitness;
     int thread_count;
-    std::vector<double> initial_guess;
-    std::vector<Frame> tip_goals;
+    //std::vector<Frame> tip_goals;
     //std::vector<RobotFK_MoveIt> fk;
-    std::vector<RobotFK_Fast> fk;
+    std::vector<RobotFK_Fast> fk; // TODO: remove
     double timeout;
     bool success;
     std::atomic<int> finished;
@@ -78,6 +77,7 @@ struct IKParallel
     std::vector<std::thread> threads;
     std::unique_ptr<ParallelExecutor> par;
     double dpos, drot, dtwist;
+    IKRequest request;
     
     IKParallel(const IKParams& params) : params(params)
     {
@@ -87,18 +87,25 @@ struct IKParallel
         solvers.emplace_back(IKFactory::create(name, params));
         
         thread_count = solvers.front()->concurrency();
+        
+        //thread_count = 1;
+        
         params.node_handle.param("threads", thread_count, thread_count);
         
-        params.node_handle.param("dpos", dpos, 0.0001);
+        /*params.node_handle.param("dpos", dpos, 0.0001);
         params.node_handle.param("drot", drot, 0.5);
-        params.node_handle.param("dtwist", dtwist, DBL_MAX);
+        params.node_handle.param("dtwist", dtwist, DBL_MAX);*/
+        
+        params.node_handle.param("dpos", dpos, DBL_MAX);
+        params.node_handle.param("drot", drot, DBL_MAX);
+        params.node_handle.param("dtwist", dtwist, 1e-5);
 
         while(solvers.size() < thread_count) solvers.emplace_back(IKFactory::clone(solvers.front().get()));
         
         for(size_t i = 0; i < thread_count; i++)
             solvers[i]->thread_index = i;
         
-        while(fk.size() < thread_count) fk.emplace_back(params.robot_model, params.tip_frames);
+        while(fk.size() < thread_count) fk.emplace_back(params.robot_model);
         
         solver_solutions.resize(thread_count);
         solver_temps.resize(thread_count);
@@ -110,11 +117,52 @@ struct IKParallel
         par.reset(new ParallelExecutor(thread_count, [this] (size_t i) { solverthread(i); }));
     }
     
+    void initialize(const IKRequest& request)
+    {
+        this->request = request;
+        for(auto& f : fk) f.initialize(request.tip_link_indices);
+    }
+    
 private:
 
     bool checkSolution(const std::vector<Frame>& tips) const
     {
+        if(dpos != DBL_MAX || drot != DBL_MAX)
+        {
+            double p_dist = 0;
+            double r_dist = 0;
+            for(auto& goal : request.goals)
+            {
+                auto& a = tips[goal.tip_index];
+                auto& b = goal.frame;
+                p_dist = std::max(p_dist, (b.pos - a.pos).length());
+                r_dist = std::max(r_dist, b.rot.angleShortestPath(a.rot));
+            }
+            r_dist = r_dist * 180 / M_PI;
+            if(!(p_dist <= dpos)) return false;
+            if(!(r_dist <= drot)) return false;
+        }
+        
+        if(dtwist != DBL_MAX)
+        {
+            for(auto& goal : request.goals)
+            {
+                KDL::Frame fk_kdl, ik_kdl;
+                frameToKDL(goal.frame, fk_kdl);
+                frameToKDL(tips[goal.tip_index], ik_kdl);
+                KDL::Twist kdl_diff(fk_kdl.M.Inverse() * KDL::diff(fk_kdl.p, ik_kdl.p), fk_kdl.M.Inverse() * KDL::diff(fk_kdl.M, ik_kdl.M));
+                if(!KDL::Equal(kdl_diff, KDL::Twist::Zero(), dtwist)) return false;
+            }
+        }
+        
+        return true;
+    }
+
+    /*bool checkSolution(const std::vector<Frame>& tips) const
+    {
         //LOG_VAR(dtwist);
+        
+        return false;
     
         if(dpos != DBL_MAX || drot != DBL_MAX)
         {
@@ -145,7 +193,7 @@ private:
         }
         
         return true;
-    }
+    }*/
     
     void solverthread(size_t i)
     {
@@ -158,7 +206,10 @@ private:
         //if(ros::Time::now().toSec() - timeout > 0.01) ERROR("start overtime", ros::Time::now().toSec() - timeout);
         //if((ros::Time::now().toSec() < timeout && finished == 0) || i == 0)
         {
-            solvers[i]->initialize(initial_guess, tip_goals);
+            {
+                BLOCKPROFILER("ik solver init");
+                solvers[i]->initialize(request);
+            }
             for(size_t iteration = 0; (ros::Time::now().toSec() < timeout && finished == 0) || (iteration == 0 && i == 0); iteration++)
             {
                 //if(finished || ros::Time::now().toSec() > timeout) break;
@@ -194,9 +245,13 @@ private:
     
 public:
 
-    void solve(const std::vector<double>& initial_guess, const std::vector<Frame>& tip_goals, double timeout)
+    void solve()
     {
         BLOCKPROFILER("solve mt");
+        
+        auto& initial_guess = request.initial_guess;
+        //auto& tip_goals = request.tip_objectives;
+        auto timeout = request.timeout;
         
         //for(size_t i = 1; i < thread_count; i++) if(threads[i].joinable()) threads[i].join();
         
@@ -211,8 +266,7 @@ public:
         
         for(auto& s : solvers) s->canceled = false;
         
-        this->initial_guess = initial_guess;
-        this->tip_goals = tip_goals;
+        //this->tip_goals = tip_goals;
         this->timeout = timeout;
         
         {
@@ -315,8 +369,14 @@ public:
                 if(solver_fitness[i] < best_fitness)
                     best_fitness = solver_fitness[i], best_index = i;
                     
+        /*LOG_VAR(initial_guess.size());
+        LOG_VAR(result.size());
+        LOG_VAR(best_index);*/
+                    
         result = solver_solutions[best_index];
         success = solver_success[best_index];
+        
+        //LOG_VAR(result.size());
     }
     
     bool getSuccess() const { return success; }

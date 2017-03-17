@@ -34,9 +34,10 @@ class RobotInfo
     std::vector<VariableInfo> variables;
     std::vector<size_t> activeVariables;
     std::vector<moveit::core::JointModel::JointType> variable_joint_types;
+    MoveItRobotModelConstPtr robot_model;
 public:
     RobotInfo() { }
-    RobotInfo(MoveItRobotModelConstPtr model, const std::vector<std::string>& tipNames)
+    RobotInfo(MoveItRobotModelConstPtr model) : robot_model(model)
     {
         for(auto& name : model->getVariableNames())
         {
@@ -76,11 +77,13 @@ public:
             
             
             //if(info.span == DBL_MAX || !std::isfinite(info.span)) info.span = 0;
-            if(info.span == DBL_MAX || !std::isfinite(info.span)) info.span = 1;
+            //if(info.span == DBL_MAX || !std::isfinite(info.span) || !std::isfinite((float)info.span)) info.span = 1;
             //if(info.span == DBL_MAX || !std::isfinite(info.span)) info.span = 32;
             //if(info.span == DBL_MAX || !std::isfinite(info.span) || variables.size() < 7) info.span = 0;
             
+            if(!(info.span >= 0 && info.span < FLT_MAX)) info.span = 1;
             
+            //info.span = 1;
             
             variables.push_back(info);
         }
@@ -88,9 +91,12 @@ public:
         {
             variable_joint_types.push_back(model->getJointOfVariable(variable_index)->getType());
         }
-        for(auto tipName : tipNames)
+    }
+    /*void initialize(const std::vector<size_t>& tip_link_indices)
+    {
+        for(auto tip_link_index : tip_link_indices)
         {
-            auto* tipLink = model->getLinkModel(tipName);
+            auto* tipLink = robot_model->getLinkModel(tip_link_index);
             std::vector<const moveit::core::JointModel*> chain;
             for(auto* link = tipLink; link; link = link->getParentLinkModel())
             {
@@ -112,7 +118,7 @@ public:
             }
         }
         for(auto& i : activeVariables) LOG("active variable", i);
-    }
+    }*/
 public:
     __attribute__((always_inline))
     inline double clip(double p, size_t i) const
@@ -136,11 +142,12 @@ public:
     inline double getClipMax(size_t i) const { return variables[i].clip_max; }
     inline double getMin(size_t i) const { return variables[i].min; }
     inline double getMax(size_t i) const { return variables[i].max; }
-    inline const std::vector<size_t>& getActiveVariables() const { return activeVariables; }
+    //inline const std::vector<size_t>& getActiveVariables() const { return activeVariables; }
     inline bool isRevolute(size_t variable_index) const { return variable_joint_types[variable_index] == moveit::core::JointModel::REVOLUTE; }
     inline bool isPrismatic(size_t variable_index) const { return variable_joint_types[variable_index] == moveit::core::JointModel::PRISMATIC; }
 };
 
+/*
 class HeuristicErrorTree
 {
     size_t variable_count, tip_count;
@@ -218,5 +225,6 @@ public:
         return chain_lengths_2[tip_index][variable_index];
     }
 };
+*/
 
 }
