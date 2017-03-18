@@ -867,12 +867,18 @@ public:
     
 
 
-
+/*
     // use function multiversioning if compiling with GCC 4.8 or newer
 #if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8))
     #define FUNCTION_MULTIVERSIONING 1
 #endif
-    
+  */
+  
+  // GCC >= 4.8: function multiversioning
+  // GCC >= 4.9: AVX and FMA intrinsics
+#if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 9)) 
+    #define FUNCTION_MULTIVERSIONING 1
+#endif
     
     
 #ifndef __SSE2_MATH__
