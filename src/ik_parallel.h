@@ -127,6 +127,12 @@ private:
 
     bool checkSolution(const std::vector<Frame>& tips) const
     {
+        // TODO: use new goals
+    
+        for(auto& goal : request.goals)
+            if(goal.goal_type != GoalType::Pose)
+                return false;
+    
         if(dpos != DBL_MAX || drot != DBL_MAX)
         {
             double p_dist = 0;
@@ -233,7 +239,7 @@ private:
                 if(success) finished = 1;
                 solver_success[i] = success;
                 solver_solutions[i] = result;
-                solver_fitness[i] = solvers[i]->computeFitness(fk[i].getTipFrames());
+                solver_fitness[i] = solvers[i]->computeFitness(result, fk[i].getTipFrames());
                 if(success) break;
             }
         }

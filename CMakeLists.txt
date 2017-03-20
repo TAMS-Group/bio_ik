@@ -27,6 +27,7 @@ find_package(catkin REQUIRED COMPONENTS
   pluginlib
   std_srvs
   tf
+  tf_conversions
 )
 
 find_package(OpenMP REQUIRED)
@@ -40,7 +41,7 @@ endif()
 
 catkin_package(
     DEPENDS OpenMP
-    CATKIN_DEPENDS moveit_core moveit_ros_planning actionlib roscpp pluginlib
+    CATKIN_DEPENDS moveit_core moveit_ros_planning actionlib roscpp pluginlib tf tf_conversions
     INCLUDE_DIRS include
     LIBRARIES bio_ik_kinematics_plugin
 )

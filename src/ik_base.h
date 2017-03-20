@@ -44,15 +44,29 @@ struct IKParams
 
 
 
-
+enum class GoalType : uint32_t
+{
+    Null,
+    Position, 
+    Orientation, 
+    Pose, 
+    LookAt, 
+    MaxDistance,
+    AvoidJointLimits,
+    MinimalDisplacement,
+};
 
 struct IKGoalInfo
 {
+    GoalType goal_type;
     size_t tip_index;
     double weight;
+    double weight_sq;
     double rotation_scale;
     double rotation_scale_sq;
     Frame frame;
+    tf::Vector3 target;
+    tf::Vector3 axis;
 };
 
 struct IKRequest
@@ -84,11 +98,15 @@ private:
     }
     
 public:
-    void setGoals(const std::vector<std::unique_ptr<Goal>>& goals2, const IKParams& params)
+    //template<class GOAL_PTR>
+    //void setGoals(const std::vector<std::unique_ptr<Goal>>& goals2, const IKParams& params)
+    //void setGoals(const std::vector<GOAL_PTR>& goals2, const IKParams& params)
+    void setGoals(const std::vector<const Goal*>& goals2, const IKParams& params)
     {
         link_tip_indices.clear();
         link_tip_indices.resize(params.robot_model->getLinkModelCount(), -1);
         tip_link_indices.clear();
+        
         goals.clear();
         for(auto& goal : goals2)
         {
@@ -97,8 +115,15 @@ public:
             goal_info.weight = 1;
             goal_info.rotation_scale = 0.5;
             goal_info.frame = Frame::identity();
+            goal_info.goal_type = GoalType::Null;
+            
+            if(auto* g = dynamic_cast<const GoalBase*>(goal))
+            {
+                goal_info.weight = g->weight;
+                if(goal_info.weight <= 0) continue;
+            }
 
-            if(auto* g = dynamic_cast<const LinkGoalBase*>(goal.get()))
+            if(auto* g = dynamic_cast<const LinkGoalBase*>(goal))
             {
                 auto* link_model = params.robot_model->getLinkModel(g->link_name);
                 if(!link_model) ERROR("link not found", g->link_name);
@@ -108,27 +133,47 @@ public:
                     tip_link_indices.push_back(link_model->getLinkIndex());
                 }
                 goal_info.tip_index = link_tip_indices[link_model->getLinkIndex()];
-                goal_info.weight = g->weight;
             }
-            
-            if(auto* g = dynamic_cast<const PositionGoal*>(goal.get()))
+
+            if(auto* g = dynamic_cast<const PositionGoal*>(goal))
             {
+                goal_info.goal_type = GoalType::Position;
                 goal_info.frame.pos = g->position;
             }
-            
-            if(auto* g = dynamic_cast<const OrientationGoal*>(goal.get()))
+
+            if(auto* g = dynamic_cast<const OrientationGoal*>(goal))
             {
+                goal_info.goal_type = GoalType::Orientation;
                 goal_info.frame.rot = g->orientation;
             }
-            
-            if(auto* g = dynamic_cast<const PoseGoal*>(goal.get()))
+
+            if(auto* g = dynamic_cast<const PoseGoal*>(goal))
             {
+                goal_info.goal_type = GoalType::Pose;
                 goal_info.frame.pos = g->position;
                 goal_info.frame.rot = g->orientation;
                 goal_info.rotation_scale = g->rotation_scale;
             }
             
+            if(auto* g = dynamic_cast<const LookAtGoal*>(goal))
+            {
+                goal_info.goal_type = GoalType::LookAt;
+                goal_info.target = g->target;
+                goal_info.axis = g->axis;
+            }
+            
+            if(auto* g = dynamic_cast<const AvoidJointLimitsGoal*>(goal))
+            {
+                goal_info.goal_type = GoalType::AvoidJointLimits;
+            }
+            
+            if(auto* g = dynamic_cast<const MinimalDisplacementGoal*>(goal))
+            {
+                goal_info.goal_type = GoalType::MinimalDisplacement;
+            }
+            
             goal_info.rotation_scale_sq = goal_info.rotation_scale * goal_info.rotation_scale;
+            goal_info.weight_sq = goal_info.weight * goal_info.weight;
             
             //LOG_VAR(goal_info.tip_index);
             
@@ -140,6 +185,8 @@ public:
             
             goals.push_back(goal_info);
         }
+        
+        std::sort(goals.begin(), goals.end(), [] (const IKGoalInfo& a, const IKGoalInfo& b) { return a.goal_type < b.goal_type; });
         
         updateActiveVariables(params);
         
@@ -326,82 +373,132 @@ struct IKBase : IKBase2, RandomBase
     
     
     
-
-
-
-
-    double computeFitness(const std::vector<Frame>& tip_frames, bool balanced = true)
+    
+    
+    
+    
+    
+    
+    
+    
+    double computeFitnessActiveVariables(const std::vector<Frame>& tip_frames, const double* active_variable_positions)
     {
         FNPROFILER();
     
         double fitness_sum = 0.0;
-        
-        //LOG_VAR(request.goals.size());
-        //LOG_VAR(tip_frames.size());
 
         for(auto& goal : request.goals)
         {
-            //LOG_VAR(goal.tip_index);
-        
             const auto& fa = goal.frame;
             const auto& fb = tip_frames[goal.tip_index];
             
-            //LOG_VAR(fa);
-            //LOG_VAR(fb);
+            switch(goal.goal_type)
+            {
             
-            double tdist = (fa.pos - fb.pos).length2();
-
-            double rdist = (fa.rot - fa.rot.nearest(fb.rot)).length2();
-
-            rdist *= goal.rotation_scale_sq;
-
-            double f = tdist + rdist;
+            case GoalType::Position:
+            {
+                fitness_sum += goal.weight_sq * (fa.pos - fb.pos).length2();
+                continue;
+            }
+                
+            case GoalType::Orientation:
+            {
+                fitness_sum += goal.weight_sq * (fa.rot - fa.rot.nearest(fb.rot)).length2();
+                continue;
+            }
+                
+            case GoalType::Pose:
+            {
+                fitness_sum += goal.weight_sq * (fa.pos - fb.pos).length2();
+                fitness_sum += goal.weight_sq * (fa.rot - fa.rot.nearest(fb.rot)).length2() * goal.rotation_scale_sq;
+                continue;
+            }
+                
+            case GoalType::LookAt:
+            {
+                tf::Vector3 axis;
+                quat_mul_vec(fb.rot, goal.axis, axis);
+                fitness_sum += (fb.pos + axis * axis.dot(goal.target - fb.pos)).distance2(goal.target);
+                continue;
+            }
             
-            double w = goal.weight;
-            f *= w * w;
+            /*case GoalType::AvoidJointLimits:
+            {
+                for(size_t i = 0; i < active_variables.size(); i++)
+                {
+                    size_t ivar = active_variables[i];
+                    if(modelInfo.getClipMax(ivar) == DBL_MAX) continue;
+                    double x = (active_variable_positions[i] - modelInfo.getMin(ivar)) / modelInfo.getSpan(ivar);
+                    x = x * 2 - 1;
+                    x *= goal.weight;
+                    fitness_sum += x * x;
+                }
+            }*/
             
-            fitness_sum += f;
+            case GoalType::AvoidJointLimits:
+            {
+                double s = 0.0;
+                for(size_t i = 0; i < active_variables.size(); i++)
+                {
+                    size_t ivar = active_variables[i];
+                    if(modelInfo.getClipMax(ivar) == DBL_MAX) continue;
+                    double x = (active_variable_positions[i] - modelInfo.getMin(ivar)) / modelInfo.getSpan(ivar);
+                    x = x * 2 - 1;
+                    //x = 1.0 / (1.0 + 1.0 / (goal.weight * goal.weight) - x * x);
+                    //x = 1 + x * x * goal.weight_sq;
+                    //fitness_sum *= x;
+                    s += x * x;
+                }
+                fitness_sum *= 1 + s * goal.weight_sq;
+                continue;
+            }
+            
+            case GoalType::MinimalDisplacement:
+            {
+                double s = 0.0;
+                for(size_t i = 0; i < active_variables.size(); i++)
+                {
+                    size_t ivar = active_variables[i];
+                    double x = active_variable_positions[i] - request.initial_guess[ivar];
+                    x = x * 2 - 1;
+                    s += x * x;
+                }
+                fitness_sum *= 1 + s * goal.weight_sq;
+                continue;
+            }
+            
+            }
         }
-
-        return fitness_sum;
-    }
-
-    
-    /*
-    double computeFitness(const std::vector<Frame>& frames, bool balanced = true)
-    {
-        FNPROFILER();
-    
-        double fitness_sum = 0.0;
-
-        for(size_t tip_index = 0; tip_index < tipObjectives.size(); tip_index++)
+        
+        /*for(size_t i = 0; i < active_variables.size(); i++)
         {
-            const auto& fa = tipObjectives[tip_index];
-            const auto& fb = frames[tip_index];
-            
-            double tdist = (fa.pos - fb.pos).length2();
-
-            double rdist = (fa.rot - fa.rot.nearest(fb.rot)).length2();
-
-            rdist *= request.tip_infos[tip_index].rotation_scale_sq;
-
-            double f = tdist + rdist;
-            
-            double w = request.tip_infos[tip_index].weight;
-            f *= w * w;
-            
-            fitness_sum += f;
-        }
+            size_t ivar = active_variables[i];
+            if(modelInfo.getClipMax(ivar) == DBL_MAX) continue;
+            double x = (active_variable_positions[i] - modelInfo.getMin(ivar)) / modelInfo.getSpan(ivar);
+            x = x * 2 - 1;
+            //x = 1.0 / (1.0 + 1.0 / (goal.weight * goal.weight) - x * x);
+            x = 1 + x * x * 1;
+            fitness_sum *= x;
+        }*/
 
         return fitness_sum;
     }
-    */
     
-    double computeFitness(const std::vector<double>& genes, bool balanced = true)
+    std::vector<double> temp_active_variable_positions;
+    
+    double computeFitness(const std::vector<double>& variable_positions, const std::vector<Frame>& tip_frames)
+    {
+        temp_active_variable_positions.resize(active_variables.size());
+        for(size_t i = 0; i < temp_active_variable_positions.size(); i++)
+            temp_active_variable_positions[i] = variable_positions[active_variables[i]];
+        return computeFitnessActiveVariables(tip_frames, temp_active_variable_positions.data());
+    }
+
+    double computeFitness(const std::vector<double>& variable_positions)
     {
         //FNPROFILER();
-        model.applyConfiguration(genes);
-        return computeFitness(model.getTipFrames(), balanced);
+        model.applyConfiguration(variable_positions);
+        return computeFitness(variable_positions, model.getTipFrames());
     }
     
     

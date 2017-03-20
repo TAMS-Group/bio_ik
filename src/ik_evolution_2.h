@@ -205,6 +205,8 @@ struct IKEvolution2 : IKBase
             child_gradients = (double*)__builtin_assume_aligned(child_gradients, 32);
             rr = (double*)__builtin_assume_aligned(rr, 32);*/
             
+            //gradient_factor = 0;
+            
             #pragma unroll
             #pragma omp simd \
                 aligned(genes_span:32), \
@@ -341,7 +343,7 @@ struct IKEvolution2 : IKBase
                     BLOCKPROFILER("fitness");
                     for(size_t child_index = 0; child_index < children.size(); child_index++)
                     {
-                        children[child_index].fitness = computeFitness(phenotypes[child_index]);
+                        children[child_index].fitness = computeFitnessActiveVariables(phenotypes[child_index], genotypes[child_index]);
                     }
                 }
 

@@ -10,18 +10,28 @@
     <buildtool_depend>catkin</buildtool_depend>
 
     <build_depend>moveit_core</build_depend>
-    <build_depend>pluginlib</build_depend>
-    <build_depend>actionlib</build_depend>
-    <build_depend>eigen</build_depend>
-    <build_depend>moveit_ros_planning</build_depend>
-
     <run_depend>moveit_core</run_depend>
+    
+    <build_depend>pluginlib</build_depend>
     <run_depend>pluginlib</run_depend>
+    
+    <build_depend>actionlib</build_depend>
     <run_depend>actionlib</run_depend>
+    
+    <build_depend>eigen</build_depend>
+    <run_depend>eigen</run_depend>
+    
+    <build_depend>moveit_ros_planning</build_depend>
     <run_depend>moveit_ros_planning</run_depend>
 
     <build_depend>roscpp</build_depend>
     <run_depend>roscpp</run_depend>
+    
+    <build_depend>tf</build_depend>
+    <run_depend>tf</run_depend>
+    
+    <build_depend>tf_conversions</build_depend>
+    <run_depend>tf_conversions</run_depend>
 
     <export>
         <moveit_core plugin="${prefix}/bio_ik_kinematics_description.xml"/>

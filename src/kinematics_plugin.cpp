@@ -33,8 +33,47 @@
 
 using namespace bio_ik;
 
+
+namespace bio_ik
+{
+
+std::unordered_set<const void*> idBioIKKinematicsQueryOptions;
+
+BioIKKinematicsQueryOptions::BioIKKinematicsQueryOptions() : replace(false)
+{ 
+    idBioIKKinematicsQueryOptions.insert(this);
+}
+
+BioIKKinematicsQueryOptions::~BioIKKinematicsQueryOptions()
+{
+    idBioIKKinematicsQueryOptions.erase(this);
+}
+
+bool isBioIKKinematicsQueryOptions(const void* ptr)
+{
+    return idBioIKKinematicsQueryOptions.find(ptr) != idBioIKKinematicsQueryOptions.end();
+}
+
+const BioIKKinematicsQueryOptions* toBioIKKinematicsQueryOptions(const void* ptr)
+{
+    if(isBioIKKinematicsQueryOptions(ptr))
+        return (const BioIKKinematicsQueryOptions*)ptr;
+    else
+        return 0;
+}
+
+}
+
 namespace bio_ik_kinematics_plugin
-{     
+{
+
+
+
+
+
+
+
+
 
 typedef IKParallel PluginIKSolver;
 
@@ -88,6 +127,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
     std::vector<Eigen::Affine3d> tip_reference_frames;
     
     mutable std::vector<std::unique_ptr<Goal>> default_goals;
+    
+    mutable std::vector<const bio_ik::Goal*> all_goals;
 
     IKParams ikparams;
     
@@ -233,6 +274,14 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 
                 default_goals.emplace_back(goal);
             }
+            
+            /*auto* avoid_joint_limits_goal = new bio_ik::AvoidJointLimitsGoal();
+            avoid_joint_limits_goal->weight = 10;
+            default_goals.emplace_back(avoid_joint_limits_goal);
+            
+            auto* minimal_displacement_goal = new bio_ik::MinimalDisplacementGoal();
+            minimal_displacement_goal->weight = 10;
+            default_goals.emplace_back(minimal_displacement_goal);*/
         }
         
 
@@ -324,6 +373,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         double t0 = ros::Time::now().toSec();
         
         //timeout = 0.1;
+        
+        auto* bio_ik_options = toBioIKKinematicsQueryOptions(&options);
 
         LOG_FNC();
 
@@ -411,7 +462,19 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 goal->position = tipFrames[i].pos;
                 goal->orientation = tipFrames[i].rot;
             }
-            ikrequest.setGoals(default_goals, ikparams);
+            
+            all_goals.clear();
+            
+            if(!bio_ik_options || !bio_ik_options->replace)
+                for(auto& goal : default_goals)
+                    all_goals.push_back(goal.get());
+                    
+            if(bio_ik_options)
+                for(auto& goal : bio_ik_options->goals)
+                    all_goals.push_back(goal.get());
+            
+            ikrequest.setGoals(all_goals, ikparams);
+            //ikrequest.setGoals(default_goals, ikparams);
         }
         
         {
