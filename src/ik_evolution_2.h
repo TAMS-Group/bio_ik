@@ -36,6 +36,7 @@ struct IKEvolution2 : IKBase
     std::vector<double*> genotypes;
     std::vector<Frame> phenotype;
     std::vector<size_t> quaternion_genes;
+    //std::vector<size_t> gene_resets;
     
     /*struct GeneInfo
     {
@@ -69,6 +70,7 @@ struct IKEvolution2 : IKBase
     
         IKBase::initialize(request);
         
+        // init list of quaternion joint genes to be normalized during each mutation
         quaternion_genes.clear();
         for(size_t igene = 0; igene < active_variables.size(); igene++)
         {
@@ -78,6 +80,35 @@ struct IKEvolution2 : IKBase
             if(joint_model->getType() != moveit::core::JointModel::FLOATING) continue;
             quaternion_genes.push_back(igene);
         }
+        
+        /*// init gene reset buffer
+        // for preferentially mutating towards initial guess
+        // weighted by inverse max joint velocity
+        gene_resets.clear();
+        if(active_variables.size())
+        {
+            std::vector<double> mutation_cost_sat;
+            for(size_t gi = 0; gi < active_variables.size(); gi++)
+            {
+                auto& var_bounds = params.robot_model->getVariableBounds(params.robot_model->getVariableNames()[active_variables[gi]]);
+                double c = var_bounds.max_velocity_ ? 1.0 / var_bounds.max_velocity_ : 0.0;
+                if(mutation_cost_sat.empty())
+                    mutation_cost_sat.push_back(c);
+                else
+                    mutation_cost_sat.push_back(mutation_cost_sat.back() + c);
+            }
+            if(mutation_cost_sat.back() == 0)
+                for(size_t gi = 0; gi < active_variables.size(); gi++)
+                    mutation_cost_sat[gi] = gi;
+            for(size_t iter = 0; iter < 1024; iter++)
+            {
+                double f = fast_random() * mutation_cost_sat.back();
+                size_t i = 0;
+                while(mutation_cost_sat[i] < f) i++;
+                if(i >= mutation_cost_sat.size()) i = mutation_cost_sat.size() - 1;
+                gene_resets.push_back(i);
+            }
+        }*/
         
         // set solution to initial guess
         initial_guess = request.initial_guess;
@@ -151,15 +182,43 @@ struct IKEvolution2 : IKBase
                 genes_min[i] = modelInfo.getClipMin(active_variables[i]);
                 genes_max[i] = modelInfo.getClipMax(active_variables[i]);
                 genes_span[i] = modelInfo.getSpan(active_variables[i]);
-                //LOG("genes_span", i, genes_span[i]);
             }
+            
+            
+            /*double max_velocity_sum = 0.0;
+            double max_velocity_div = 0.0;
+            for(size_t i = 0; i < active_variables.size(); i++)
+            {
+                if(modelInfo.getMaxVelocity(active_variables[i]) > 0.0)
+                {
+                    max_velocity_sum += modelInfo.getMaxVelocity(active_variables[i]);
+                    max_velocity_div += 1;
+                }
+            }
+            if(max_velocity_div > 0.0)
+            {
+                double max_velocity_avg = max_velocity_sum / max_velocity_div;
+                double max_velocity_scale = 1.0 / max_velocity_avg;
+                for(size_t i = 0; i < active_variables.size(); i++)
+                {
+                    double f = 1.0;
+                    if(modelInfo.getMaxVelocity(active_variables[i]) > 0.0)
+                        f = modelInfo.getMaxVelocity(active_variables[i]) * max_velocity_scale;
+                    //genes_span[i] *= f;
+                    //LOG_VAR(f);
+                    genes_span[i] = f;
+                }
+            }*/
         }
     }
-    
-    // create offspring and mutate
-    
 
     
+    
+    
+    
+    
+    // create offspring and mutate
+
     __attribute__((hot))
     __attribute__((noinline))
     //__attribute__((target_clones("avx2", "avx", "sse2", "default")))
@@ -233,8 +292,18 @@ struct IKEvolution2 : IKBase
                 child_genes[gene_index] = gene;
                 child_gradients[gene_index] = mix(parent_gradient, gene - parent_gene, 0.3);
             }
-            
             rr += (gene_count + 3) / 4 * 4;
+            
+            /*//if(!gene_resets.empty() && thread_index == 0 && fast_random_index(4) == 0)
+            if(!gene_resets.empty() && thread_index == 0 && fast_random_index(4) != 0)
+            {
+                auto gene_index = fast_random_element(gene_resets);
+                auto& p1 = children[child_index].genes[gene_index];
+                auto p2 = mix(p1, initial_guess[active_variables[gene_index]], fast_random());
+                auto& dp = children[child_index].gradients[gene_index];
+                dp = mix(dp, p2 - p1, 0.1);
+                p1 = p2;
+            }*/
             
             for(auto quaternion_gene_index : quaternion_genes)
             {
@@ -317,6 +386,78 @@ struct IKEvolution2 : IKBase
                     reproduce(population);
                 }
                 
+                size_t child_count = children.size();
+                
+                // pre-selection
+                //if(false)
+                if(request.secondary_goals.size())
+                {
+                    BLOCKPROFILER("pre-selection");
+
+                    //child_count = (children.size() + population.size()) / 2;
+                    
+                    //child_count = (children.size() + population.size()) * 3 / 4;
+                    
+                    /*static std::vector<size_t> ii = { 
+                        1, 1, 1, 1, 1, 1, 1, 1,
+                        2, 2, 2, 2,
+                        3, 3,
+                        4, };*/
+                    /*static std::vector<size_t> ii = { 
+                        2, 2, 2,
+                        3, 3,
+                        4,
+                        };
+                    child_count = (children.size() - population.size()) * random_element(ii) / 4 + population.size();*/
+                    
+                    //child_count = (children.size() - population.size()) * (random_index(4) + 1) / 4 + population.size();
+
+                    //child_count = random_index(children.size() - population.size() - 1) + 1 + population.size();
+                    
+                    //child_count = fast_random_index(children.size() - population.size() - 2) + population.size();
+                    
+                    child_count = random_index(children.size() - population.size() - 1) + 1 + population.size();
+                    
+                    //LOG_VAR(child_count);
+                    
+                    //child_count = 15;
+                    for(size_t child_index = population.size(); child_index < children.size(); child_index++)
+                    {
+                        children[child_index].fitness = computeSecondaryFitnessActiveVariables(children[child_index].genes.data());
+                        //LOG_VAR(children[child_index].fitness);
+                    }
+                    
+                    /*LOG_VAR("b");
+                    
+                    LOG_VAR(population.size());
+                    LOG_VAR(child_count);
+                    LOG_VAR(children.size());*/
+                    
+                    /*std::nth_element(
+                            children.begin() + population.size(), 
+                            children.begin() + child_count, 
+                            children.end(), 
+                            [] (const Individual& a, const Individual& b)
+                            {
+                                return a.fitness < b.fitness;
+                            }
+                        );*/
+                        
+                    {
+                        BLOCKPROFILER("pre-selection sort");
+                        std::sort(
+                                children.begin() + population.size(),
+                                children.end(), 
+                                [] (const Individual& a, const Individual& b)
+                                {
+                                    return a.fitness < b.fitness;
+                                }
+                            );
+                    }
+                        
+                    //LOG_VAR("c");
+                }
+                
                 // keep parents
                 {
                     BLOCKPROFILER("keep alive");
@@ -330,7 +471,6 @@ struct IKEvolution2 : IKBase
                 // genotype-phenotype mapping
                 {
                     BLOCKPROFILER("phenotype");
-                    size_t child_count = children.size();
                     size_t gene_count = children[0].genes.size();
                     genotypes.resize(child_count);
                     for(size_t i = 0; i < child_count; i++)
@@ -341,7 +481,7 @@ struct IKEvolution2 : IKBase
                 // fitness
                 {
                     BLOCKPROFILER("fitness");
-                    for(size_t child_index = 0; child_index < children.size(); child_index++)
+                    for(size_t child_index = 0; child_index < child_count; child_index++)
                     {
                         children[child_index].fitness = computeFitnessActiveVariables(phenotypes[child_index], genotypes[child_index]);
                     }
@@ -350,14 +490,14 @@ struct IKEvolution2 : IKBase
                 // selection
                 {
                     BLOCKPROFILER("selection");
-                    child_indices.resize(children.size());
-                    for(size_t i = 0; i < children.size(); i++) 
+                    child_indices.resize(child_count);
+                    for(size_t i = 0; i < child_count; i++) 
                         child_indices[i] = i;
                     for(size_t i = 0; i < population.size(); i++)
                     {
                         size_t jmin = i;
                         double fmin = children[child_indices[i]].fitness;
-                        for(size_t j = i + 1; j < children.size(); j++)
+                        for(size_t j = i + 1; j < child_count; j++)
                         {
                             double f = children[child_indices[j]].fitness;
                             if(f < fmin) 

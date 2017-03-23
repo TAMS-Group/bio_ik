@@ -894,6 +894,8 @@ public:
         const double * const * mutation_values,
         std::vector<std::vector<Frame>>& tip_frame_mutations) const
     {
+        BLOCKPROFILER("computeApproximateMutations C");
+    
         //FNPROFILER();
         const double* p_variables = variables.data();
         auto tip_count = tip_names.size();
@@ -961,6 +963,8 @@ public:
         const double * const * mutation_values,
         std::vector<std::vector<Frame>>& tip_frame_mutations) const
     {
+        BLOCKPROFILER("computeApproximateMutations SSE2");
+    
         auto* __restrict__ variables_ptr = variables.data();
         auto tip_count = tip_names.size();
         //while(tip_frame_mutations.size() < mutation_count) tip_frame_mutations.emplace_back(tip_count);
@@ -1018,6 +1022,8 @@ public:
         const double * const * mutation_values,
         std::vector<std::vector<Frame>>& tip_frame_mutations) const
     {
+        BLOCKPROFILER("computeApproximateMutations AVX");
+    
         auto* __restrict__ variables_ptr = variables.data();
         auto tip_count = tip_names.size();
         //while(tip_frame_mutations.size() < mutation_count) tip_frame_mutations.emplace_back(tip_count);
@@ -1062,6 +1068,8 @@ public:
         const double * const * mutation_values,
         std::vector<std::vector<Frame>>& tip_frame_mutations) const
     {
+        BLOCKPROFILER("computeApproximateMutations FMA AVX");
+    
         //LOG("fma");
         auto* __restrict__ variables_ptr = variables.data();
         auto tip_count = tip_names.size();

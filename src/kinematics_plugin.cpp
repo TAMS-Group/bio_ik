@@ -87,9 +87,11 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
     mutable std::unique_ptr<moveit::core::RobotState> temp_state;
     mutable std::vector<Frame> tipFrames;
     RobotInfo robot_info;
+    bool enable_profiler;
 
     BioIKKinematicsPlugin()
     {
+        enable_profiler = false;
     }
 
     virtual const std::vector<std::string>& getJointNames() const
@@ -133,6 +135,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
     IKParams ikparams;
     
     mutable IKRequest ikrequest;
+    
+    
     
     bool load(std::string robot_description, std::string group_name)
     {
@@ -180,9 +184,9 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         node_handle.searchParam(robot_description_, rdesc);
         node_handle = ros::NodeHandle(rdesc + "_kinematics/" + group_name_);
         
-        bool enable_profiler;
+        //bool enable_profiler;
         node_handle.param("profiler", enable_profiler, false);
-        if(enable_profiler) Profiler::start();
+        //if(enable_profiler) Profiler::start();
         
         robot_info = RobotInfo(robot_model);
         
@@ -252,6 +256,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         
         
         {
+        
             BLOCKPROFILER("default ik goals");
             
             default_goals.clear();
@@ -274,14 +279,29 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 
                 default_goals.emplace_back(goal);
             }
+
+            {
+                double weight = 0;
+                node_handle.param("avoid_joint_limits_weight", weight, weight);
+                if(weight > 0.0)
+                {
+                    auto* avoid_joint_limits_goal = new bio_ik::AvoidJointLimitsGoal();
+                    avoid_joint_limits_goal->weight = weight;
+                    default_goals.emplace_back(avoid_joint_limits_goal);
+                }
+            }
+
+            {
+                double weight = 0;
+                node_handle.param("minimal_displacement_weight", weight, weight);
+                if(weight > 0.0)
+                {
+                    auto* minimal_displacement_goal = new bio_ik::MinimalDisplacementGoal();
+                    minimal_displacement_goal->weight = weight;
+                    default_goals.emplace_back(minimal_displacement_goal);
+                }
+            }
             
-            /*auto* avoid_joint_limits_goal = new bio_ik::AvoidJointLimitsGoal();
-            avoid_joint_limits_goal->weight = 10;
-            default_goals.emplace_back(avoid_joint_limits_goal);
-            
-            auto* minimal_displacement_goal = new bio_ik::MinimalDisplacementGoal();
-            minimal_displacement_goal->weight = 10;
-            default_goals.emplace_back(minimal_displacement_goal);*/
         }
         
 
@@ -374,6 +394,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         
         //timeout = 0.1;
         
+        if(enable_profiler) Profiler::start();
+        
         auto* bio_ik_options = toBioIKKinematicsQueryOptions(&options);
 
         LOG_FNC();
@@ -403,22 +425,25 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
             }
         }
         
-        // transform tips to baseframe
-        tipFrames.clear();
-        for(size_t i = 0; i < ik_poses.size(); i++)
+        if(!bio_ik_options || !bio_ik_options->replace)
         {
-            Eigen::Affine3d p, r;
-            tf::poseMsgToEigen(ik_poses[i], p);
-            if(context_state)
+            // transform tips to baseframe
+            tipFrames.clear();
+            for(size_t i = 0; i < ik_poses.size(); i++)
             {
-                r = context_state->getGlobalLinkTransform(getBaseFrame());
+                Eigen::Affine3d p, r;
+                tf::poseMsgToEigen(ik_poses[i], p);
+                if(context_state)
+                {
+                    r = context_state->getGlobalLinkTransform(getBaseFrame());
+                }
+                else
+                {
+                    if(i == 0) temp_state->setToDefaultValues();
+                    r = temp_state->getGlobalLinkTransform(getBaseFrame());
+                }
+                tipFrames.emplace_back(r * p);
             }
-            else
-            {
-                if(i == 0) temp_state->setToDefaultValues();
-                r = temp_state->getGlobalLinkTransform(getBaseFrame());
-            }
-            tipFrames.emplace_back(r * p);
         }
         
         // init ik
@@ -456,11 +481,14 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         }*/
         
         {
-            for(size_t i = 0; i < tip_frames_.size(); i++)
+            if(!bio_ik_options || !bio_ik_options->replace)
             {
-                auto* goal = (PoseGoal*)default_goals[i].get();
-                goal->position = tipFrames[i].pos;
-                goal->orientation = tipFrames[i].rot;
+                for(size_t i = 0; i < tip_frames_.size(); i++)
+                {
+                    auto* goal = (PoseGoal*)default_goals[i].get();
+                    goal->position = tipFrames[i].pos;
+                    goal->orientation = tipFrames[i].rot;
+                }
             }
             
             all_goals.clear();

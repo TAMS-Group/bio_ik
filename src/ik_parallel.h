@@ -125,9 +125,11 @@ struct IKParallel
     
 private:
 
-    bool checkSolution(const std::vector<Frame>& tips) const
+    /*bool checkSolution(const std::vector<Frame>& tips) const
     {
         // TODO: use new goals
+    
+        //if(request.secondary_goals.size()) return false;
     
         for(auto& goal : request.goals)
             if(goal.goal_type != GoalType::Pose)
@@ -156,43 +158,6 @@ private:
                 KDL::Frame fk_kdl, ik_kdl;
                 frameToKDL(goal.frame, fk_kdl);
                 frameToKDL(tips[goal.tip_index], ik_kdl);
-                KDL::Twist kdl_diff(fk_kdl.M.Inverse() * KDL::diff(fk_kdl.p, ik_kdl.p), fk_kdl.M.Inverse() * KDL::diff(fk_kdl.M, ik_kdl.M));
-                if(!KDL::Equal(kdl_diff, KDL::Twist::Zero(), dtwist)) return false;
-            }
-        }
-        
-        return true;
-    }
-
-    /*bool checkSolution(const std::vector<Frame>& tips) const
-    {
-        //LOG_VAR(dtwist);
-        
-        return false;
-    
-        if(dpos != DBL_MAX || drot != DBL_MAX)
-        {
-            double p_dist = 0;
-            double r_dist = 0;
-            for(int i = 0; i < tip_goals.size(); i++)
-            {
-                auto& a = tips[i];
-                auto& b = tip_goals[i];
-                p_dist = std::max(p_dist, (b.pos - a.pos).length());
-                r_dist = std::max(r_dist, b.rot.angleShortestPath(a.rot));
-            }
-            r_dist = r_dist * 180 / M_PI;
-            if(!(p_dist <= dpos)) return false;
-            if(!(r_dist <= drot)) return false;
-        }
-        
-        if(dtwist != DBL_MAX)
-        {
-            for(int i = 0; i < tip_goals.size(); i++)
-            {
-                KDL::Frame fk_kdl, ik_kdl;
-                frameToKDL(tip_goals[i], fk_kdl);
-                frameToKDL(tips[i], ik_kdl);
                 KDL::Twist kdl_diff(fk_kdl.M.Inverse() * KDL::diff(fk_kdl.p, ik_kdl.p), fk_kdl.M.Inverse() * KDL::diff(fk_kdl.M, ik_kdl.M));
                 if(!KDL::Equal(kdl_diff, KDL::Twist::Zero(), dtwist)) return false;
             }
@@ -235,7 +200,8 @@ private:
                 //params.robot_model->enforcePositionBounds(result.data());
                 fk[i].applyConfiguration(result);
                 
-                bool success = checkSolution(fk[i].getTipFrames());
+                //bool success = checkSolution(fk[i].getTipFrames());
+                bool success = solvers[i]->checkSolution(result, fk[i].getTipFrames());
                 if(success) finished = 1;
                 solver_success[i] = success;
                 solver_solutions[i] = result;
@@ -365,15 +331,45 @@ public:
         size_t best_index = 0;
         double best_fitness = DBL_MAX;
         
+        // if exact primary goal matches have been found ...
         for(size_t i = 0; i < thread_count; i++)
+        {
             if(solver_success[i])
-                if(solver_fitness[i] < best_fitness)
-                    best_fitness = solver_fitness[i], best_index = i;
-                    
+            {
+                double fitness;
+                if(solvers[0]->request.secondary_goals.empty())
+                {
+                    // ... and no secondary goals have been specified,
+                    // select the result best result according to primary goals
+                    fitness = solver_fitness[i];
+                }
+                else
+                {
+                    // ... and secondary goals have been specified,
+                    // select the result that best satisfies the secondary goals
+                    fitness = solvers[0]->computeSecondaryFitnessAllVariables(solver_solutions[i]);
+                }
+                if(fitness < best_fitness)
+                {
+                    best_fitness = fitness;
+                    best_index = i;
+                }
+            }
+        }
+        
+        // if no exact primary goal matches have been found,
+        // select best primary goal approximation
         if(best_fitness == DBL_MAX)
+        {
             for(size_t i = 0; i < thread_count; i++)
+            {
                 if(solver_fitness[i] < best_fitness)
-                    best_fitness = solver_fitness[i], best_index = i;
+                {
+                    best_fitness = solver_fitness[i];
+                    best_index = i;
+                }
+            }
+        }
                     
         /*LOG_VAR(initial_guess.size());
         LOG_VAR(result.size());

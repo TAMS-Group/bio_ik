@@ -76,7 +76,7 @@ struct MaxDistanceGoal : LinkGoalBase
 {
     tf::Vector3 target;
     double distance;
-    MaxDistanceGoal() : target(0, 0, 0), distance(0)
+    MaxDistanceGoal() : target(0, 0, 0), distance(1)
     {
     }
 };
@@ -87,6 +87,15 @@ struct AvoidJointLimitsGoal : GoalBase
 
 struct MinimalDisplacementGoal : GoalBase
 {
+};
+
+struct VariablePositionGoal : GoalBase
+{
+    std::string variable_name;
+    double variable_position;
+    VariablePositionGoal() : variable_position(0)
+    {
+    }
 };
 
 struct BioIKKinematicsQueryOptions : kinematics::KinematicsQueryOptions

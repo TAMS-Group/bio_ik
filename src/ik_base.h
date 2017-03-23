@@ -54,10 +54,12 @@ enum class GoalType : uint32_t
     MaxDistance,
     AvoidJointLimits,
     MinimalDisplacement,
+    VariablePosition,
 };
 
 struct IKGoalInfo
 {
+    const Goal* goal;
     GoalType goal_type;
     size_t tip_index;
     double weight;
@@ -67,6 +69,9 @@ struct IKGoalInfo
     Frame frame;
     tf::Vector3 target;
     tf::Vector3 axis;
+    double distance;
+    ssize_t active_variable_index;
+    double variable_position;
 };
 
 struct IKRequest
@@ -76,6 +81,7 @@ struct IKRequest
     std::vector<size_t> active_variables;
     std::vector<size_t> tip_link_indices;
     std::vector<IKGoalInfo> goals;
+    std::vector<IKGoalInfo> secondary_goals;
     
 private:
     std::vector<int> joint_usage;
@@ -91,7 +97,6 @@ private:
                 joint_usage[link_model->getParentJointModel()->getJointIndex()] = 1;
         active_variables.clear();
         for(auto* joint_model : joint_model_group->getActiveJointModels())
-        //for(auto* joint_model : robot_model->getJointModels())
             if(joint_usage[joint_model->getJointIndex()] && !joint_model->getMimic())
                 for(size_t ivar = joint_model->getFirstVariableIndex(); ivar < joint_model->getFirstVariableIndex() + joint_model->getVariableCount(); ivar++)
                     active_variables.push_back(ivar);
@@ -108,14 +113,19 @@ public:
         tip_link_indices.clear();
         
         goals.clear();
+        secondary_goals.clear();
         for(auto& goal : goals2)
         {
             IKGoalInfo goal_info;
+            
+            goal_info.goal = goal;
             
             goal_info.weight = 1;
             goal_info.rotation_scale = 0.5;
             goal_info.frame = Frame::identity();
             goal_info.goal_type = GoalType::Null;
+            
+            bool secondary = false;
             
             if(auto* g = dynamic_cast<const GoalBase*>(goal))
             {
@@ -153,6 +163,11 @@ public:
                 goal_info.frame.pos = g->position;
                 goal_info.frame.rot = g->orientation;
                 goal_info.rotation_scale = g->rotation_scale;
+                if(!(goal_info.rotation_scale > 0)) goal_info.goal_type = GoalType::Position;
+                
+                /*goal_info.goal_type = GoalType::MaxDistance;
+                goal_info.target = g->position;
+                goal_info.distance = 0.2;*/
             }
             
             if(auto* g = dynamic_cast<const LookAtGoal*>(goal))
@@ -162,14 +177,43 @@ public:
                 goal_info.axis = g->axis;
             }
             
+            if(auto* g = dynamic_cast<const MaxDistanceGoal*>(goal))
+            {
+                goal_info.goal_type = GoalType::MaxDistance;
+                goal_info.target = g->target;
+                goal_info.distance = g->distance;
+            }
+            
             if(auto* g = dynamic_cast<const AvoidJointLimitsGoal*>(goal))
             {
                 goal_info.goal_type = GoalType::AvoidJointLimits;
+                secondary = true;
             }
             
             if(auto* g = dynamic_cast<const MinimalDisplacementGoal*>(goal))
             {
                 goal_info.goal_type = GoalType::MinimalDisplacement;
+                secondary = true;
+            }
+            
+            if(auto* g = dynamic_cast<const VariablePositionGoal*>(goal))
+            {
+                goal_info.goal_type = GoalType::VariablePosition;
+                goal_info.active_variable_index = -1;
+                /*for(size_t i = 0; i < active_variables.size(); i++)
+                {
+                    LOG(params.robot_model->getVariableNames()[active_variables[i]]);
+                    if(params.robot_model->getVariableNames()[active_variables[i]] == g->variable_name)
+                    {
+                        goal_info.active_variable_index = i;
+                    }
+                }
+                if(goal_info.active_variable_index < 0)
+                {
+                    //continue;
+                    ERROR("joint variable not found", g->variable_name);
+                }*/
+                goal_info.variable_position = g->variable_position;
             }
             
             goal_info.rotation_scale_sq = goal_info.rotation_scale * goal_info.rotation_scale;
@@ -183,10 +227,13 @@ public:
             LOG("goal_info.frame.pos", goal_info.frame.pos.x(), goal_info.frame.pos.y(), goal_info.frame.pos.z());
             LOG("goal_info.frame.rot", goal_info.frame.rot.x(), goal_info.frame.rot.y(), goal_info.frame.rot.z(), goal_info.frame.rot.w());*/
             
-            goals.push_back(goal_info);
+            if(secondary)
+                secondary_goals.push_back(goal_info);
+            else
+                goals.push_back(goal_info);
         }
         
-        std::sort(goals.begin(), goals.end(), [] (const IKGoalInfo& a, const IKGoalInfo& b) { return a.goal_type < b.goal_type; });
+        //std::sort(goals.begin(), goals.end(), [] (const IKGoalInfo& a, const IKGoalInfo& b) { return a.goal_type < b.goal_type; });
         
         updateActiveVariables(params);
         
@@ -195,6 +242,21 @@ public:
         
         LOG_VAR(request.tip_link_indices.size());
         for(auto& tli : request.tip_link_indices) LOG_VAR(tli);*/
+        
+        for(auto& goal_info : goals)
+        {
+            if(goal_info.goal_type == GoalType::VariablePosition)
+            {
+                for(size_t i = 0; i < active_variables.size(); i++)
+                {
+                    if(params.robot_model->getVariableNames()[active_variables[i]] == ((const VariablePositionGoal*)goal_info.goal)->variable_name)
+                    {
+                        goal_info.active_variable_index = i;
+                        break;
+                    }
+                }
+            }
+        }
     }
 };
 
@@ -331,12 +393,22 @@ struct IKBase : IKBase2, RandomBase
     double fitness_randomization;
 
     int thread_index;
+    
+    double dpos, drot, dtwist;
 
     void setParams(const IKParams& p)
     {
         auto& n = p.node_handle;
+        
         n.param("full_circle", opt_angular_scale_full_circle, true);
         n.param("fitness_randomization", fitness_randomization, 0.0);
+        
+        n.param("dpos", dpos, DBL_MAX);
+        n.param("drot", drot, DBL_MAX);
+        n.param("dtwist", dtwist, 1e-5);
+        if(dpos < 0.0 || dpos >= FLT_MAX) dpos = DBL_MAX;
+        if(drot < 0.0 || drot >= FLT_MAX) drot = DBL_MAX;
+        if(dtwist < 0.0 || dtwist >= FLT_MAX) dtwist = DBL_MAX;
     }
 
     IKBase(const IKParams& p) : 
@@ -355,6 +427,13 @@ struct IKBase : IKBase2, RandomBase
     
     IKRequest request;
     
+    
+    
+    
+    
+    
+    std::vector<double> minimal_displacement_factors;
+    
     virtual void initialize(const IKRequest& request)
     {
         this->request = request;
@@ -362,6 +441,27 @@ struct IKBase : IKBase2, RandomBase
         model.initialize(request.tip_link_indices);
         //modelInfo.initialize(request.tip_link_indices);
         active_variables = request.active_variables;
+        
+        
+        {
+            minimal_displacement_factors.resize(active_variables.size());
+            double s = 0;
+            for(auto ivar : active_variables)
+                s += modelInfo.getMaxVelocityRcp(ivar);
+            if(s > 0)
+            {
+                for(size_t i = 0; i < active_variables.size(); i++)
+                {
+                    auto ivar = active_variables[i];
+                    minimal_displacement_factors[i] = modelInfo.getMaxVelocityRcp(ivar) / s;
+                }
+            }
+            else
+            {
+                for(size_t i = 0; i < active_variables.size(); i++)
+                    minimal_displacement_factors[i] = 1.0 / active_variables.size();
+            }
+        }
     }
     
     
@@ -379,13 +479,306 @@ struct IKBase : IKBase2, RandomBase
     
     
     
+    double computeSecondaryFitnessActiveVariables(const double* active_variable_positions)
+    {
+        double sum = 0.0;
+        
+        for(auto& goal : request.secondary_goals)
+        {
+        
+            switch(goal.goal_type)
+            {
+        
+            case GoalType::AvoidJointLimits:
+            {
+                for(size_t i = 0; i < active_variables.size(); i++)
+                {
+                    size_t ivar = active_variables[i];
+                    if(modelInfo.getClipMax(ivar) == DBL_MAX) continue;
+                    
+                    //double x = (active_variable_positions[i] - modelInfo.getMin(ivar)) / modelInfo.getSpan(ivar) * 2 - 1;
+                    
+                    //x = x * x;
+                    
+                    //x = fmax(0.0, fabs(x) * 2 - 1);
+                    
+                    //x = 1.0 / (1.0 + 0.1 - x * x) - 1.0;
+                    //x = 1 + x * x * goal.weight_sq;
+                    //fitness_sum *= x;
+                    
+                    //x = 1.0 - sqrt(fmax(0.0, 1.0 - x * x));
+                    
+                    //x *= modelInfo.getMaxVelocityRcp(ivar) / modelInfo.getSpan(ivar);
+                    
+                    //x *= modelInfo.getSpan(ivar);
+                    
+                    double x = active_variable_positions[i] - (modelInfo.getMin(ivar) + modelInfo.getMax(ivar)) * 0.5;
+                    
+                    x = fmax(0.0, fabs(x) * 2.0 - modelInfo.getSpan(ivar) * 0.5);
+                    
+                    x *= minimal_displacement_factors[i];
+                    
+                    x *= goal.weight;
+                    
+                    sum += x * x;
+                    
+                    //sum += fabs(x) * goal.weight;
+                }
+                continue;
+            }
+            
+            case GoalType::MinimalDisplacement:
+            {
+                //LOG(active_variables.size(), request.initial_guess.size(), 
+            
+                for(size_t i = 0; i < active_variables.size(); i++)
+                {
+                    size_t ivar = active_variables[i];
+                    
+                    //LOG(i, ivar, request.initial_guess.size(), minimal_displacement_factors.size());
+                    
+                    double x = active_variable_positions[i] - request.initial_guess[ivar];
+                    //double x = active_variable_positions[i] - request.initial_guess.at(ivar);
+                    
+                    //LOG(i, minimal_displacement_factors[i]);
+                    
+                    x *= minimal_displacement_factors[i];
+                    //x *= minimal_displacement_factors.at(i);
+                    
+                    x *= goal.weight;
+                    
+                    sum += x * x;
+                    
+                    //sum += fabs(x) * goal.weight;
+                    //sum += x * x;
+                }
+                continue;
+            }
+            
+            }
+            
+        }
+        
+        return sum;
+    }
     
+    double computeSecondaryFitnessAllVariables(const std::vector<double>& variable_positions)
+    {
+        return computeSecondaryFitnessActiveVariables(extractActiveVariables(variable_positions));
+    }
     
     double computeFitnessActiveVariables(const std::vector<Frame>& tip_frames, const double* active_variable_positions)
     {
         FNPROFILER();
     
-        double fitness_sum = 0.0;
+        double sum = 0.0;
+
+        for(auto& goal : request.goals)
+        {
+            const auto& fa = goal.frame;
+            const auto& fb = tip_frames[goal.tip_index];
+            
+            switch(goal.goal_type)
+            {
+            
+                case GoalType::Position:
+                {
+                    sum += goal.weight_sq * (fa.pos - fb.pos).length2();
+                    continue;
+                }
+                    
+                case GoalType::Orientation:
+                {
+                    sum += goal.weight_sq * (fa.rot - fa.rot.nearest(fb.rot)).length2();
+                    continue;
+                }
+                    
+                case GoalType::Pose:
+                {
+                    sum += goal.weight_sq * (fa.pos - fb.pos).length2();
+                    sum += goal.weight_sq * (fa.rot - fa.rot.nearest(fb.rot)).length2() * goal.rotation_scale_sq;
+                    continue;
+                }
+                    
+                case GoalType::LookAt:
+                {
+                    tf::Vector3 axis;
+                    quat_mul_vec(fb.rot, goal.axis, axis);
+                    sum += (fb.pos + axis * axis.dot(goal.target - fb.pos)).distance2(goal.target);
+                    continue;
+                }
+                
+                case GoalType::MaxDistance:
+                {
+                    double d = fmax(0.0, fb.pos.distance(goal.target) - goal.distance);
+                    sum += d * d * goal.weight_sq;
+                    continue;
+                }
+                
+                case GoalType::VariablePosition:
+                {
+                    if(goal.active_variable_index < 0) continue;
+                    double d = active_variable_positions[goal.active_variable_index] - goal.variable_position;
+                    sum += d * d * goal.weight_sq;
+                    continue;
+                }
+            
+            }
+        }
+
+        return sum;
+    }
+    
+    
+    
+    
+    
+    bool checkSolutionActiveVariables(const std::vector<Frame>& tip_frames, const double* active_variable_positions)
+    {
+        for(auto& goal : request.goals)
+        {
+        
+            const auto& fa = goal.frame;
+            const auto& fb = tip_frames[goal.tip_index];
+        
+            switch(goal.goal_type)
+            {
+            
+                case GoalType::Position:
+                {
+                    if(dpos != DBL_MAX)
+                    {
+                        double p_dist = (fb.pos - fa.pos).length();
+                        if(!(p_dist <= dpos)) return false;
+                    }
+                    if(dtwist != DBL_MAX)
+                    {
+                        KDL::Frame fk_kdl, ik_kdl;
+                        frameToKDL(fa, fk_kdl);
+                        frameToKDL(fb, ik_kdl);
+                        KDL::Twist kdl_diff(fk_kdl.M.Inverse() * KDL::diff(fk_kdl.p, ik_kdl.p), fk_kdl.M.Inverse() * KDL::diff(fk_kdl.M, ik_kdl.M));
+                        if(!KDL::Equal(kdl_diff.vel, KDL::Twist::Zero().vel, dtwist)) return false;
+                    }
+                    continue;
+                }
+                
+                case GoalType::Orientation:
+                {
+                    if(drot != DBL_MAX)
+                    {
+                        double r_dist = fb.rot.angleShortestPath(fa.rot);
+                        r_dist = r_dist * 180 / M_PI;
+                        if(!(r_dist <= drot)) return false;
+                    }
+                    if(dtwist != DBL_MAX)
+                    {
+                        KDL::Frame fk_kdl, ik_kdl;
+                        frameToKDL(fa, fk_kdl);
+                        frameToKDL(fb, ik_kdl);
+                        KDL::Twist kdl_diff(fk_kdl.M.Inverse() * KDL::diff(fk_kdl.p, ik_kdl.p), fk_kdl.M.Inverse() * KDL::diff(fk_kdl.M, ik_kdl.M));
+                        if(!KDL::Equal(kdl_diff.rot, KDL::Twist::Zero().rot, dtwist)) return false;
+                    }
+                    continue;
+                }
+                
+                case GoalType::Pose:
+                {
+                    if(dpos != DBL_MAX || drot != DBL_MAX)
+                    {
+                        double p_dist = (fb.pos - fa.pos).length();
+                        double r_dist = fb.rot.angleShortestPath(fa.rot);
+                        r_dist = r_dist * 180 / M_PI;
+                        if(!(p_dist <= dpos)) return false;
+                        if(!(r_dist <= drot)) return false;
+                    }
+                    if(dtwist != DBL_MAX)
+                    {
+                        KDL::Frame fk_kdl, ik_kdl;
+                        frameToKDL(fa, fk_kdl);
+                        frameToKDL(fb, ik_kdl);
+                        KDL::Twist kdl_diff(fk_kdl.M.Inverse() * KDL::diff(fk_kdl.p, ik_kdl.p), fk_kdl.M.Inverse() * KDL::diff(fk_kdl.M, ik_kdl.M));
+                        if(!KDL::Equal(kdl_diff, KDL::Twist::Zero(), dtwist)) return false;
+                    }
+                    continue;
+                }
+                
+                case GoalType::LookAt:
+                {
+                    tf::Vector3 axis;
+                    quat_mul_vec(fb.rot, goal.axis, axis);
+                    double angle = axis.angle(goal.target - fb.pos);
+                    if(drot != DBL_MAX)
+                    {
+                        double r_dist = angle;
+                        r_dist = r_dist * 180 / M_PI;
+                        if(!(r_dist <= drot)) return false;
+                    }
+                    if(dtwist != DBL_MAX)
+                    {
+                        if(!(angle <= dtwist)) return false;
+                    }
+                    continue;
+                }
+                
+                case GoalType::MaxDistance:
+                {
+                    double d = fmax(0.0, fb.pos.distance(goal.target) - goal.distance);
+                    if(dpos != DBL_MAX)
+                    {
+                        if(!(d <= dpos)) return false;
+                    }
+                    if(dtwist != DBL_MAX)
+                    {
+                        if(!(d <= dtwist)) return false;
+                    }
+                    continue;
+                }
+                
+                case GoalType::VariablePosition:
+                {
+                    if(goal.active_variable_index < 0) continue;
+                    double d = active_variable_positions[goal.active_variable_index] - goal.variable_position;
+                    d = fabs(d);
+                    if(dpos != DBL_MAX && modelInfo.isPrismatic(active_variables[goal.active_variable_index]))
+                    {
+                        if(!(d <= dpos)) return false;
+                    }
+                    if(dpos != DBL_MAX && modelInfo.isRevolute(active_variables[goal.active_variable_index]))
+                    {
+                        if(!(d <= drot)) return false;
+                    }
+                    if(dtwist != DBL_MAX)
+                    {
+                        if(!(d <= dtwist)) return false;
+                    }
+                    continue;
+                }
+                
+                default:
+                {
+                    return false;
+                }
+                
+            }
+        
+        }
+        
+        return true;
+    }
+    
+    bool checkSolution(const std::vector<double>& variable_positions, const std::vector<Frame>& tips)
+    {
+        return checkSolutionActiveVariables(tips, extractActiveVariables(variable_positions));
+    }
+    
+    
+    /*
+    double computeFitnessActiveVariables(const std::vector<Frame>& tip_frames, const double* active_variable_positions)
+    {
+        FNPROFILER();
+    
+        double sum = 0.0;
+        double gain = 1.0;
 
         for(auto& goal : request.goals)
         {
@@ -397,20 +790,20 @@ struct IKBase : IKBase2, RandomBase
             
             case GoalType::Position:
             {
-                fitness_sum += goal.weight_sq * (fa.pos - fb.pos).length2();
+                sum += goal.weight_sq * (fa.pos - fb.pos).length2();
                 continue;
             }
                 
             case GoalType::Orientation:
             {
-                fitness_sum += goal.weight_sq * (fa.rot - fa.rot.nearest(fb.rot)).length2();
+                sum += goal.weight_sq * (fa.rot - fa.rot.nearest(fb.rot)).length2();
                 continue;
             }
                 
             case GoalType::Pose:
             {
-                fitness_sum += goal.weight_sq * (fa.pos - fb.pos).length2();
-                fitness_sum += goal.weight_sq * (fa.rot - fa.rot.nearest(fb.rot)).length2() * goal.rotation_scale_sq;
+                sum += goal.weight_sq * (fa.pos - fb.pos).length2();
+                sum += goal.weight_sq * (fa.rot - fa.rot.nearest(fb.rot)).length2() * goal.rotation_scale_sq;
                 continue;
             }
                 
@@ -418,80 +811,70 @@ struct IKBase : IKBase2, RandomBase
             {
                 tf::Vector3 axis;
                 quat_mul_vec(fb.rot, goal.axis, axis);
-                fitness_sum += (fb.pos + axis * axis.dot(goal.target - fb.pos)).distance2(goal.target);
+                sum += (fb.pos + axis * axis.dot(goal.target - fb.pos)).distance2(goal.target);
                 continue;
             }
-            
-            /*case GoalType::AvoidJointLimits:
-            {
-                for(size_t i = 0; i < active_variables.size(); i++)
-                {
-                    size_t ivar = active_variables[i];
-                    if(modelInfo.getClipMax(ivar) == DBL_MAX) continue;
-                    double x = (active_variable_positions[i] - modelInfo.getMin(ivar)) / modelInfo.getSpan(ivar);
-                    x = x * 2 - 1;
-                    x *= goal.weight;
-                    fitness_sum += x * x;
-                }
-            }*/
-            
+
             case GoalType::AvoidJointLimits:
             {
-                double s = 0.0;
                 for(size_t i = 0; i < active_variables.size(); i++)
                 {
                     size_t ivar = active_variables[i];
                     if(modelInfo.getClipMax(ivar) == DBL_MAX) continue;
-                    double x = (active_variable_positions[i] - modelInfo.getMin(ivar)) / modelInfo.getSpan(ivar);
-                    x = x * 2 - 1;
-                    //x = 1.0 / (1.0 + 1.0 / (goal.weight * goal.weight) - x * x);
+                    double x = (active_variable_positions[i] - modelInfo.getMin(ivar)) / modelInfo.getSpan(ivar) * 2 - 1;
+                    
+                    x = x * x;
+                    
+                    //x = 1.0 / (1.0 + 0.1 - x * x) - 1.0;
                     //x = 1 + x * x * goal.weight_sq;
                     //fitness_sum *= x;
-                    s += x * x;
+                    
+                    //x = 1.0 - sqrt(fmax(0.0, 1.0 - x * x));
+                    
+                    //x *= modelInfo.getMaxVelocityRcp(ivar) / modelInfo.getSpan(ivar);
+                    
+                    x *= goal.weight;
+                    gain += x * x;
                 }
-                fitness_sum *= 1 + s * goal.weight_sq;
                 continue;
             }
             
             case GoalType::MinimalDisplacement:
             {
-                double s = 0.0;
                 for(size_t i = 0; i < active_variables.size(); i++)
                 {
                     size_t ivar = active_variables[i];
                     double x = active_variable_positions[i] - request.initial_guess[ivar];
-                    x = x * 2 - 1;
-                    s += x * x;
+                    //LOG(i, minimal_displacement_factors[i]);
+                    x *= minimal_displacement_factors[i];
+                    x *= goal.weight;
+                    //gain += x * x;
+                    gain += fabs(x);
+                    //sum += x * x;
                 }
-                fitness_sum *= 1 + s * goal.weight_sq;
                 continue;
             }
             
             }
         }
-        
-        /*for(size_t i = 0; i < active_variables.size(); i++)
-        {
-            size_t ivar = active_variables[i];
-            if(modelInfo.getClipMax(ivar) == DBL_MAX) continue;
-            double x = (active_variable_positions[i] - modelInfo.getMin(ivar)) / modelInfo.getSpan(ivar);
-            x = x * 2 - 1;
-            //x = 1.0 / (1.0 + 1.0 / (goal.weight * goal.weight) - x * x);
-            x = 1 + x * x * 1;
-            fitness_sum *= x;
-        }*/
 
-        return fitness_sum;
+        return sum * gain;
     }
+    */
     
     std::vector<double> temp_active_variable_positions;
     
-    double computeFitness(const std::vector<double>& variable_positions, const std::vector<Frame>& tip_frames)
+    double* extractActiveVariables(const std::vector<double>& variable_positions)
     {
         temp_active_variable_positions.resize(active_variables.size());
         for(size_t i = 0; i < temp_active_variable_positions.size(); i++)
             temp_active_variable_positions[i] = variable_positions[active_variables[i]];
-        return computeFitnessActiveVariables(tip_frames, temp_active_variable_positions.data());
+        return temp_active_variable_positions.data();
+    }
+    
+    double computeFitness(const std::vector<double>& variable_positions, const std::vector<Frame>& tip_frames)
+    {
+        return computeFitnessActiveVariables(tip_frames, extractActiveVariables(variable_positions));
     }
 
     double computeFitness(const std::vector<double>& variable_positions)

@@ -30,6 +30,7 @@ class RobotInfo
         //bool bounded;
         double min;
         double max;
+        double max_velocity, max_velocity_rcp;
     };
     std::vector<VariableInfo> variables;
     std::vector<size_t> activeVariables;
@@ -85,11 +86,19 @@ public:
             
             //info.span = 1;
             
+            
+            
+            info.max_velocity = bounds.max_velocity_;
+            info.max_velocity_rcp = info.max_velocity > 0.0 ? 1.0 / info.max_velocity : 0.0;
+            
+            
+            
             variables.push_back(info);
         }
-        for(size_t variable_index = 0; variable_index < model->getVariableCount(); variable_index++)
+        
+        for(size_t ivar = 0; ivar < model->getVariableCount(); ivar++)
         {
-            variable_joint_types.push_back(model->getJointOfVariable(variable_index)->getType());
+            variable_joint_types.push_back(model->getJointOfVariable(ivar)->getType());
         }
     }
     /*void initialize(const std::vector<size_t>& tip_link_indices)
@@ -145,6 +154,8 @@ public:
     //inline const std::vector<size_t>& getActiveVariables() const { return activeVariables; }
     inline bool isRevolute(size_t variable_index) const { return variable_joint_types[variable_index] == moveit::core::JointModel::REVOLUTE; }
     inline bool isPrismatic(size_t variable_index) const { return variable_joint_types[variable_index] == moveit::core::JointModel::PRISMATIC; }
+    inline double getMaxVelocity(size_t i) const { return variables[i].max_velocity; }
+    inline double getMaxVelocityRcp(size_t i) const { return variables[i].max_velocity_rcp; }
 };
 
 /*
