@@ -302,6 +302,109 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 }
             }
             
+            {
+                typedef XmlRpc::XmlRpcValue var;
+
+                var goals;
+                node_handle.param("goals", goals, goals);
+
+                if(goals.getType() == var::TypeArray)
+                {
+                    for(int i = 0; i < goals.size(); i++)
+                    {
+                        if(goals[i].getType() == var::TypeStruct)
+                        {
+                            auto d = XmlRpcReader(goals[i]);
+                            
+                            std::string type;
+                            d.param("type", type);
+                            LOG("goal", "type", type);
+                            
+                            if(type == "LookAt")
+                            {
+                                auto* g = new LookAtGoal();
+                                d.param("weight", g->weight);
+                                d.param("link", g->link_name);
+                                d.param("axis", g->axis);
+                                d.param("target", g->target);
+                                default_goals.emplace_back(g);
+                                continue;
+                            }
+                            
+                            if(type == "Position")
+                            {
+                                auto* g = new PositionGoal();
+                                d.param("weight", g->weight);
+                                d.param("link", g->link_name);
+                                d.param("position", g->position);
+                                default_goals.emplace_back(g);
+                                continue;
+                            }
+                            
+                            if(type == "Orientation")
+                            {
+                                auto* g = new OrientationGoal();
+                                d.param("weight", g->weight);
+                                d.param("link", g->link_name);
+                                d.param("orientation", g->orientation);
+                                default_goals.emplace_back(g);
+                                continue;
+                            }
+                            
+                            if(type == "Pose")
+                            {
+                                auto* g = new PoseGoal();
+                                d.param("weight", g->weight);
+                                d.param("link", g->link_name);
+                                d.param("position", g->position);
+                                d.param("orientation", g->orientation);
+                                default_goals.emplace_back(g);
+                                continue;
+                            }
+                            
+                            if(type == "JointVariable")
+                            {
+                                auto* g = new JointVariableGoal();
+                                d.param("weight", g->weight);
+                                d.param("variable", g->variable_name);
+                                d.param("position", g->variable_position);
+                                d.param("secondary", g->secondary);
+                                default_goals.emplace_back(g);
+                                continue;
+                            }
+                            
+                            if(type == "MaxDistance")
+                            {
+                                auto* g = new MaxDistanceGoal();
+                                d.param("weight", g->weight);
+                                d.param("link", g->link_name);
+                                d.param("target", g->target);
+                                d.param("distance", g->distance);
+                                default_goals.emplace_back(g);
+                                continue;
+                            }
+                            
+                            if(type == "AvoidJointLimits")
+                            {
+                                auto* g = new AvoidJointLimitsGoal();
+                                d.param("weight", g->weight);
+                                default_goals.emplace_back(g);
+                                continue;
+                            }
+                            
+                            if(type == "MinimalDisplacement")
+                            {
+                                auto* g = new MinimalDisplacementGoal();
+                                d.param("weight", g->weight);
+                                default_goals.emplace_back(g);
+                                continue;
+                            }
+                            
+                            ERROR("invalid goal type", type);
+                        }
+                    }
+                }
+            }
         }
         
 
@@ -393,6 +496,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         double t0 = ros::Time::now().toSec();
         
         //timeout = 0.1;
+        
+        //LOG("a");
         
         if(enable_profiler) Profiler::start();
         
@@ -527,14 +632,43 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         for(auto ivar : ikrequest.active_variables)
         {
             auto v = state[ivar];
-            if(robot_info.isRevolute(ivar) && robot_info.getClipMax(ivar) == DBL_MAX)
+            
+            /*if(robot_info.isRevolute(ivar) && robot_info.getClipMax(ivar) == DBL_MAX)
             {
                 v *= (1.0 / (2 * M_PI));
                 v -= std::floor(v);
                 v += std::floor(robot_info.getMin(ivar) * (1.0 / (2 * M_PI)));
                 if(v < robot_info.getMin(ivar)) v += 2 * M_PI;
                 v *= (2 * M_PI);
+            }*/
+            
+            //double c = robot_info.getMin(ivar);
+            //if(robot_info.isRevolute(ivar) && std::isfinite(c) && c > FLT_MIN && c < FLT_MAX)
+            
+            /*if(robot_info.isRevolute(ivar) && (v < robot_info.getMin(ivar) || v > robot_info.getMax(ivar)))
+            {
+                v *= (1.0 / (2 * M_PI));
+                v -= std::floor(v);
+                v += std::floor(robot_info.getMin(ivar) * (1.0 / (2 * M_PI)));
+                v *= (2 * M_PI);
+                if(v < robot_info.getMin(ivar)) v += 2 * M_PI;
+                if(v > robot_info.getMax(ivar)) v -= 2 * M_PI;
+            }*/
+            
+            if(robot_info.isRevolute(ivar))
+            {
+                if(v < robot_info.getMin(ivar))
+                {
+                    v += std::ceil((robot_info.getMin(ivar) - v) * (1.0 / (2.0 * M_PI))) * (2.0 * M_PI);
+                }
+                if(v > robot_info.getMax(ivar))
+                {
+                    v += std::floor((robot_info.getMax(ivar) - v) * (1.0 / (2.0 * M_PI))) * (2.0 * M_PI);
+                }
             }
+            
+            //LOG("var", ivar, v);
+            
             state[ivar] = v;
         }
 

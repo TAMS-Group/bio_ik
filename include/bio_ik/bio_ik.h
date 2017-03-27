@@ -85,15 +85,20 @@ struct AvoidJointLimitsGoal : GoalBase
 {
 };
 
+struct CenterJointsGoal : GoalBase
+{
+};
+
 struct MinimalDisplacementGoal : GoalBase
 {
 };
 
-struct VariablePositionGoal : GoalBase
+struct JointVariableGoal : GoalBase
 {
+    bool secondary;
     std::string variable_name;
     double variable_position;
-    VariablePositionGoal() : variable_position(0)
+    JointVariableGoal() : variable_position(0), secondary(false)
     {
     }
 };

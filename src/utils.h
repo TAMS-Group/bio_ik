@@ -18,6 +18,10 @@
 #include <stdlib.h>
 #include <malloc.h>
 
+#include <tf_conversions/tf_kdl.h>
+
+#include <XmlRpcException.h>
+
 //#include <link.h>
 
 //#include <boost/align/aligned_allocator.hpp>
@@ -492,6 +496,79 @@ template<class T>
 struct aligned_vector : std::vector<T, aligned_allocator<T, 32>>
 {
 };
+
+
+
+
+
+
+
+class XmlRpcReader
+{
+    typedef XmlRpc::XmlRpcValue var;
+    var& v;
+public:
+    XmlRpcReader(var& v) : v(v)
+    {
+    }
+private:
+    XmlRpcReader at(int i)
+    {
+        return v[i];
+    }
+    void conv(bool& r)
+    {
+        r = (bool)v;
+    }
+    void conv(double& r)
+    {
+        r = (v.getType() == var::TypeInt) ? ((double)(int)v) : ((double)v); 
+    }
+    void conv(tf::Vector3& r)
+    {
+        double x, y, z;
+        at(0).conv(x);
+        at(1).conv(y);
+        at(2).conv(z);
+        r = tf::Vector3(x, y, z);
+    }
+    void conv(tf::Quaternion& r)
+    {
+        double x, y, z, w;
+        at(0).conv(x);
+        at(1).conv(y);
+        at(2).conv(z);
+        at(3).conv(w);
+        r = tf::Quaternion(x, y, z, w).normalized();
+    }
+    void conv(std::string& r)
+    {
+        r = (std::string)v;
+    }
+public:
+    template<class T>
+    void param(const char* key, T& r)
+    {
+        if(!v.hasMember(key)) return;
+        try
+        {
+            XmlRpcReader(v[key]).conv(r);
+        }
+        catch(const XmlRpc::XmlRpcException& e)
+        {
+            LOG(key);
+            throw;
+        }
+    }
+};
+
+
+
+
+
+
+
+
 
 
 }

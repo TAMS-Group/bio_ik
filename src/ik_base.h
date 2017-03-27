@@ -54,7 +54,8 @@ enum class GoalType : uint32_t
     MaxDistance,
     AvoidJointLimits,
     MinimalDisplacement,
-    VariablePosition,
+    JointVariable,
+    CenterJoints,
 };
 
 struct IKGoalInfo
@@ -190,15 +191,21 @@ public:
                 secondary = true;
             }
             
+            if(auto* g = dynamic_cast<const CenterJointsGoal*>(goal))
+            {
+                goal_info.goal_type = GoalType::CenterJoints;
+                secondary = true;
+            }
+            
             if(auto* g = dynamic_cast<const MinimalDisplacementGoal*>(goal))
             {
                 goal_info.goal_type = GoalType::MinimalDisplacement;
                 secondary = true;
             }
             
-            if(auto* g = dynamic_cast<const VariablePositionGoal*>(goal))
+            if(auto* g = dynamic_cast<const JointVariableGoal*>(goal))
             {
-                goal_info.goal_type = GoalType::VariablePosition;
+                goal_info.goal_type = GoalType::JointVariable;
                 goal_info.active_variable_index = -1;
                 /*for(size_t i = 0; i < active_variables.size(); i++)
                 {
@@ -214,6 +221,7 @@ public:
                     ERROR("joint variable not found", g->variable_name);
                 }*/
                 goal_info.variable_position = g->variable_position;
+                if(g->secondary) secondary = true;
             }
             
             goal_info.rotation_scale_sq = goal_info.rotation_scale * goal_info.rotation_scale;
@@ -243,16 +251,19 @@ public:
         LOG_VAR(request.tip_link_indices.size());
         for(auto& tli : request.tip_link_indices) LOG_VAR(tli);*/
         
-        for(auto& goal_info : goals)
+        for(auto* pgg : { &goals, &secondary_goals })
         {
-            if(goal_info.goal_type == GoalType::VariablePosition)
+            for(auto& goal_info : *pgg)
             {
-                for(size_t i = 0; i < active_variables.size(); i++)
+                if(goal_info.goal_type == GoalType::JointVariable)
                 {
-                    if(params.robot_model->getVariableNames()[active_variables[i]] == ((const VariablePositionGoal*)goal_info.goal)->variable_name)
+                    for(size_t i = 0; i < active_variables.size(); i++)
                     {
-                        goal_info.active_variable_index = i;
-                        break;
+                        if(params.robot_model->getVariableNames()[active_variables[i]] == ((const JointVariableGoal*)goal_info.goal)->variable_name)
+                        {
+                            goal_info.active_variable_index = i;
+                            break;
+                        }
                     }
                 }
             }
@@ -555,6 +566,20 @@ struct IKBase : IKBase2, RandomBase
                 continue;
             }
             
+            case GoalType::CenterJoints:
+            {
+                for(size_t i = 0; i < active_variables.size(); i++)
+                {
+                    size_t ivar = active_variables[i];
+                    if(modelInfo.getClipMax(ivar) == DBL_MAX) continue;
+                    double x = active_variable_positions[i] - (modelInfo.getMin(ivar) + modelInfo.getMax(ivar)) * 0.5;
+                    x *= minimal_displacement_factors[i];
+                    x *= goal.weight;
+                    sum += x * x;
+                }
+                continue;
+            }
+            
             }
             
         }
@@ -604,7 +629,8 @@ struct IKBase : IKBase2, RandomBase
                 {
                     tf::Vector3 axis;
                     quat_mul_vec(fb.rot, goal.axis, axis);
-                    sum += (fb.pos + axis * axis.dot(goal.target - fb.pos)).distance2(goal.target);
+                    //sum += (fb.pos + axis * axis.dot(goal.target - fb.pos)).distance2(goal.target) * goal.weight_sq / goal.target.distance2(fb.pos);
+                    sum += (goal.target - fb.pos).normalized().distance2(axis.normalized()) * goal.weight_sq;
                     continue;
                 }
                 
@@ -615,7 +641,7 @@ struct IKBase : IKBase2, RandomBase
                     continue;
                 }
                 
-                case GoalType::VariablePosition:
+                case GoalType::JointVariable:
                 {
                     if(goal.active_variable_index < 0) continue;
                     double d = active_variable_positions[goal.active_variable_index] - goal.variable_position;
@@ -734,7 +760,7 @@ struct IKBase : IKBase2, RandomBase
                     continue;
                 }
                 
-                case GoalType::VariablePosition:
+                case GoalType::JointVariable:
                 {
                     if(goal.active_variable_index < 0) continue;
                     double d = active_variable_positions[goal.active_variable_index] - goal.variable_position;
