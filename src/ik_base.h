@@ -188,19 +188,19 @@ public:
             if(auto* g = dynamic_cast<const AvoidJointLimitsGoal*>(goal))
             {
                 goal_info.goal_type = GoalType::AvoidJointLimits;
-                secondary = true;
+                secondary = g->secondary;
             }
             
             if(auto* g = dynamic_cast<const CenterJointsGoal*>(goal))
             {
                 goal_info.goal_type = GoalType::CenterJoints;
-                secondary = true;
+                secondary = g->secondary;
             }
             
             if(auto* g = dynamic_cast<const MinimalDisplacementGoal*>(goal))
             {
                 goal_info.goal_type = GoalType::MinimalDisplacement;
-                secondary = true;
+                secondary = g->secondary;
             }
             
             if(auto* g = dynamic_cast<const JointVariableGoal*>(goal))
@@ -221,7 +221,7 @@ public:
                     ERROR("joint variable not found", g->variable_name);
                 }*/
                 goal_info.variable_position = g->variable_position;
-                if(g->secondary) secondary = true;
+                secondary = g->secondary;
             }
             
             goal_info.rotation_scale_sq = goal_info.rotation_scale * goal_info.rotation_scale;
@@ -488,117 +488,11 @@ struct IKBase : IKBase2, RandomBase
     
     
     
-    
-    
-    double computeSecondaryFitnessActiveVariables(const double* active_variable_positions)
+    double computeGoalFitness(const std::vector<IKGoalInfo>& goals, const Frame* tip_frames, const double* active_variable_positions)
     {
-        double sum = 0.0;
-        
-        for(auto& goal : request.secondary_goals)
-        {
-        
-            switch(goal.goal_type)
-            {
-        
-            case GoalType::AvoidJointLimits:
-            {
-                for(size_t i = 0; i < active_variables.size(); i++)
-                {
-                    size_t ivar = active_variables[i];
-                    if(modelInfo.getClipMax(ivar) == DBL_MAX) continue;
-                    
-                    //double x = (active_variable_positions[i] - modelInfo.getMin(ivar)) / modelInfo.getSpan(ivar) * 2 - 1;
-                    
-                    //x = x * x;
-                    
-                    //x = fmax(0.0, fabs(x) * 2 - 1);
-                    
-                    //x = 1.0 / (1.0 + 0.1 - x * x) - 1.0;
-                    //x = 1 + x * x * goal.weight_sq;
-                    //fitness_sum *= x;
-                    
-                    //x = 1.0 - sqrt(fmax(0.0, 1.0 - x * x));
-                    
-                    //x *= modelInfo.getMaxVelocityRcp(ivar) / modelInfo.getSpan(ivar);
-                    
-                    //x *= modelInfo.getSpan(ivar);
-                    
-                    double x = active_variable_positions[i] - (modelInfo.getMin(ivar) + modelInfo.getMax(ivar)) * 0.5;
-                    
-                    x = fmax(0.0, fabs(x) * 2.0 - modelInfo.getSpan(ivar) * 0.5);
-                    
-                    x *= minimal_displacement_factors[i];
-                    
-                    x *= goal.weight;
-                    
-                    sum += x * x;
-                    
-                    //sum += fabs(x) * goal.weight;
-                }
-                continue;
-            }
-            
-            case GoalType::MinimalDisplacement:
-            {
-                //LOG(active_variables.size(), request.initial_guess.size(), 
-            
-                for(size_t i = 0; i < active_variables.size(); i++)
-                {
-                    size_t ivar = active_variables[i];
-                    
-                    //LOG(i, ivar, request.initial_guess.size(), minimal_displacement_factors.size());
-                    
-                    double x = active_variable_positions[i] - request.initial_guess[ivar];
-                    //double x = active_variable_positions[i] - request.initial_guess.at(ivar);
-                    
-                    //LOG(i, minimal_displacement_factors[i]);
-                    
-                    x *= minimal_displacement_factors[i];
-                    //x *= minimal_displacement_factors.at(i);
-                    
-                    x *= goal.weight;
-                    
-                    sum += x * x;
-                    
-                    //sum += fabs(x) * goal.weight;
-                    //sum += x * x;
-                }
-                continue;
-            }
-            
-            case GoalType::CenterJoints:
-            {
-                for(size_t i = 0; i < active_variables.size(); i++)
-                {
-                    size_t ivar = active_variables[i];
-                    if(modelInfo.getClipMax(ivar) == DBL_MAX) continue;
-                    double x = active_variable_positions[i] - (modelInfo.getMin(ivar) + modelInfo.getMax(ivar)) * 0.5;
-                    x *= minimal_displacement_factors[i];
-                    x *= goal.weight;
-                    sum += x * x;
-                }
-                continue;
-            }
-            
-            }
-            
-        }
-        
-        return sum;
-    }
-    
-    double computeSecondaryFitnessAllVariables(const std::vector<double>& variable_positions)
-    {
-        return computeSecondaryFitnessActiveVariables(extractActiveVariables(variable_positions));
-    }
-    
-    double computeFitnessActiveVariables(const std::vector<Frame>& tip_frames, const double* active_variable_positions)
-    {
-        FNPROFILER();
-    
         double sum = 0.0;
 
-        for(auto& goal : request.goals)
+        for(auto& goal : goals)
         {
             const auto& fa = goal.frame;
             const auto& fb = tip_frames[goal.tip_index];
@@ -649,10 +543,70 @@ struct IKBase : IKBase2, RandomBase
                     continue;
                 }
             
+                case GoalType::AvoidJointLimits:
+                {
+                    for(size_t i = 0; i < active_variables.size(); i++)
+                    {
+                        size_t ivar = active_variables[i];
+                        if(modelInfo.getClipMax(ivar) == DBL_MAX) continue;
+                        double x = active_variable_positions[i] - (modelInfo.getMin(ivar) + modelInfo.getMax(ivar)) * 0.5;
+                        x = fmax(0.0, fabs(x) * 2.0 - modelInfo.getSpan(ivar) * 0.5);
+                        x *= minimal_displacement_factors[i];
+                        x *= goal.weight;
+                        sum += x * x;
+                    }
+                    continue;
+                }
+                
+                case GoalType::MinimalDisplacement:
+                {
+                    for(size_t i = 0; i < active_variables.size(); i++)
+                    {
+                        size_t ivar = active_variables[i];
+                        double x = active_variable_positions[i] - request.initial_guess[ivar];
+                        x *= minimal_displacement_factors[i];
+                        x *= goal.weight;
+                        sum += x * x;
+                    }
+                    continue;
+                }
+                
+                case GoalType::CenterJoints:
+                {
+                    for(size_t i = 0; i < active_variables.size(); i++)
+                    {
+                        size_t ivar = active_variables[i];
+                        if(modelInfo.getClipMax(ivar) == DBL_MAX) continue;
+                        double x = active_variable_positions[i] - (modelInfo.getMin(ivar) + modelInfo.getMax(ivar)) * 0.5;
+                        x *= minimal_displacement_factors[i];
+                        x *= goal.weight;
+                        sum += x * x;
+                    }
+                    continue;
+                }
             }
         }
 
         return sum;
+    }
+    
+    
+    
+    
+    
+    double computeSecondaryFitnessActiveVariables(const double* active_variable_positions)
+    {
+        return computeGoalFitness(request.secondary_goals, 0, active_variable_positions);
+    }
+    
+    double computeSecondaryFitnessAllVariables(const std::vector<double>& variable_positions)
+    {
+        return computeSecondaryFitnessActiveVariables(extractActiveVariables(variable_positions));
+    }
+    
+    double computeFitnessActiveVariables(const std::vector<Frame>& tip_frames, const double* active_variable_positions)
+    {
+        return computeGoalFitness(request.goals, tip_frames.data(), active_variable_positions);
     }
     
     

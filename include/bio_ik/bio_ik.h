@@ -83,14 +83,26 @@ struct MaxDistanceGoal : LinkGoalBase
 
 struct AvoidJointLimitsGoal : GoalBase
 {
+    bool secondary;
+    AvoidJointLimitsGoal() : secondary(true)
+    {
+    }
 };
 
 struct CenterJointsGoal : GoalBase
 {
+    bool secondary;
+    CenterJointsGoal() : secondary(true)
+    {
+    }
 };
 
 struct MinimalDisplacementGoal : GoalBase
 {
+    bool secondary;
+    MinimalDisplacementGoal() : secondary(true)
+    {
+    }
 };
 
 struct JointVariableGoal : GoalBase
