@@ -56,6 +56,7 @@ enum class GoalType : uint32_t
     MinimalDisplacement,
     JointVariable,
     CenterJoints,
+    JointTransmission,
 };
 
 struct IKGoalInfo
@@ -73,6 +74,7 @@ struct IKGoalInfo
     double distance;
     ssize_t active_variable_index;
     double variable_position;
+    std::vector<ssize_t> variable_indices;
 };
 
 struct IKRequest
@@ -224,6 +226,12 @@ public:
                 secondary = g->secondary;
             }
             
+            if(auto* g = dynamic_cast<const JointTransmissionGoal*>(goal))
+            {
+                goal_info.goal_type = GoalType::JointTransmission;
+                secondary = g->secondary;
+            }
+            
             goal_info.rotation_scale_sq = goal_info.rotation_scale * goal_info.rotation_scale;
             goal_info.weight_sq = goal_info.weight * goal_info.weight;
             
@@ -264,6 +272,36 @@ public:
                             goal_info.active_variable_index = i;
                             break;
                         }
+                    }
+                }
+                
+                if(goal_info.goal_type == GoalType::JointTransmission)
+                {
+                    auto* g = dynamic_cast<const JointTransmissionGoal*>(goal_info.goal);
+                    for(auto& variable_name : g->variable_names)
+                    {
+                        for(size_t i = 0; i < active_variables.size(); i++)
+                        {
+                            if(params.robot_model->getVariableNames()[active_variables[i]] == variable_name)
+                            {
+                                goal_info.variable_indices.push_back(i);
+                                goto ok;
+                            }
+                        }
+                        
+                        for(ssize_t i = 0; i < params.robot_model->getVariableCount(); i++)
+                        {
+                            if(params.robot_model->getVariableNames()[i] == variable_name)
+                            {
+                                goal_info.variable_indices.push_back(-1 - i);
+                                goto ok;
+                            }
+                        }
+                        
+                        ERROR("joint not found", variable_name);
+                        
+                    ok:
+                        ;
                     }
                 }
             }
@@ -585,13 +623,33 @@ struct IKBase : IKBase2, RandomBase
                     }
                     continue;
                 }
+                
+                case GoalType::JointTransmission:
+                {
+                    joint_transmission_goal_temp.resize(goal.variable_indices.size());
+                    for(size_t i = 0; i < goal.variable_indices.size(); i++)
+                    {
+                        if(goal.variable_indices[i] >= 0)
+                            joint_transmission_goal_temp[i] = active_variable_positions[active_variables[goal.variable_indices[i]]];
+                        else
+                            joint_transmission_goal_temp[i] = request.initial_guess[-goal.variable_indices[i] - 1];
+                    }
+                    joint_transmission_goal_temp2 = joint_transmission_goal_temp;
+                    ((const JointTransmissionGoal*)goal.goal)->lambda(joint_transmission_goal_temp2);
+                    for(size_t i = 0; i < goal.variable_indices.size(); i++)
+                    {
+                        double d = joint_transmission_goal_temp[i] - joint_transmission_goal_temp2[i];
+                        sum += d * d * goal.weight_sq;
+                    }
+                    continue;
+                }
             }
         }
 
         return sum;
     }
     
-    
+    std::vector<double> joint_transmission_goal_temp, joint_transmission_goal_temp2;
     
     
     

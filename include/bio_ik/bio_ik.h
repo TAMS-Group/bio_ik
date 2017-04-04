@@ -115,6 +115,47 @@ struct JointVariableGoal : GoalBase
     }
 };
 
+/*
+struct LambdaGoalBase : GoalBase
+{
+    std::vector<std::string> variable_names;
+    std::function<double(const double*)> lambda;
+};
+
+struct LambdaGoal : LambdaGoalBase
+{
+    template<class F>
+    LambdaGoal(const std::string& a, const std::string& b, const F& f)
+    {
+        variable_names = { a, b };
+        lambda = [f] (const double* a) { return f(a[0], a[1]); };
+    }
+};
+*/
+
+struct JointTransmissionGoal : GoalBase
+{
+    bool secondary;
+    std::vector<std::string> variable_names;
+    std::function<void(std::vector<double>&)> lambda;
+    
+    template<class F>
+    JointTransmissionGoal(const std::string& a, const std::string& b, const F& f)
+    {
+        variable_names = { a, b };
+        lambda = f;
+        secondary = false;
+    }
+    
+    template<class F>
+    JointTransmissionGoal(const std::vector<std::string>& variables, const F& f)
+    {
+        variable_names = variables;
+        lambda = f;
+        secondary = false;
+    }
+};
+
 struct BioIKKinematicsQueryOptions : kinematics::KinematicsQueryOptions
 {
     std::vector<std::unique_ptr<Goal>> goals;
