@@ -504,12 +504,17 @@ struct IKBase : IKBase2, RandomBase
                     auto ivar = active_variables[i];
                     minimal_displacement_factors[i] = modelInfo.getMaxVelocityRcp(ivar) / s;
                 }
+      //          for(int i = 0; i < 7; i++)
+    //               minimal_displacement_factors[i] /= 1000;
             }
             else
             {
                 for(size_t i = 0; i < active_variables.size(); i++)
                     minimal_displacement_factors[i] = 1.0 / active_variables.size();
-            }
+//  for(int i = 0; i < 7; i++)
+  //                 minimal_displacement_factors[i] /= 1000;
+            
+}
         }
     }
     
@@ -600,6 +605,7 @@ struct IKBase : IKBase2, RandomBase
                 {
                     for(size_t i = 0; i < active_variables.size(); i++)
                     {
+                        if(i >= 7) continue;
                         size_t ivar = active_variables[i];
                         double x = active_variable_positions[i] - request.initial_guess[ivar];
                         x *= minimal_displacement_factors[i];
