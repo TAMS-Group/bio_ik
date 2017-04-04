@@ -8,6 +8,9 @@
     <license>TODO</license>
 
     <buildtool_depend>catkin</buildtool_depend>
+    
+    <build_depend>std_msgs</build_depend>
+    <run_depend>std_msgs</run_depend>
 
     <build_depend>moveit_core</build_depend>
     <run_depend>moveit_core</run_depend>

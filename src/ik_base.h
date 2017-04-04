@@ -567,6 +567,7 @@ struct IKBase : IKBase2, RandomBase
                         x *= minimal_displacement_factors[i];
                         x *= goal.weight;
                         sum += x * x;
+                        //LOG(i, params.robot_model->getVariableNames()[active_variables[i]], minimal_displacement_factors[i]);
                     }
                     continue;
                 }
