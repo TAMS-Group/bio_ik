@@ -34,6 +34,10 @@
 using namespace bio_ik;
 
 
+
+
+// implement BioIKKinematicsQueryOptions
+
 namespace bio_ik
 {
 
@@ -64,15 +68,13 @@ const BioIKKinematicsQueryOptions* toBioIKKinematicsQueryOptions(const void* ptr
 
 }
 
+
+
+
+// BioIK Kinematics Plugin
+
 namespace bio_ik_kinematics_plugin
 {
-
-
-
-
-
-
-
 
 
 typedef IKParallel PluginIKSolver;
@@ -198,61 +200,6 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         
         ik.reset(new PluginIKSolver(ikparams));
         
-        
-        
-        
-        
-        
-        
-        
-        
-        /*
-        //ikrequest.tip_frames = tip_frames_;
-        
-        ikrequest.tip_link_indices.clear();
-        for(auto& name : tip_frames_)
-            ikrequest.tip_link_indices.push_back(robot_model->getLinkModel(name)->getLinkIndex());
-            
-        std::vector<int> joint_usage;
-        joint_usage.resize(robot_model->getJointModelCount());
-        for(auto& u : joint_usage) u = 0;
-        for(auto tip_index : ikrequest.tip_link_indices)
-            for(auto* link_model = robot_model->getLinkModels()[tip_index]; link_model; link_model = link_model->getParentLinkModel())
-                joint_usage[link_model->getParentJointModel()->getJointIndex()] = 1;
-        ikrequest.active_variables.clear();
-        for(auto* joint_model : joint_model_group->getActiveJointModels())
-            if(joint_usage[joint_model->getJointIndex()] && !joint_model->getMimic())
-                for(size_t ivar = joint_model->getFirstVariableIndex(); ivar < joint_model->getFirstVariableIndex() + joint_model->getVariableCount(); ivar++)
-                    ikrequest.active_variables.push_back(ivar);
-        std::random_shuffle(ikrequest.active_variables.begin(), ikrequest.active_variables.end()); // TODO: remove
-        std::reverse(ikrequest.active_variables.begin(), ikrequest.active_variables.end()); // TODO: remove
-
-        ikrequest.goals.clear();
-        for(auto& name : tip_frames_)
-        {
-            LOG("load tip", name);
-        
-            ros::NodeHandle node_handle("~");
-            std::string rdesc;
-            node_handle.searchParam(robot_description_, rdesc);
-            node_handle = ros::NodeHandle(rdesc + "_kinematics/" + name);
-            
-            size_t tip_index = ikrequest.goals.size();
-    
-            ikrequest.goals.emplace_back();
-            
-            ikrequest.goals.back().tip_index = ikrequest.goals.size() - 1;
-
-            node_handle.param("position_only_ik", ikrequest.goals.back().position_only_ik, false);
-            node_handle.param("weight", ikrequest.goals.back().weight, 1.0);
-
-            ikrequest.goals.back().rotation_scale = 0.5; // TODO: change ????
-            //ikrequest.tip_infos.back().rotation_scale = 0.1; // TODO: change ????
-            node_handle.param("rotation_scale", ikrequest.goals.back().rotation_scale, ikrequest.goals.back().rotation_scale);
-            if(ikrequest.goals.back().position_only_ik) ikrequest.goals.back().rotation_scale = 0;
-            ikrequest.goals.back().rotation_scale_sq = ikrequest.goals.back().rotation_scale * ikrequest.goals.back().rotation_scale;
-        }
-        */
         
         
         {
@@ -490,7 +437,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                                 std::vector<double>& solution,
                                 const IKCallbackFn& solution_callback,
                                 moveit_msgs::MoveItErrorCodes& error_code,
-                                const kinematics::KinematicsQueryOptions &options = kinematics::KinematicsQueryOptions(),
+                                const kinematics::KinematicsQueryOptions& options = kinematics::KinematicsQueryOptions(),
                                 const moveit::core::RobotState* context_state = NULL) const
     {
         double t0 = ros::Time::now().toSec();
@@ -618,43 +565,15 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         // run ik solver
         ik->solve();
         
-        //LOG_VAR(state.size());
-        
         // get solution
         state = ik->getSolution();
-        
-        /*LOG_VAR(robot_model->getVariableCount());
-        LOG_VAR(state.size());
-        LOG_VAR(ikrequest.active_variables.size());
-        LOG_VAR(ikrequest.initial_guess.size());*/
 
         // wrap angles
         for(auto ivar : ikrequest.active_variables)
         {
             auto v = state[ivar];
-            
-            /*if(robot_info.isRevolute(ivar) && robot_info.getClipMax(ivar) == DBL_MAX)
-            {
-                v *= (1.0 / (2 * M_PI));
-                v -= std::floor(v);
-                v += std::floor(robot_info.getMin(ivar) * (1.0 / (2 * M_PI)));
-                if(v < robot_info.getMin(ivar)) v += 2 * M_PI;
-                v *= (2 * M_PI);
-            }*/
-            
-            //double c = robot_info.getMin(ivar);
-            //if(robot_info.isRevolute(ivar) && std::isfinite(c) && c > FLT_MIN && c < FLT_MAX)
-            
-            /*if(robot_info.isRevolute(ivar) && (v < robot_info.getMin(ivar) || v > robot_info.getMax(ivar)))
-            {
-                v *= (1.0 / (2 * M_PI));
-                v -= std::floor(v);
-                v += std::floor(robot_info.getMin(ivar) * (1.0 / (2 * M_PI)));
-                v *= (2 * M_PI);
-                if(v < robot_info.getMin(ivar)) v += 2 * M_PI;
-                if(v > robot_info.getMax(ivar)) v -= 2 * M_PI;
-            }*/
-            
+            // TODO: correct ???
+            // TODO: force close to initial_guess ???
             if(robot_info.isRevolute(ivar))
             {
                 if(v < robot_info.getMin(ivar))
@@ -666,9 +585,6 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                     v += std::floor((robot_info.getMax(ivar) - v) * (1.0 / (2.0 * M_PI))) * (2.0 * M_PI);
                 }
             }
-            
-            //LOG("var", ivar, v);
-            
             state[ivar] = v;
         }
 
@@ -686,16 +602,30 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                     solution.push_back(state.at(joint_model->getFirstVariableIndex() + vi));
             }
         }
-
-        // run callback
-        {
-            if(!solution_callback.empty())
-                solution_callback(ik_poses.front(), solution, error_code);
-            else
-                error_code.val = error_code.SUCCESS;
-        }
         
-        return error_code.val == error_code.SUCCESS;
+        // return an error if an accurate solution was requested, but no accurate solution was found
+        if(!ik->getSuccess() && !options.return_approximate_solution)
+        {
+            error_code.val = error_code.NO_IK_SOLUTION;
+            return false;
+        }
+
+        // callback?
+        if(!solution_callback.empty())
+        {
+            // run callback
+            solution_callback(ik_poses.front(), solution, error_code);
+            
+            // return success if callback has accepted the solution
+            return error_code.val == error_code.SUCCESS;
+        }
+        else
+        {
+            // return success
+            error_code.val = error_code.SUCCESS;
+            return true;
+        }
+
     }
     
     // MoveIt version compatability
@@ -715,10 +645,33 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
 }
 
+
+
+
+
+
+
+// register plugin
+
 #undef LOG
 #undef ERROR
-
 PLUGINLIB_EXPORT_CLASS(bio_ik_kinematics_plugin::BioIKKinematicsPlugin, kinematics::KinematicsBase);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <functional>
 
 #include <tf/tf.h>
 
@@ -115,43 +116,15 @@ struct JointVariableGoal : GoalBase
     }
 };
 
-/*
-struct LambdaGoalBase : GoalBase
-{
-    std::vector<std::string> variable_names;
-    std::function<double(const double*)> lambda;
-};
-
-struct LambdaGoal : LambdaGoalBase
-{
-    template<class F>
-    LambdaGoal(const std::string& a, const std::string& b, const F& f)
-    {
-        variable_names = { a, b };
-        lambda = [f] (const double* a) { return f(a[0], a[1]); };
-    }
-};
-*/
-
-struct JointTransmissionGoal : GoalBase
+struct JointFunctionGoal : GoalBase
 {
     bool secondary;
     std::vector<std::string> variable_names;
-    std::function<void(std::vector<double>&)> lambda;
-    
-    template<class F>
-    JointTransmissionGoal(const std::string& a, const std::string& b, const F& f)
-    {
-        variable_names = { a, b };
-        lambda = f;
-        secondary = false;
-    }
-    
-    template<class F>
-    JointTransmissionGoal(const std::vector<std::string>& variables, const F& f)
+    std::function<void(std::vector<double>&)> function;
+    JointFunctionGoal(const std::vector<std::string>& variables, const std::function<void(std::vector<double>&)>& f)
     {
         variable_names = variables;
-        lambda = f;
+        function = f;
         secondary = false;
     }
 };

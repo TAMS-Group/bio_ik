@@ -56,7 +56,7 @@ enum class GoalType : uint32_t
     MinimalDisplacement,
     JointVariable,
     CenterJoints,
-    JointTransmission,
+    JointFunction,
 };
 
 struct IKGoalInfo
@@ -226,9 +226,9 @@ public:
                 secondary = g->secondary;
             }
             
-            if(auto* g = dynamic_cast<const JointTransmissionGoal*>(goal))
+            if(auto* g = dynamic_cast<const JointFunctionGoal*>(goal))
             {
-                goal_info.goal_type = GoalType::JointTransmission;
+                goal_info.goal_type = GoalType::JointFunction;
                 secondary = g->secondary;
             }
             
@@ -275,9 +275,9 @@ public:
                     }
                 }
                 
-                if(goal_info.goal_type == GoalType::JointTransmission)
+                if(goal_info.goal_type == GoalType::JointFunction)
                 {
-                    auto* g = dynamic_cast<const JointTransmissionGoal*>(goal_info.goal);
+                    auto* g = dynamic_cast<const JointFunctionGoal*>(goal_info.goal);
                     for(auto& variable_name : g->variable_names)
                     {
                         for(size_t i = 0; i < active_variables.size(); i++)
@@ -504,17 +504,12 @@ struct IKBase : IKBase2, RandomBase
                     auto ivar = active_variables[i];
                     minimal_displacement_factors[i] = modelInfo.getMaxVelocityRcp(ivar) / s;
                 }
-      //          for(int i = 0; i < 7; i++)
-    //               minimal_displacement_factors[i] /= 1000;
             }
             else
             {
                 for(size_t i = 0; i < active_variables.size(); i++)
                     minimal_displacement_factors[i] = 1.0 / active_variables.size();
-//  for(int i = 0; i < 7; i++)
-  //                 minimal_displacement_factors[i] /= 1000;
-            
-}
+            }
         }
     }
     
@@ -630,7 +625,7 @@ struct IKBase : IKBase2, RandomBase
                     continue;
                 }
                 
-                case GoalType::JointTransmission:
+                case GoalType::JointFunction:
                 {
                     joint_transmission_goal_temp.resize(goal.variable_indices.size());
                     for(size_t i = 0; i < goal.variable_indices.size(); i++)
@@ -641,7 +636,7 @@ struct IKBase : IKBase2, RandomBase
                             joint_transmission_goal_temp[i] = request.initial_guess[-goal.variable_indices[i] - 1];
                     }
                     joint_transmission_goal_temp2 = joint_transmission_goal_temp;
-                    ((const JointTransmissionGoal*)goal.goal)->lambda(joint_transmission_goal_temp2);
+                    ((const JointFunctionGoal*)goal.goal)->function(joint_transmission_goal_temp2);
                     for(size_t i = 0; i < goal.variable_indices.size(); i++)
                     {
                         double d = joint_transmission_goal_temp[i] - joint_transmission_goal_temp2[i];
