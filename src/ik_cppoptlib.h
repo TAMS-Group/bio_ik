@@ -92,9 +92,17 @@ struct IKOptLib : IKBase
     
     // reset flag
     bool reset;
+    
+    // stop criteria
+    cppoptlib::Criteria<double> crit;
 
     IKOptLib(const IKParams& p) : IKBase(p), f(this)
     {
+        // init stop criteria (timeout will be handled explicitly)
+        crit = cppoptlib::Criteria<double>::defaults();
+        crit.iterations = SIZE_MAX;
+        crit.gradNorm = 1e-10;
+        p.node_handle.param("optlib_stop", crit.gradNorm, crit.gradNorm);
     }
     
     void initialize(const IKRequest& request)
@@ -126,6 +134,9 @@ struct IKOptLib : IKBase
     
     void step()
     {
+        // set stop criteria
+        solver.setStopCriteria(crit);
+    
         // random reset if stuck (and if random resets are enabled)
         if(reset)
         {
