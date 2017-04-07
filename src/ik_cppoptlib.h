@@ -120,7 +120,7 @@ struct IKOptLib : IKBase
         
         // init stop criteria (timeout will be handled explicitly)
         crit = cppoptlib::Criteria<double>::defaults();
-        crit.iterations = SIZE_MAX;
+        //crit.iterations = SIZE_MAX;
         crit.gradNorm = 1e-10;
         //p.node_handle.param("optlib_stop", crit.gradNorm, crit.gradNorm);
         
@@ -217,11 +217,11 @@ IKCPPOPT("cgd", ConjugatedGradientDescentSolver);
 #include "../../CppNumericalSolvers/include/cppoptlib/solver/gradientdescentsolver.h"
 IKCPPOPT("gd", GradientDescentSolver);
 
-//#include "../../CppNumericalSolvers/include/cppoptlib/solver/lbfgsbsolver.h"
-//IKCPPOPT("lbfgsb", LbfgsbSolver);
+#include "../../CppNumericalSolvers/include/cppoptlib/solver/lbfgsbsolver.h"
+IKCPPOPT("lbfgsb", LbfgsbSolver);
 
-//#include "../../CppNumericalSolvers/include/cppoptlib/solver/lbfgssolver.h"
-//IKCPPOPT("lbfgs", LbfgsSolver);
+#include "../../CppNumericalSolvers/include/cppoptlib/solver/lbfgssolver.h"
+IKCPPOPT("lbfgs", LbfgsSolver);
 
 #include "../../CppNumericalSolvers/include/cppoptlib/solver/neldermeadsolver.h"
 IKCPPOPT("nm", NelderMeadSolver);
