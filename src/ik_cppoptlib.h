@@ -85,7 +85,7 @@ struct IKOptLib : IKBase
     std::vector<double> solution, best_solution, temp;
     
     // cppoptlib solver
-    SOLVER solver;
+    std::shared_ptr<SOLVER> solver;
     
     // cppoptlib problem description
     IKOptLibProblem f;
@@ -98,11 +98,6 @@ struct IKOptLib : IKBase
 
     IKOptLib(const IKParams& p) : IKBase(p), f(this)
     {
-        // init stop criteria (timeout will be handled explicitly)
-        crit = cppoptlib::Criteria<double>::defaults();
-        crit.iterations = SIZE_MAX;
-        crit.gradNorm = 1e-10;
-        p.node_handle.param("optlib_stop", crit.gradNorm, crit.gradNorm);
     }
     
     void initialize(const IKRequest& request)
@@ -113,18 +108,23 @@ struct IKOptLib : IKBase
         solution = request.initial_guess;
         
         // randomize if more than 1 thread
-        if(thread_index > 0)
-            for(auto& vi : active_variables)
-                solution[vi] = random(modelInfo.getMin(vi), modelInfo.getMax(vi));
+        reset = false;
+        if(thread_index > 0) reset = true;
                 
         // init best solution
         best_solution = solution;
         
         // initialize cppoptlib problem description
+        f = IKOptLibProblem(this);
         f.initialize();
         
-        // don't immediately reset
-        reset = false;
+        // init stop criteria (timeout will be handled explicitly)
+        crit = cppoptlib::Criteria<double>::defaults();
+        crit.iterations = SIZE_MAX;
+        crit.gradNorm = 1e-10;
+        //p.node_handle.param("optlib_stop", crit.gradNorm, crit.gradNorm);
+        
+        if(!solver) solver = std::make_shared<SOLVER>();
     }
     
     const std::vector<double>& getSolution() const
@@ -135,7 +135,7 @@ struct IKOptLib : IKBase
     void step()
     {
         // set stop criteria
-        solver.setStopCriteria(crit);
+        solver->setStopCriteria(crit);
     
         // random reset if stuck (and if random resets are enabled)
         if(reset)
@@ -152,7 +152,7 @@ struct IKOptLib : IKBase
         for(size_t i = 0; i < active_variables.size(); i++) x[i] = temp[active_variables[i]];
         
         // solve
-        solver.minimize(f, x);
+        solver->minimize(f, x);
         
         // get results
         for(size_t i = 0; i < active_variables.size(); i++) temp[active_variables[i]] = x[i];
