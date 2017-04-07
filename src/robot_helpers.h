@@ -158,7 +158,7 @@ public:
     inline double getMaxVelocityRcp(size_t i) const { return variables[i].max_velocity_rcp; }
 };
 
-/*
+
 class HeuristicErrorTree
 {
     size_t variable_count, tip_count;
@@ -166,6 +166,9 @@ class HeuristicErrorTree
     std::vector<double> chain_lengths;
     std::vector<std::vector<double>> chain_lengths_2;
 public:
+    HeuristicErrorTree()
+    {
+    }
     HeuristicErrorTree(MoveItRobotModelConstPtr robot_model, const std::vector<std::string>& tip_names)
     {
         tip_count = tip_names.size();
@@ -236,6 +239,6 @@ public:
         return chain_lengths_2[tip_index][variable_index];
     }
 };
-*/
+
 
 }

@@ -111,7 +111,141 @@ struct IKJacobianBase : BASE
 
 
 
+
+
+
+// simple gradient descent
+template<int if_stuck, size_t threads>
+struct IKGradientDescent : IKBase
+{
+    std::vector<double> solution, best_solution, gradient, temp;
+    bool reset;
+
+    IKGradientDescent(const IKParams& p) : IKBase(p)
+    {
+    }
+    
+    void initialize(const IKRequest& request)
+    {
+        IKBase::initialize(request);
+        solution = request.initial_guess;
+        if(thread_index > 0)
+            for(auto& vi : active_variables)
+                solution[vi] = random(modelInfo.getMin(vi), modelInfo.getMax(vi));
+        best_solution = solution;
+        reset = false;
+    }
+    
+    const std::vector<double>& getSolution() const
+    {
+        return best_solution;
+    }
+    
+    void step()
+    {
+        // random reset if stuck
+        if(reset)
+        {
+            reset = false;
+            for(auto& vi : active_variables)
+                solution[vi] = random(modelInfo.getMin(vi), modelInfo.getMax(vi));
+        }
+    
+        // compute gradient direction
+        temp = solution;
+        double jd = 0.0001;
+        gradient.resize(solution.size(), 0);
+        for(auto ivar : active_variables)
+        {
+            temp[ivar] = solution[ivar] - jd;
+            double p1 = computeFitness(temp);
+            
+            temp[ivar] = solution[ivar] + jd;
+            double p3 = computeFitness(temp);
+            
+            temp[ivar] = solution[ivar];
+            
+            gradient[ivar] = p3 - p1;
+        }
+        
+        // normalize gradient direction
+        double sum = 0.0001;
+        for(auto ivar : active_variables)
+            sum += fabs(gradient[ivar]);
+        double f = 1.0 / sum * jd;
+        for(auto ivar : active_variables)
+            gradient[ivar] *= f;
+    
+        // initialize line search
+        temp = solution;
+        
+        for(auto ivar : active_variables) temp[ivar] = solution[ivar] - gradient[ivar];
+        double p1 = computeFitness(temp);
+        
+        for(auto ivar : active_variables) temp[ivar] = solution[ivar];
+        double p2 = computeFitness(temp);
+        
+        for(auto ivar : active_variables) temp[ivar] = solution[ivar] + gradient[ivar];
+        double p3 = computeFitness(temp);
+
+        // linear step size estimation
+        double cost_diff = (p3 - p1) * 0.5;
+        double joint_diff = p2 / cost_diff;
+        
+        // apply optimization step
+        // (move along gradient direction by estimated step size)
+        for(auto ivar : active_variables)
+            temp[ivar] = modelInfo.clip(solution[ivar] - gradient[ivar] * joint_diff, ivar);
+        
+        // has solution improved?
+        if(computeFitness(temp) < computeFitness(solution)) 
+        {
+            // solution improved -> accept solution
+            solution = temp; 
+        }
+        else
+        {
+            if(if_stuck == 'r')
+            {
+                // reset if stuck
+                reset = true;
+            }
+            if(if_stuck == 'c')
+            {
+                // always accept solution and continue
+                solution = temp;
+            }
+        }
+        
+        // update best solution
+        if(computeFitness(solution) < computeFitness(best_solution))
+            best_solution = solution;
+    }
+    
+    size_t concurrency() const { return threads; }
+};
+
+static IKFactory::Class<IKGradientDescent<' ', 1>> gd("gd");
+static IKFactory::Class<IKGradientDescent<' ', 2>> gd_2("gd_2");
+static IKFactory::Class<IKGradientDescent<' ', 4>> gd_4("gd_4");
+static IKFactory::Class<IKGradientDescent<' ', 8>> gd_8("gd_8");
+
+static IKFactory::Class<IKGradientDescent<'r', 1>> gd_r("gd_r");
+static IKFactory::Class<IKGradientDescent<'r', 2>> gd_2_r("gd_r_2");
+static IKFactory::Class<IKGradientDescent<'r', 4>> gd_4_r("gd_r_4");
+static IKFactory::Class<IKGradientDescent<'r', 8>> gd_8_r("gd_r_8");
+
+static IKFactory::Class<IKGradientDescent<'c', 1>> gd_c("gd_c");
+static IKFactory::Class<IKGradientDescent<'c', 2>> gd_2_c("gd_c_2");
+static IKFactory::Class<IKGradientDescent<'c', 4>> gd_4_c("gd_c_4");
+static IKFactory::Class<IKGradientDescent<'c', 8>> gd_8_c("gd_c_8");
+
+
+
+
+
 // only pseudoinverse jacobian
+template<size_t threads>
 struct IKJacobian : IKJacobianBase<IKBase>
 {
     using IKBase::initialize;
@@ -135,9 +269,12 @@ struct IKJacobian : IKJacobianBase<IKBase>
     {
         optimizeJacobian(solution);
     }
-    size_t concurrency() const { return 1; }
+    size_t concurrency() const { return threads; }
 };
-static IKFactory::Class<IKJacobian> cIKJacobian("jac");
+static IKFactory::Class<IKJacobian<1>> jac("jac");
+static IKFactory::Class<IKJacobian<2>> jac_2("jac_2");
+static IKFactory::Class<IKJacobian<4>> jac_4("jac_4");
+static IKFactory::Class<IKJacobian<8>> jac_8("jac_8");
 
 
 

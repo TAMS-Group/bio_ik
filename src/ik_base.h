@@ -470,9 +470,7 @@ struct IKBase : IKBase2, RandomBase
         thread_index = p.thread_index;
     }
     
-    virtual ~IKBase()
-    {
-    }
+    
     
     IKRequest request;
     
@@ -528,6 +526,8 @@ struct IKBase : IKBase2, RandomBase
     
     double computeGoalFitness(const std::vector<IKGoalInfo>& goals, const Frame* tip_frames, const double* active_variable_positions)
     {
+        fitness_evaluations++;
+        
         double sum = 0.0;
 
         for(auto& goal : goals)
@@ -916,22 +916,33 @@ struct IKBase : IKBase2, RandomBase
     {
         return computeFitnessActiveVariables(tip_frames, extractActiveVariables(variable_positions));
     }
+    
+    
+    
+    
+    uint64_t fitness_evaluations = 0;
 
     double computeFitness(const std::vector<double>& variable_positions)
     {
+        //fitness_evaluations++;
         //FNPROFILER();
         model.applyConfiguration(variable_positions);
         return computeFitness(variable_positions, model.getTipFrames());
     }
     
     
-    
+    virtual ~IKBase()
+    {
+        LOG_VAR(fitness_evaluations);
+    }
     
     
     
 
     
-    
+    /*virtual ~IKBase()
+    {
+    }*/
     
     
     
