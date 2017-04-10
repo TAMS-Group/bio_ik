@@ -82,7 +82,7 @@ struct IKParallel
     IKParallel(const IKParams& params) : params(params)
     {
         std::string name;
-        params.node_handle.param("mode", name, std::string("bio2"));
+        params.node_handle.param("mode", name, std::string("bio2_memetic"));
         
         solvers.emplace_back(IKFactory::create(name, params));
         

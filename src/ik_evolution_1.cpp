@@ -1,8 +1,6 @@
 // Bio IK for ROS
 // Philipp Ruppel
 
-#pragma once
-
 #include "ik_base.h"
 
 namespace bio_ik

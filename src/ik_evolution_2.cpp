@@ -1,14 +1,13 @@
 // Bio IK for ROS
 // Philipp Ruppel
 
-#pragma once
-
 #include "ik_base.h"
 
 namespace bio_ik
 {
 
 // fast evolutionary inverse kinematics
+template<int memetic>
 struct IKEvolution2 : IKBase
 {
     struct Individual
@@ -31,7 +30,7 @@ struct IKEvolution2 : IKBase
     double solution_fitness;
     std::vector<Species> species;
     std::vector<Individual> children;
-    std::vector<std::vector<Frame>> phenotypes;
+    std::vector<std::vector<Frame>> phenotypes, phenotypes2, phenotypes3;
     std::vector<size_t> child_indices;
     std::vector<double*> genotypes;
     std::vector<Frame> phenotype;
@@ -375,8 +374,11 @@ struct IKEvolution2 : IKBase
             
             //LOG_VAR(model.getTipFrames()[0]);
             
+            size_t generation_count = 16;
+            if(memetic) generation_count = 8;
+            
             // run evolution for a few generations
-            for(size_t generation = 0; generation < 16; generation++)
+            for(size_t generation = 0; generation < generation_count; generation++)
             //for(size_t generation = 0; generation < (ispecies == 0 ? 16 : 8); generation++)
             {
                 
@@ -398,18 +400,6 @@ struct IKEvolution2 : IKBase
                     
                     //child_count = (children.size() + population.size()) * 3 / 4;
                     
-                    /*static std::vector<size_t> ii = { 
-                        1, 1, 1, 1, 1, 1, 1, 1,
-                        2, 2, 2, 2,
-                        3, 3,
-                        4, };*/
-                    /*static std::vector<size_t> ii = { 
-                        2, 2, 2,
-                        3, 3,
-                        4,
-                        };
-                    child_count = (children.size() - population.size()) * random_element(ii) / 4 + population.size();*/
-                    
                     //child_count = (children.size() - population.size()) * (random_index(4) + 1) / 4 + population.size();
 
                     //child_count = random_index(children.size() - population.size() - 1) + 1 + population.size();
@@ -426,22 +416,6 @@ struct IKEvolution2 : IKBase
                         children[child_index].fitness = computeSecondaryFitnessActiveVariables(children[child_index].genes.data());
                         //LOG_VAR(children[child_index].fitness);
                     }
-                    
-                    /*LOG_VAR("b");
-                    
-                    LOG_VAR(population.size());
-                    LOG_VAR(child_count);
-                    LOG_VAR(children.size());*/
-                    
-                    /*std::nth_element(
-                            children.begin() + population.size(), 
-                            children.begin() + child_count, 
-                            children.end(), 
-                            [] (const Individual& a, const Individual& b)
-                            {
-                                return a.fitness < b.fitness;
-                            }
-                        );*/
                         
                     {
                         BLOCKPROFILER("pre-selection sort");
@@ -591,6 +565,390 @@ struct IKEvolution2 : IKBase
                 //if(canceled) return;
 
             }
+            
+            
+            
+            
+            /*{
+                
+                auto& individual = population[0];
+                
+                gradient.resize(active_variables.size());
+                
+                for(size_t generation = 0; generation < 16; generation++)
+                {
+                    genotypes[0] = individual.genes.data();
+                    model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes2);
+                    
+                    double dp = 0.00001;
+                    
+                    for(size_t i = 0; i < active_variables.size(); i++)
+                    {
+                        double* pp = &(genotypes[0][i]);
+                        
+                        genotypes[0][i] = individual.genes[i] - dp;
+                        model.computeApproximateMutations(1, &(active_variables[i]), 1, &pp, phenotypes3, phenotypes2[0]);
+                        double fa = computeFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                        
+                        genotypes[0][i] = individual.genes[i] + dp;
+                        model.computeApproximateMutations(1, &(active_variables[i]), 1, &pp, phenotypes3, phenotypes2[0]);
+                        double fb = computeFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                        
+                        genotypes[0][i] = individual.genes[i];
+                        
+                        gradient[i] = fb - fa;
+                    }
+                    
+                    
+                    double sum = dp * dp;
+                    for(size_t i = 0; i < active_variables.size(); i++)
+                        sum += fabs(gradient[i]);
+                    double f = 1.0 / sum * dp;
+                    for(size_t i = 0; i < active_variables.size(); i++)
+                        gradient[i] *= f;
+                        
+                        
+                    for(size_t i = 0; i < active_variables.size(); i++) genotypes[0][i] = individual.genes[i] - gradient[i];
+                    model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3, phenotypes2[0]);
+                    double f1 = computeFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                    
+                    for(size_t i = 0; i < active_variables.size(); i++) genotypes[0][i] = individual.genes[i];
+                    model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3, phenotypes2[0]);
+                    double f2 = computeFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                    
+                    for(size_t i = 0; i < active_variables.size(); i++) genotypes[0][i] = individual.genes[i] + gradient[i];
+                    model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3, phenotypes2[0]);
+                    double f3 = computeFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                    
+                    
+                    
+                    double cost_diff = (f3 - f1) * 0.5;
+                    double joint_diff = f2 / cost_diff;
+                    
+                    
+                    
+                    for(size_t i = 0; i < active_variables.size(); i++)
+                        individual.genes[i] = modelInfo.clip(individual.genes[i] - gradient[i] * joint_diff, active_variables[i]);
+                    
+                    
+                }
+            
+            }*/
+            
+            
+            
+            
+            
+            if(memetic)
+            {
+                //if(ispecies == 0)
+                {
+                
+                    auto& individual = population[0];
+                    
+                    //genesToJointVariables(individual, temp_joint_variables);
+                    //model.applyConfiguration(temp_joint_variables);
+                    //model.initializeMutationApproximator(active_variables);
+                    
+                    gradient.resize(active_variables.size());
+                    
+                    if(genotypes.empty()) genotypes.emplace_back();
+                    
+                    phenotypes2.resize(1);
+                    phenotypes3.resize(1);
+                    
+                    double dp = 0.0000001;
+                    if(fast_random() < 0.5) dp = -dp;
+                    
+                    for(size_t generation = 0; generation < 8; generation++)
+                    {
+                        temp = individual.genes;
+                        genotypes[0] = temp.data();
+                        
+                        model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes2);
+                        
+                        //double fa = computeCombinedFitnessActiveVariables(phenotypes2[0], genotypes[0]);
+                        
+                        double f2p = computeFitnessActiveVariables(phenotypes2[0], genotypes[0]);
+                        
+                        double fa = f2p + computeSecondaryFitnessActiveVariables(genotypes[0]);
+                        
+                        //double dp = 0.000001;
+                        
+                        //if(generation % 2) dp = -dp;
+                        
+                        for(size_t i = 0; i < active_variables.size(); i++)
+                        {
+                            double* pp = &(genotypes[0][i]);
+                            
+                            // genotypes[0][i] = individual.genes[i] - dp;
+                            // //model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3);
+                            // model.computeApproximateMutation1(active_variables[i], -dp, phenotypes2[0], phenotypes3[0]);
+                            // double fa = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                            
+                            genotypes[0][i] = individual.genes[i] + dp;
+                            //model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3);
+                            model.computeApproximateMutation1(active_variables[i], +dp, phenotypes2[0], phenotypes3[0]);
+                            double fb = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                            
+                            genotypes[0][i] = individual.genes[i];
+                            
+                            double d = fb - fa;
+                            
+                            //if(d < 0 && individual.genes[i] == modelInfo.getClipMin(active_variables[i])) d = 0;
+                            //if(d > 0 && individual.genes[i] == modelInfo.getClipMax(active_variables[i])) d = 0;
+                            
+                            gradient[i] = d;
+                            
+                            //gradient[i] *= modelInfo.getMaxVelocity(active_variables[i]);
+                            
+                            //if(memetic == 'q') gradient[i] *= fabs(gradient[i]);
+                            //if(memetic == 'q') gradient[i] = 1.0f / (dp * dp + fabs(gradient[i])) * sign(gradient[i]);
+                        }
+                         
+                        
+                        double sum = dp * dp;
+                        for(size_t i = 0; i < active_variables.size(); i++)
+                            sum += fabs(gradient[i]);
+                        double f = 1.0 / sum * dp;
+                        for(size_t i = 0; i < active_variables.size(); i++)
+                            gradient[i] *= f;
+                            
+                            
+                        for(size_t i = 0; i < active_variables.size(); i++) genotypes[0][i] = individual.genes[i] - gradient[i];
+                        model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3);
+                        double f1 = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                        
+                        /*for(size_t i = 0; i < active_variables.size(); i++) genotypes[0][i] = individual.genes[i];
+                        model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3);
+                        double f2 = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);*/
+                        
+                        double f2 = fa;
+                        
+                        for(size_t i = 0; i < active_variables.size(); i++) genotypes[0][i] = individual.genes[i] + gradient[i];
+                        model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3);
+                        double f3 = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                        
+                        
+                        if(memetic == 'q')
+                        {
+                        
+                            double v1 = (f2 - f1); // f / j
+                            double v2 = (f3 - f2); // f / j
+                            double v = (v2 + v1) * 0.5; // f / j
+                            double a = (v2 - v1); // f / j^2
+                            double joint_diff = v / a; // (f / j) / (f / j^2) = f / j / f * j * j = j
+
+                            for(size_t i = 0; i < active_variables.size(); i++) temp[i] = modelInfo.clip(individual.genes[i] - gradient[i] * joint_diff, active_variables[i]);
+                            
+                            genotypes[0] = temp.data();
+                            model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes2);
+                            
+                            double f4p = computeFitnessActiveVariables(phenotypes2[0], genotypes[0]);
+                            
+                            if(f4p < f2p)
+                            {
+                                //for(size_t i = 0; i < active_variables.size(); i++) individual.gradients[i] = mix(individual.gradients[i], temp[i] - individual.genes[i], 0.1);
+                                individual.genes = temp;
+                                continue;
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        
+                        }
+                        
+                        if(memetic == 'l')
+                        {
+                        
+                            double cost_diff = (f3 - f1) * 0.5;
+                            double joint_diff = f2 / cost_diff;
+                        
+                            for(size_t i = 0; i < active_variables.size(); i++) temp[i] = modelInfo.clip(individual.genes[i] - gradient[i] * joint_diff, active_variables[i]);
+                            
+                            genotypes[0] = temp.data();
+                            model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes2);
+                            
+                            double f4p = computeFitnessActiveVariables(phenotypes2[0], genotypes[0]);
+                            
+                            if(f4p < f2p)
+                            {
+                                individual.genes = temp;
+                                continue;
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        
+                        }
+                        
+                        
+                        
+                    }
+                
+                }
+                
+            }
+            
+            
+            
+            
+            
+            /*
+            if(memetic)
+            {
+                //if(ispecies == 0)
+                {
+                
+                    auto& individual = population[0];
+                    
+                    //genesToJointVariables(individual, temp_joint_variables);
+                    //model.applyConfiguration(temp_joint_variables);
+                    //model.initializeMutationApproximator(active_variables);
+                    
+                    gradient.resize(active_variables.size());
+                    
+                    if(genotypes.empty()) genotypes.emplace_back();
+                    
+                    phenotypes2.resize(1);
+                    phenotypes3.resize(1);
+                    
+                    double dp = 0.0000001;
+                    if(fast_random() < 0.5) dp = -dp;
+                    
+                    for(size_t generation = 0; generation < 8; generation++)
+                    {
+                        temp = individual.genes;
+                        genotypes[0] = temp.data();
+                        
+                        for(size_t i = 0; i < active_variables.size(); i++)
+                        {
+                            double* pp = &(genotypes[0][i]);
+                            
+                            genotypes[0][i] = individual.genes[i] - dp;
+                            model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3);
+                            double f1 = computeFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                            
+                            genotypes[0][i] = individual.genes[i];
+                            model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3);
+                            double f2 = computeFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                            
+                            genotypes[0][i] = individual.genes[i] + dp;
+                            model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3);
+                            double f3 = computeFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                            
+                            double v1 = (f2 - f1); // f / j
+                            double v2 = (f3 - f2); // f / j
+                            double v = (v2 + v1) * 0.5; // f / j
+                            double a = (v2 - v1); // f / j^2
+                            double joint_diff = -v / a;
+
+                            genotypes[0][i] = modelInfo.clip(individual.genes[i] + joint_diff, active_variables[i]);
+                            model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3);
+                            double fx = computeFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                            
+                            if(fx < f2)
+                            {
+                                individual.genes[i] = genotypes[0][i];
+                            }
+                            else
+                            {
+                                genotypes[0][i] = individual.genes[i];
+                            }
+                            
+                            //break;
+                        }
+                        
+                        //break;
+                    }
+                
+                }
+                
+            }
+            */
+            
+            /*
+            if(memetic)
+            {
+                //if(ispecies == 0)
+                {
+                
+                    auto& individual = population[0];
+                    
+                    //genesToJointVariables(individual, temp_joint_variables);
+                    //model.applyConfiguration(temp_joint_variables);
+                    //model.initializeMutationApproximator(active_variables);
+                    
+                    gradient.resize(active_variables.size());
+                    
+                    if(genotypes.empty()) genotypes.emplace_back();
+                    
+                    phenotypes2.resize(1);
+                    phenotypes3.resize(1);
+                    
+                    double dp = 0.0000001;
+                    if(fast_random() < 0.5) dp = -dp;
+                    
+                    for(size_t generation = 0; generation < 8; generation++)
+                    {
+                        temp = individual.genes;
+                        genotypes[0] = temp.data();
+                        
+                        model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes2);
+                        double f2 = computeFitnessActiveVariables(phenotypes2[0], genotypes[0]);
+                        
+                        for(size_t i = 0; i < active_variables.size(); i++)
+                        {
+                            double* pp = &(genotypes[0][i]);
+                            
+                            genotypes[0][i] = individual.genes[i] - dp;
+                            model.computeApproximateMutation1(active_variables[i], -dp, phenotypes2[0], phenotypes3[0]);
+                            double f1 = computeFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                            
+                            genotypes[0][i] = individual.genes[i] + dp;
+                            model.computeApproximateMutation1(active_variables[i], +dp, phenotypes2[0], phenotypes3[0]);
+                            double f3 = computeFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                            
+                            genotypes[0][i] = individual.genes[i];
+                            
+                            double v1 = (f2 - f1); // f / j
+                            double v2 = (f3 - f2); // f / j
+                            double v = (v2 + v1) * 0.5; // f / j
+                            double a = (v2 - v1); // f / j^2
+                            double joint_diff = v / a;
+
+                            genotypes[0][i] = modelInfo.clip(individual.genes[i] + joint_diff, active_variables[i]);
+                            model.computeApproximateMutation1(active_variables[i], +joint_diff, phenotypes2[0], phenotypes3[0]);
+                            double fx = computeFitnessActiveVariables(phenotypes3[0], genotypes[0]);
+                            
+                            if(fx < f2)
+                            {
+                                f2 = fx;
+                                phenotypes2[0] = phenotypes3[0];
+                                individual.genes[i] = genotypes[0][i];
+                            }
+                            else
+                            {
+                                genotypes[0][i] = individual.genes[i];
+                            }
+                        }
+                        
+                    }
+                
+                }
+                
+            }
+            */
+            
+            
+            
+            
+            
+            
+            
+            
         }
         
         {
@@ -632,11 +990,17 @@ struct IKEvolution2 : IKBase
         }
     }
     
+    aligned_vector<double> gradient, temp;
+    
     // number of islands
     virtual size_t concurrency() const { return 4; }
 };
 
-static IKFactory::Class<IKEvolution2> cIKEvolution2("bio2");
+static IKFactory::Class<IKEvolution2<0>> bio2("bio2");
+
+static IKFactory::Class<IKEvolution2<'q'>> bio2_memetic("bio2_memetic");
+
+static IKFactory::Class<IKEvolution2<'l'>> bio2_memetic_l("bio2_memetic_l");
 
 }
 

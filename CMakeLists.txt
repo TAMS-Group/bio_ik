@@ -52,8 +52,13 @@ include_directories(
 )
 
 add_library(bio_ik_kinematics_plugin 
+
     src/kinematics_plugin.cpp
-    src/ik_solvers.cpp
+    
+    src/ik_cppoptlib.cpp
+    src/ik_evolution_1.cpp
+    src/ik_evolution_2.cpp
+    src/ik_gradient.cpp
 )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_FLAGS}")

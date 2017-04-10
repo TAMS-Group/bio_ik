@@ -464,7 +464,7 @@ public:
 
 
 
-
+// Alloctes memory properly aligned for SIMD operations
 template<class T, size_t A>
 struct aligned_allocator : public std::allocator<T>
 {
@@ -492,6 +492,8 @@ struct aligned_allocator : public std::allocator<T>
     };
 };
 
+
+// std::vector typedef with proper memory alignment for SIMD operations
 template<class T>
 struct aligned_vector : std::vector<T, aligned_allocator<T, 32>>
 {
@@ -502,7 +504,7 @@ struct aligned_vector : std::vector<T, aligned_allocator<T, 32>>
 
 
 
-
+// Helper class for reading structured data from ROS parameter server
 class XmlRpcReader
 {
     typedef XmlRpc::XmlRpcValue var;

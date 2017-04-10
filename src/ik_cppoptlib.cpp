@@ -1,11 +1,7 @@
 // Bio IK for ROS
 // Philipp Ruppel
 
-#pragma once
-
 #include "ik_base.h"
-
-#include "ik_evolution_1.h"
 
 #include "../../CppNumericalSolvers/include/cppoptlib/meta.h"
 #include "../../CppNumericalSolvers/include/cppoptlib/problem.h"

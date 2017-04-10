@@ -865,6 +865,64 @@ public:
     }
     
     
+    
+    
+    
+    
+    
+    
+    
+    
+    void computeApproximateMutation1(
+        size_t variable_index,
+        double variable_delta,
+        const std::vector<Frame>& input,
+        std::vector<Frame>& output) const
+    {
+        //BLOCKPROFILER("computeApproximateMutations C");
+        auto tip_count = tip_names.size();
+        output.resize(tip_count);
+        for(size_t itip = 0; itip < tip_count; itip++)
+        {
+            auto& joint_delta = mutation_approx_frames[itip][variable_index];
+
+            const Frame& tip_frame = input[itip];
+
+            double px = tip_frame.pos.x();
+            double py = tip_frame.pos.y();
+            double pz = tip_frame.pos.z();
+            
+            double rx = tip_frame.rot.x();
+            double ry = tip_frame.rot.y();
+            double rz = tip_frame.rot.z();
+            double rw = tip_frame.rot.w();
+
+            px += joint_delta.pos.x() * variable_delta;
+            py += joint_delta.pos.y() * variable_delta;
+            pz += joint_delta.pos.z() * variable_delta;
+            
+            rx += joint_delta.rot.x() * variable_delta;
+            ry += joint_delta.rot.y() * variable_delta;
+            rz += joint_delta.rot.z() * variable_delta;
+            rw += joint_delta.rot.w() * variable_delta;
+
+            auto& tip_mutation = output[itip];
+            
+            tip_mutation.pos.setX(px);
+            tip_mutation.pos.setY(py);
+            tip_mutation.pos.setZ(pz);
+            
+            tip_mutation.rot.setX(rx);
+            tip_mutation.rot.setY(ry);
+            tip_mutation.rot.setZ(rz);
+            tip_mutation.rot.setW(rw);
+        }
+    }
+    
+    
+    
+    
+    
 
 
 /*

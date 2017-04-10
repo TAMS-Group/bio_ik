@@ -526,6 +526,19 @@ struct IKBase : IKBase2, RandomBase
     
     double computeGoalFitness(const std::vector<IKGoalInfo>& goals, const Frame* tip_frames, const double* active_variable_positions)
     {
+        /*if(goals.size() == 1 && goals[0].goal_type == GoalType::Pose)
+        {
+            auto& goal = goals[0];
+            const auto& fa = goal.frame;
+            const auto& fb = tip_frames[goal.tip_index];
+            double sum = 0;
+            sum += goal.weight_sq * (fa.pos - fb.pos).length2();
+            sum += goal.weight_sq * (fa.rot - fa.rot.nearest(fb.rot)).length2() * goal.rotation_scale_sq;
+            return sum;
+        }*/
+    
+    
+    
         fitness_evaluations++;
         
         double sum = 0.0;
@@ -667,6 +680,16 @@ struct IKBase : IKBase2, RandomBase
     double computeFitnessActiveVariables(const std::vector<Frame>& tip_frames, const double* active_variable_positions)
     {
         return computeGoalFitness(request.goals, tip_frames.data(), active_variable_positions);
+    }
+    
+    
+    
+    double computeCombinedFitnessActiveVariables(const std::vector<Frame>& tip_frames, const double* active_variable_positions)
+    {
+        double ret = 0.0;
+        ret += computeGoalFitness(request.goals, tip_frames.data(), active_variable_positions);
+        ret += computeGoalFitness(request.secondary_goals, 0, active_variable_positions);
+        return ret;
     }
     
     

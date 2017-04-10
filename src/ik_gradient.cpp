@@ -1,11 +1,7 @@
 // Bio IK for ROS
 // Philipp Ruppel
 
-#pragma once
-
 #include "ik_base.h"
-
-#include "ik_evolution_1.h"
 
 namespace bio_ik
 {
@@ -277,51 +273,6 @@ static IKFactory::Class<IKJacobian<4>> jac_4("jac_4");
 static IKFactory::Class<IKJacobian<8>> jac_8("jac_8");
 
 
-
-// experiment: combining evolution and pseudoinverse jacobian
-// (fail. worse than bio2 evolution only.)
-template<class BASE>
-struct IKHybrid : IKJacobianBase<BASE>
-{
-    using BASE::computeFitness;
-    using IKJacobianBase<BASE>::optimizeJacobian;
-    std::vector<double> best_solution, optimized_solution;
-    double best_fitness, optimized_fitness;
-    IKHybrid(const IKParams& p) : IKJacobianBase<BASE>(p)
-    {
-    }
-    void initialize(const IKRequest& request)
-    {
-        BASE::initialize(request);
-        best_solution = request.initial_guess;
-        best_fitness = computeFitness(best_solution);
-        optimized_solution = best_solution;
-        optimized_fitness = best_fitness;
-    }
-    const std::vector<double>& getSolution()
-    {
-        return best_solution;
-    }
-    void step()
-    {
-        FNPROFILER();
-        BASE::step();
-        {
-            auto& current_solution = BASE::getSolution();
-            double current_fitness = computeFitness(current_solution);
-            if(current_fitness < best_fitness) best_fitness = current_fitness, best_solution = current_solution;   
-            if(current_fitness < optimized_fitness) optimized_fitness = current_fitness, optimized_solution = current_solution;   
-        }
-        {
-            optimizeJacobian(optimized_solution);
-            double optimized_fitness = computeFitness(optimized_solution);
-            if(optimized_fitness < best_fitness) best_fitness = optimized_fitness, best_solution = optimized_solution;
-        }
-    }
-    size_t concurrency() const { return 4; }
-};
-//static IKFactory::Class<IKHybrid<IKEvolution>> bio1jac("bio1jac");
-static IKFactory::Class<IKHybrid<IKEvolution2>> bio2jac("bio2jac");
 
 
 
