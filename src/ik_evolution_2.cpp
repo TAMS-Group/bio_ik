@@ -3,6 +3,8 @@
 
 #include "ik_base.h"
 
+#include "../../CppNumericalSolvers/include/cppoptlib/solver/lbfgssolver.h"
+
 namespace bio_ik
 {
 
@@ -48,6 +50,36 @@ struct IKEvolution2 : IKBase
     IKEvolution2(const IKParams& p) : IKBase(p)
     {
     }
+    
+    
+    
+    
+    struct OptlibProblem : cppoptlib::Problem<double> 
+    {
+        IKEvolution2* ik;
+        //std::vector<double> fk_values;
+        OptlibProblem(IKEvolution2* ik) : ik(ik)
+        {
+        }
+        void initialize()
+        {
+            //fk_values = ik->request.initial_guess;
+        }
+        double value(const TVector& x) 
+        {
+            //for(size_t i = 0; i < ik->active_variables.size(); i++) fk_values[ik->active_variables[i]] = x[i];
+            //return ik->computeFitness(fk_values);
+            const double* genes = x.data();
+            ik->model.computeApproximateMutations(ik->active_variables.size(), ik->active_variables.data(), 1, &genes, ik->phenotypes);
+            return ik->computeCombinedFitnessActiveVariables(ik->phenotypes[0], genes);
+        }
+    };
+    typedef cppoptlib::LbfgsSolver<OptlibProblem> OptlibSolver;
+    std::shared_ptr<OptlibSolver> optlib_solver;
+    std::shared_ptr<OptlibProblem> optlib_problem;
+    typename OptlibSolver::TVector optlib_vector;
+    
+    
     
     
     void genesToJointVariables(const Individual& individual, std::vector<double>& variables)
@@ -639,7 +671,7 @@ struct IKEvolution2 : IKBase
             
             
             
-            if(memetic)
+            if(memetic == 'q' || memetic == 'l')
             {
                 //if(ispecies == 0)
                 {
@@ -719,9 +751,9 @@ struct IKEvolution2 : IKBase
                         model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3);
                         double f1 = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);
                         
-                        /*for(size_t i = 0; i < active_variables.size(); i++) genotypes[0][i] = individual.genes[i];
-                        model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3);
-                        double f2 = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);*/
+                        //for(size_t i = 0; i < active_variables.size(); i++) genotypes[0][i] = individual.genes[i];
+                        //model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3);
+                        //double f2 = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);
                         
                         double f2 = fa;
                         
@@ -792,6 +824,32 @@ struct IKEvolution2 : IKBase
                 
             }
             
+            
+            
+            
+            if(memetic == 'o' /*&& fast_random() < 0.1*/)
+            {
+                auto& individual = population[0];
+            
+                if(!optlib_solver)
+                {
+                    optlib_solver = std::make_shared<OptlibSolver>();
+                    cppoptlib::Criteria<double> crit;
+                    crit.iterations = 4;
+                    //crit.iterations = 1;
+                    optlib_solver->setStopCriteria(crit);
+                    optlib_problem = std::make_shared<OptlibProblem>(this);
+                }
+                
+                optlib_vector.resize(active_variables.size());
+                for(size_t i = 0; i < active_variables.size(); i++) optlib_vector[i] = individual.genes[i];
+                
+                optlib_problem->initialize();
+                
+                optlib_solver->minimize(*optlib_problem, optlib_vector);
+                
+                for(size_t i = 0; i < active_variables.size(); i++) individual.genes[i] = modelInfo.clip(optlib_vector[i], active_variables[i]);
+            }
             
             
             
@@ -997,10 +1055,9 @@ struct IKEvolution2 : IKBase
 };
 
 static IKFactory::Class<IKEvolution2<0>> bio2("bio2");
-
 static IKFactory::Class<IKEvolution2<'q'>> bio2_memetic("bio2_memetic");
-
 static IKFactory::Class<IKEvolution2<'l'>> bio2_memetic_l("bio2_memetic_l");
+static IKFactory::Class<IKEvolution2<'o'>> bio2_memetic_0("bio2_memetic_lbfgs");
 
 }
 
