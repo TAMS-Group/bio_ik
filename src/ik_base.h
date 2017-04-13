@@ -476,7 +476,7 @@ struct IKBase : IKBase2, RandomBase
     
     
     
-    
+    std::vector<Frame> null_tip_frames;
     
     
     std::vector<double> minimal_displacement_factors;
@@ -509,6 +509,9 @@ struct IKBase : IKBase2, RandomBase
                     minimal_displacement_factors[i] = 1.0 / active_variables.size();
             }
         }
+        
+        
+        null_tip_frames.resize(request.tip_link_indices.size());
     }
     
     
@@ -669,7 +672,7 @@ struct IKBase : IKBase2, RandomBase
     
     double computeSecondaryFitnessActiveVariables(const double* active_variable_positions)
     {
-        return computeGoalFitness(request.secondary_goals, 0, active_variable_positions);
+        return computeGoalFitness(request.secondary_goals, null_tip_frames.data(), active_variable_positions);
     }
     
     double computeSecondaryFitnessAllVariables(const std::vector<double>& variable_positions)
@@ -688,7 +691,7 @@ struct IKBase : IKBase2, RandomBase
     {
         double ret = 0.0;
         ret += computeGoalFitness(request.goals, tip_frames.data(), active_variable_positions);
-        ret += computeGoalFitness(request.secondary_goals, 0, active_variable_positions);
+        ret += computeGoalFitness(request.secondary_goals, null_tip_frames.data(), active_variable_positions);
         return ret;
     }
     
