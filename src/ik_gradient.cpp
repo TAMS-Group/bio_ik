@@ -20,9 +20,9 @@ struct IKJacobianBase : BASE
     using BASE::getGenes;
     using BASE::active_variables;
     using BASE::request;
-    
+
     std::vector<Frame> tipObjectives;
-    
+
     Eigen::VectorXd tip_diffs;
     Eigen::VectorXd joint_diffs;
     Eigen::MatrixXd jacobian;
@@ -31,7 +31,7 @@ struct IKJacobianBase : BASE
     IKJacobianBase(const IKParams& p) : BASE(p)
     {
     }
-    
+
     void initialize(const IKRequest& request)
     {
         BASE::initialize(request);
@@ -39,7 +39,7 @@ struct IKJacobianBase : BASE
         for(auto& goal : request.goals)
             tipObjectives[goal.tip_index] = goal.frame;
     }
-    
+
     void optimizeJacobian(std::vector<double>& solution)
     {
         FNPROFILER();
@@ -50,10 +50,10 @@ struct IKJacobianBase : BASE
 
         // compute fk
         model.applyConfiguration(solution);
-        
+
         double translational_scale = 1;
         double rotational_scale = 1;
-        
+
         // compute goal diffs
         tip_frames_temp = model.getTipFrames();
         for(int itip = 0; itip < tip_count; itip++)
@@ -66,7 +66,7 @@ struct IKJacobianBase : BASE
             tip_diffs(itip * 6 + 4) = twist.rot.y() * rotational_scale;
             tip_diffs(itip * 6 + 5) = twist.rot.z() * rotational_scale;
         }
-        
+
         // compute jacobian
         {
             model.computeJacobian(active_variables, jacobian);
@@ -120,7 +120,7 @@ struct IKGradientDescent : IKBase
     IKGradientDescent(const IKParams& p) : IKBase(p)
     {
     }
-    
+
     void initialize(const IKRequest& request)
     {
         IKBase::initialize(request);
@@ -131,12 +131,12 @@ struct IKGradientDescent : IKBase
         best_solution = solution;
         reset = false;
     }
-    
+
     const std::vector<double>& getSolution() const
     {
         return best_solution;
     }
-    
+
     void step()
     {
         // random reset if stuck
@@ -146,7 +146,7 @@ struct IKGradientDescent : IKBase
             for(auto& vi : active_variables)
                 solution[vi] = random(modelInfo.getMin(vi), modelInfo.getMax(vi));
         }
-    
+
         // compute gradient direction
         temp = solution;
         double jd = 0.0001;
@@ -155,15 +155,15 @@ struct IKGradientDescent : IKBase
         {
             temp[ivar] = solution[ivar] - jd;
             double p1 = computeFitness(temp);
-            
+
             temp[ivar] = solution[ivar] + jd;
             double p3 = computeFitness(temp);
-            
+
             temp[ivar] = solution[ivar];
-            
+
             gradient[ivar] = p3 - p1;
         }
-        
+
         // normalize gradient direction
         double sum = 0.0001;
         for(auto ivar : active_variables)
@@ -171,33 +171,33 @@ struct IKGradientDescent : IKBase
         double f = 1.0 / sum * jd;
         for(auto ivar : active_variables)
             gradient[ivar] *= f;
-    
+
         // initialize line search
         temp = solution;
-        
+
         for(auto ivar : active_variables) temp[ivar] = solution[ivar] - gradient[ivar];
         double p1 = computeFitness(temp);
-        
+
         for(auto ivar : active_variables) temp[ivar] = solution[ivar];
         double p2 = computeFitness(temp);
-        
+
         for(auto ivar : active_variables) temp[ivar] = solution[ivar] + gradient[ivar];
         double p3 = computeFitness(temp);
 
         // linear step size estimation
         double cost_diff = (p3 - p1) * 0.5;
         double joint_diff = p2 / cost_diff;
-        
+
         // apply optimization step
         // (move along gradient direction by estimated step size)
         for(auto ivar : active_variables)
             temp[ivar] = modelInfo.clip(solution[ivar] - gradient[ivar] * joint_diff, ivar);
-        
+
         // has solution improved?
-        if(computeFitness(temp) < computeFitness(solution)) 
+        if(computeFitness(temp) < computeFitness(solution))
         {
             // solution improved -> accept solution
-            solution = temp; 
+            solution = temp;
         }
         else
         {
@@ -212,12 +212,12 @@ struct IKGradientDescent : IKBase
                 solution = temp;
             }
         }
-        
+
         // update best solution
         if(computeFitness(solution) < computeFitness(best_solution))
             best_solution = solution;
     }
-    
+
     size_t concurrency() const { return threads; }
 };
 
@@ -277,12 +277,3 @@ static IKFactory::Class<IKJacobian<8>> jac_8("jac_8");
 
 
 }
-
-
-
-
-
-
-
-
-

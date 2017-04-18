@@ -45,38 +45,38 @@ catkin_package(
     INCLUDE_DIRS include
     LIBRARIES bio_ik_kinematics_plugin
 )
- 
+
 include_directories(
     include
     ${catkin_INCLUDE_DIRS}
 )
 
-add_library(bio_ik_kinematics_plugin 
-
+add_library(bio_ik_kinematics_plugin
     src/kinematics_plugin.cpp
-    
     src/ik_cppoptlib.cpp
     src/ik_evolution_1.cpp
     src/ik_evolution_2.cpp
+    src/ik_evolution_3.cpp
     src/ik_gradient.cpp
+    src/ik_test.cpp
 )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_FLAGS}")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")  
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")  
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast") 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast")
 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2") 
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
-#set(CMAKE_CXX_FLAGS "-O0 ${CMAKE_CXX_FLAGS}") 
+#set(CMAKE_CXX_FLAGS "-O0 ${CMAKE_CXX_FLAGS}")
 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx") 
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2 -ftree-vectorize -ffast-math -ftree-vectorizer-verbose=5") 
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2 -ftree-vectorize -ffast-math -ftree-vectorizer-verbose=5")
 
 
 
@@ -87,7 +87,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftree-vectorize -ffast-math")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frecord-gcc-switches") # readelf -p .GCC.command.line ...
 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")  
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++98")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -131,12 +131,3 @@ install(DIRECTORY include/ DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION})
 install(TARGETS bio_ik_kinematics_plugin LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
 install(FILES bio_ik_kinematics_description.xml DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
-
-
-
-
-
-
-
-
-

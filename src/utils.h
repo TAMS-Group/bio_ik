@@ -20,7 +20,7 @@
 
 #include <tf_conversions/tf_kdl.h>
 
-#include <XmlRpcException.h>
+#include <xmlrpcpp/XmlRpcException.h>
 
 //#include <link.h>
 
@@ -59,7 +59,7 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
 #ifdef ENABLE_LOG
 #define LOG(...) LOG2(__VA_ARGS__)
 #else
-#define LOG(...) 
+#define LOG(...)
 #endif
 
 #define LOG_VAR(v) LOG2(#v, (v));
@@ -67,7 +67,7 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
 
 
 //#define LOG_FNC() LOG("fun", __func__, __LINE__)
-#define LOG_FNC() 
+#define LOG_FNC()
 
 
 
@@ -88,14 +88,14 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
 #ifdef ENABLE_PROFILER
 
     // embeddable sampling profiler
-    
+
     // profiled block or function
     struct ProfilerBin
     {
         const char* volatile name; // name of scope or function, also used as indicator if it is currently being executed
         std::atomic<int> counter; // only used by CounterScope / COUNTERPROFILER
     };
-    
+
     // allocate globally unique profiler buffer via template
     template<class force_weak_linker_symbol = void>
     ProfilerBin* getProfilerBuffer()
@@ -103,7 +103,7 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
         static std::vector<ProfilerBin> buffer(1000);
         return buffer.data();
     }
-    
+
     // reserve profiler buffer segment for current compilation unit
     template<class force_weak_linker_symbol = void>
     ProfilerBin* getProfilerSegment()
@@ -112,7 +112,7 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
         return getProfilerBuffer() + (index++) * 20;
     }
     static ProfilerBin* profiler_segment = getProfilerSegment();
-    
+
     // identifies currently profiled thread
     // null if profiler is disabled
     struct ProfilerInfo
@@ -120,7 +120,7 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
         void* stack_begin;
         void* stack_end;
     };
-    
+
     // declare globally unique profiler info via template
     template<class force_weak_linker_symbol = void>
     ProfilerInfo& getProfilerInfo()
@@ -129,7 +129,7 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
         return info;
     }
     static ProfilerInfo& profiler_info = getProfilerInfo();
-    
+
     // profiles a scope or function
     template<size_t ID>
     struct ProfilerScope
@@ -140,7 +140,7 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
             if(this < profiler_info.stack_begin || this > profiler_info.stack_end) return;
             profiler_segment[ID].name = name;
         }
-        __attribute__((always_inline)) inline ~ProfilerScope() 
+        __attribute__((always_inline)) inline ~ProfilerScope()
         {
             if(profiler_info.stack_begin == 0) return;
             if(this < profiler_info.stack_begin || this > profiler_info.stack_end) return;
@@ -149,7 +149,7 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
     };
     #define FNPROFILER() volatile ProfilerScope<__COUNTER__> _profilerscope(__func__);
     #define BLOCKPROFILER(name) volatile ProfilerScope<__COUNTER__> _profilerscope(name);
-    
+
     // per-thread profiling
     struct ThreadScope
     {
@@ -159,14 +159,14 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
             if(profiler_info.stack_begin == 0) return;
             profiler_segment[id].name = name;
         }
-        __attribute__((always_inline)) inline ~ThreadScope() 
+        __attribute__((always_inline)) inline ~ThreadScope()
         {
             if(profiler_info.stack_begin == 0) return;
             profiler_segment[id].name = 0;
         }
     };
     #define THREADPROFILER(name, id) static const char* _threadscope_names[] = {name "0", name "1", name "2", name "3"}; volatile ThreadScope _threadscope(_threadscope_names[id], __COUNTER__ + id); (__COUNTER__,__COUNTER__,__COUNTER__,__COUNTER__,__COUNTER__);
-    
+
     // profiling across multiple threads
     struct CounterScope
     {
@@ -177,7 +177,7 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
             if((profiler_segment[id].counter++) == 0)
                 profiler_segment[id].name = name;
         }
-        __attribute__((always_inline)) inline ~CounterScope() 
+        __attribute__((always_inline)) inline ~CounterScope()
         {
             if(profiler_info.stack_begin == 0) return;
             if((--profiler_segment[id].counter) == 0)
@@ -204,7 +204,7 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
             static std::mutex mutex;
             static std::unordered_map<const char*, size_t> samples;
             exit_flag = 0;
-            std::thread t([this] () 
+            std::thread t([this] ()
             {
                 auto* profiler_bins = getProfilerBuffer();
                 while(true)
@@ -256,21 +256,21 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
             static Profiler profiler;
         }
     };
-    
+
 #else
 
     #define FNPROFILER()
     #define BLOCKPROFILER(name)
     #define THREADPROFILER(name, id)
     #define COUNTERPROFILER(name)
-    
+
     struct Profiler
     {
         static void start()
         {
         }
     };
-    
+
 #endif
 
 
@@ -322,7 +322,7 @@ inline double clamp2(double v, double lo, double hi)
 __attribute__((always_inline))
 inline double smoothstep(float a, float b, float v)
 {
-    v = clamp((v - a) / (b - a), 0.0, 1.0); 
+    v = clamp((v - a) / (b - a), 0.0, 1.0);
     return v * v * (3.0 - 2.0 * v);
 }
 
@@ -394,7 +394,7 @@ public:
 // registering a class:
 //   static Factory<Base>::Class<Derived> reg("Derived");
 //
-// instantiation: 
+// instantiation:
 //   Base* obj = Factory<Base>::create("Derived");
 //
 // cloning and object:
@@ -524,7 +524,7 @@ private:
     }
     void conv(double& r)
     {
-        r = (v.getType() == var::TypeInt) ? ((double)(int)v) : ((double)v); 
+        r = (v.getType() == var::TypeInt) ? ((double)(int)v) : ((double)v);
     }
     void conv(tf::Vector3& r)
     {
@@ -574,22 +574,3 @@ public:
 
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

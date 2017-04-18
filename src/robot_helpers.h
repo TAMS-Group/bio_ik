@@ -14,7 +14,7 @@ namespace bio_ik
 {
 
 
-// Compatability 
+// Compatability
 // MoveIt API changed from boost::shared_ptr to std::shared_ptr
 // Built-in RobotModelConstPtr is only available in recent versions
 // Define compatible RobotModel pointer
@@ -43,59 +43,59 @@ public:
         for(auto& name : model->getVariableNames())
         {
             auto& bounds = model->getVariableBounds(name);
-            
+
             VariableInfo info;
-            
+
             //info.bounded = bounds.position_bounded_;
             //bounds.position_
-            
+
             bool bounded = bounds.position_bounded_;
-            
-            
+
+
             auto* joint_model = model->getJointOfVariable(variables.size());
             if(auto* revolute = dynamic_cast<const moveit::core::RevoluteJointModel*>(joint_model))
                 //if(revolute->isContinuous()) bounded = false;
                 if(bounds.max_position_ - bounds.min_position_ >= 2 * M_PI * 0.9999) bounded = false;
-            
-            
+
+
             info.min = bounds.min_position_;
             info.max = bounds.max_position_;
 
-            
+
             info.clip_min = bounded ? info.min : -DBL_MAX;
             info.clip_max = bounded ? info.max : +DBL_MAX;
-            
-            
+
+
             //if(info.max == DBL_MAX) info.min = -1, info.max = 1, info.clip_min = -1, info.clip_max = 1;
             //if(info.max == DBL_MAX) info.min = -1, info.max = 1;
-            
-            
-            
+
+
+
             info.span = info.max - info.min;
-            
-            
+
+
             LOG("joint variable", name, info.min, info.max);
-            
-            
+
+
             //if(info.span == DBL_MAX || !std::isfinite(info.span)) info.span = 0;
             //if(info.span == DBL_MAX || !std::isfinite(info.span) || !std::isfinite((float)info.span)) info.span = 1;
             //if(info.span == DBL_MAX || !std::isfinite(info.span)) info.span = 32;
             //if(info.span == DBL_MAX || !std::isfinite(info.span) || variables.size() < 7) info.span = 0;
-            
+
             if(!(info.span >= 0 && info.span < FLT_MAX)) info.span = 1;
-            
+
             //info.span = 1;
-            
-            
-            
+
+
+
             info.max_velocity = bounds.max_velocity_;
             info.max_velocity_rcp = info.max_velocity > 0.0 ? 1.0 / info.max_velocity : 0.0;
-            
-            
-            
+
+
+
             variables.push_back(info);
         }
-        
+
         for(size_t ivar = 0; ivar < model->getVariableCount(); ivar++)
         {
             variable_joint_types.push_back(model->getJointOfVariable(ivar)->getType());
@@ -133,15 +133,15 @@ public:
     inline double clip(double p, size_t i) const
     {
         auto& info = variables[i];
-        
+
         //LOG(i, info.clip_min, info.clip_max);
-        
+
         return clamp2(p, info.clip_min, info.clip_max);
-        
+
         /*if(p > info.clip_max) p = info.clip_max;
         if(p < info.clip_min) p = info.clip_min;
         return p;*/
-        
+
         //return std::fmax(info.clip_min, std::fmin(p, info.clip_max));
         //return std::clamp(p, info.clip_min, info.clip_max);
     }
@@ -195,7 +195,7 @@ public:
                 for(size_t tip_index = 0; tip_index < tip_count; tip_index++)
                     table[variable_index * tip_count + tip_index] /= sum;
         }
-        
+
         chain_lengths.resize(tip_count);
         for(size_t tip_index = 0; tip_index < tip_count; tip_index++)
         {
@@ -207,7 +207,7 @@ public:
             }
             chain_lengths[tip_index] = chain_length;
         }
-        
+
         chain_lengths_2.resize(tip_count);
         for(size_t tip_index = 0; tip_index < tip_count; tip_index++)
         {

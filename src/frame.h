@@ -79,7 +79,7 @@ inline void quat_mul_vec(const tf::Quaternion& q, const tf::Vector3& v, tf::Vect
     double v_x = v.x();
     double v_y = v.y();
     double v_z = v.z();
-    
+
     //if(__builtin_expect(v_x == 0 && v_y == 0 && v_z == 0, 0)) { r = tf::Vector3(0, 0, 0); return; }
     //if(v_x == 0 && v_y == 0 && v_z == 0) { r = tf::Vector3(0, 0, 0); return; }
 
@@ -87,11 +87,11 @@ inline void quat_mul_vec(const tf::Quaternion& q, const tf::Vector3& v, tf::Vect
     double q_y = q.y();
     double q_z = q.z();
     double q_w = q.w();
-    
+
     if((v_x == 0 && v_y == 0 && v_z == 0) || (q_x == 0 && q_y == 0 && q_z == 0 && q_w == 1)) { r = v; return; }
     //if((v_x + v_y + v_z == 0 && v_x == 0 && v_y == 0) || (q_x + q_y + q_z == 0 && q_x == 0 && q_y == 0 && q_w == 1)) { r = v; return; }
     //if(q_x == 0 && q_y == 0 && q_z == 0 && q_w == 1) { r = v; return; }
-    
+
     double t_x = q_y * v_z - q_z * v_y;
     double t_y = q_z * v_x - q_x * v_z;
     double t_z = q_x * v_y - q_y * v_x;
@@ -99,11 +99,11 @@ inline void quat_mul_vec(const tf::Quaternion& q, const tf::Vector3& v, tf::Vect
     double r_x = q_w * t_x + q_y * t_z - q_z * t_y;
     double r_y = q_w * t_y + q_z * t_x - q_x * t_z;
     double r_z = q_w * t_z + q_x * t_y - q_y * t_x;
-    
+
     r_x += r_x;
     r_y += r_y;
     r_z += r_z;
-    
+
     r_x += v_x;
     r_y += v_y;
     r_z += v_z;
@@ -120,17 +120,17 @@ inline void quat_mul_quat(const tf::Quaternion& p, const tf::Quaternion& q, tf::
     double p_y = p.y();
     double p_z = p.z();
     double p_w = p.w();
-    
+
     double q_x = q.x();
     double q_y = q.y();
     double q_z = q.z();
     double q_w = q.w();
-    
+
     double r_x = (p_w * q_x + p_x * q_w) + (p_y * q_z - p_z * q_y);
     double r_y = (p_w * q_y - p_x * q_z) + (p_y * q_w + p_z * q_x);
     double r_z = (p_w * q_z + p_x * q_y) - (p_y * q_x - p_z * q_w);
     double r_w = (p_w * q_w - p_x * q_x) - (p_y * q_y + p_z * q_z);
-    
+
     r.setX(r_x);
     r.setY(r_y);
     r.setZ(r_z);
@@ -169,7 +169,7 @@ inline void invert(const Frame& a, Frame& r)
     Frame tmp;
     quat_inv(a.rot, r.rot);
     quat_mul_vec(r.rot, -a.pos, r.pos);
-} 
+}
 
 __attribute__((always_inline))
 inline void change(const Frame& a, const Frame& b, const Frame& c, Frame& r)
@@ -224,17 +224,17 @@ inline KDL::Twist frameTwist(const Frame& a, const Frame& b)
     t.vel.x(frame.pos.x());
     t.vel.y(frame.pos.y());
     t.vel.z(frame.pos.z());
-    
+
     double ra = frame.rot.getAngle();
     //double ra = frame.rot.getAngleShortestPath();
     if(ra > +M_PI) ra -= 2 * M_PI;
     //if(ra < -M_PI) ra += 2 * M_PI;
-    
+
     auto r = frame.rot.getAxis() * ra;
     t.rot.x(r.x());
     t.rot.y(r.y());
     t.rot.z(r.z());
-    
+
     return t;
 }
 
@@ -244,14 +244,3 @@ inline KDL::Twist frameTwist(const Frame& a, const Frame& b)
 
 
 }
-
-
-
-
-
-
-
-
-
-
-

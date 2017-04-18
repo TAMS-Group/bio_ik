@@ -44,7 +44,7 @@ namespace bio_ik
 std::unordered_set<const void*> idBioIKKinematicsQueryOptions;
 
 BioIKKinematicsQueryOptions::BioIKKinematicsQueryOptions() : replace(false)
-{ 
+{
     idBioIKKinematicsQueryOptions.insert(this);
 }
 
@@ -101,27 +101,27 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         LOG_FNC();
         return joint_names;
     }
-    
+
     virtual const std::vector<std::string>& getLinkNames() const
     {
         LOG_FNC();
         return link_names;
     }
-    
+
     virtual bool getPositionFK(
-                        const std::vector<std::string>& link_names, 
-                        const std::vector<double>& joint_angles, 
+                        const std::vector<std::string>& link_names,
+                        const std::vector<double>& joint_angles,
                         std::vector<geometry_msgs::Pose>& poses) const
     {
         LOG_FNC();
         return false;
     }
-    
+
     virtual bool getPositionIK(
-                        const geometry_msgs::Pose& ik_pose, 
-                        const std::vector<double>& ik_seed_state, 
-                        std::vector<double>& solution, 
-                        moveit_msgs::MoveItErrorCodes& error_code, 
+                        const geometry_msgs::Pose& ik_pose,
+                        const std::vector<double>& ik_seed_state,
+                        std::vector<double>& solution,
+                        moveit_msgs::MoveItErrorCodes& error_code,
                         const kinematics::KinematicsQueryOptions& options = kinematics::KinematicsQueryOptions()) const
     {
         LOG_FNC();
@@ -129,21 +129,21 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
     }
 
     std::vector<Eigen::Affine3d> tip_reference_frames;
-    
+
     mutable std::vector<std::unique_ptr<Goal>> default_goals;
-    
+
     mutable std::vector<const bio_ik::Goal*> all_goals;
 
     IKParams ikparams;
-    
+
     mutable IKRequest ikrequest;
-    
-    
-    
+
+
+
     bool load(std::string robot_description, std::string group_name)
     {
         LOG_FNC();
-        
+
         LOG_VAR(robot_description);
         LOG_VAR(group_name);
 
@@ -156,9 +156,9 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
             LOG("URDF and SRDF must be loaded for KDL kinematics solver to work.");
             return false;
         }
-        
+
         robot_model.reset(new robot_model::RobotModel(urdf_model, srdf));
-        
+
         joint_model_group = robot_model->getJointModelGroup(group_name);
         if (!joint_model_group)
         {
@@ -167,7 +167,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         }
 
         joint_names.clear();
-        
+
         for(auto* joint_model : joint_model_group->getJointModels())
             if(joint_model->getName() != base_frame_ && joint_model->getType() != moveit::core::JointModel::UNKNOWN && joint_model->getType() != moveit::core::JointModel::FIXED)
                 joint_names.push_back(joint_model->getName());
@@ -176,7 +176,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         joint_model_group->getEndEffectorTips(tips2);
         if(!tips2.empty()) tip_frames_ = tips2;
 
-        link_names = tip_frames_; 
+        link_names = tip_frames_;
 
         for(auto& n : joint_names) LOG("joint", n);
         for(auto& n : link_names) LOG("link", n);
@@ -185,49 +185,49 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         std::string rdesc;
         node_handle.searchParam(robot_description_, rdesc);
         node_handle = ros::NodeHandle(rdesc + "_kinematics/" + group_name_);
-        
+
         //bool enable_profiler;
         node_handle.param("profiler", enable_profiler, false);
         //if(enable_profiler) Profiler::start();
-        
+
         robot_info = RobotInfo(robot_model);
-        
+
         ikparams.robot_model = robot_model;
         ikparams.node_handle = node_handle;
         ikparams.joint_model_group = joint_model_group;
 
         temp_state.reset(new moveit::core::RobotState(robot_model));
-        
+
         ik.reset(new PluginIKSolver(ikparams));
-        
-        
-        
+
+
+
         {
-        
+
             BLOCKPROFILER("default ik goals");
-            
+
             default_goals.clear();
 
             for(size_t i = 0; i < tip_frames_.size(); i++)
             {
                 PoseGoal* goal = new PoseGoal();
-                
+
                 goal->link_name = tip_frames_[i];
-                
+
                 //LOG_VAR(goal->link_name);
-                
+
                 goal->rotation_scale = 0.5;
-                
+
                 node_handle.param("rotation_scale", goal->rotation_scale, goal->rotation_scale);
-                
+
                 bool position_only_ik = false;
                 node_handle.param("position_only_ik", position_only_ik, position_only_ik);
                 if(position_only_ik) goal->rotation_scale = 0;
-                
+
                 default_goals.emplace_back(goal);
             }
 
-            {
+            /*{
                 double weight = 0;
                 node_handle.param("avoid_joint_limits_weight", weight, weight);
                 if(weight > 0.0)
@@ -247,8 +247,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                     minimal_displacement_goal->weight = weight;
                     default_goals.emplace_back(minimal_displacement_goal);
                 }
-            }
-            
+            }*/
+
             {
                 typedef XmlRpc::XmlRpcValue var;
 
@@ -262,11 +262,11 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                         if(goals[i].getType() == var::TypeStruct)
                         {
                             auto d = XmlRpcReader(goals[i]);
-                            
+
                             std::string type;
                             d.param("type", type);
                             LOG("goal", "type", type);
-                            
+
                             if(type == "LookAt")
                             {
                                 auto* g = new LookAtGoal();
@@ -277,7 +277,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                                 default_goals.emplace_back(g);
                                 continue;
                             }
-                            
+
                             if(type == "Position")
                             {
                                 auto* g = new PositionGoal();
@@ -287,7 +287,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                                 default_goals.emplace_back(g);
                                 continue;
                             }
-                            
+
                             if(type == "Orientation")
                             {
                                 auto* g = new OrientationGoal();
@@ -297,7 +297,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                                 default_goals.emplace_back(g);
                                 continue;
                             }
-                            
+
                             if(type == "Pose")
                             {
                                 auto* g = new PoseGoal();
@@ -308,7 +308,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                                 default_goals.emplace_back(g);
                                 continue;
                             }
-                            
+
                             if(type == "JointVariable")
                             {
                                 auto* g = new JointVariableGoal();
@@ -319,7 +319,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                                 default_goals.emplace_back(g);
                                 continue;
                             }
-                            
+
                             if(type == "MaxDistance")
                             {
                                 auto* g = new MaxDistanceGoal();
@@ -330,7 +330,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                                 default_goals.emplace_back(g);
                                 continue;
                             }
-                            
+
                             if(type == "AvoidJointLimits")
                             {
                                 auto* g = new AvoidJointLimitsGoal();
@@ -338,7 +338,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                                 default_goals.emplace_back(g);
                                 continue;
                             }
-                            
+
                             if(type == "MinimalDisplacement")
                             {
                                 auto* g = new MinimalDisplacementGoal();
@@ -346,14 +346,14 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                                 default_goals.emplace_back(g);
                                 continue;
                             }
-                            
+
                             ERROR("invalid goal type", type);
                         }
                     }
                 }
             }
         }
-        
+
 
         LOG("init ready");
 
@@ -368,7 +368,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         initialize(robot_description, group_name, base_frame, tip_frames, search_discretization);
         return true;
     }
-    
+
     virtual bool initialize(const std::string& robot_description,
                           const std::string& group_name,
                           const std::string& base_frame,
@@ -383,48 +383,48 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
     // TODO: implement ?
     virtual bool searchPositionIK(
-        const geometry_msgs::Pose& ik_pose, 
-        const std::vector<double>& ik_seed_state, 
-        double timeout, std::vector<double>& solution, 
-        moveit_msgs::MoveItErrorCodes& error_code, 
+        const geometry_msgs::Pose& ik_pose,
+        const std::vector<double>& ik_seed_state,
+        double timeout, std::vector<double>& solution,
+        moveit_msgs::MoveItErrorCodes& error_code,
         const kinematics::KinematicsQueryOptions& options = kinematics::KinematicsQueryOptions()) const
     {
         LOG_FNC();
         return false;
     }
-    
+
     virtual bool searchPositionIK(
-        const geometry_msgs::Pose& ik_pose, 
-        const std::vector<double>& ik_seed_state, 
-        double timeout, 
-        const std::vector<double> &consistency_limits, 
-        std::vector<double>& solution, 
-        moveit_msgs::MoveItErrorCodes &error_code, 
+        const geometry_msgs::Pose& ik_pose,
+        const std::vector<double>& ik_seed_state,
+        double timeout,
+        const std::vector<double> &consistency_limits,
+        std::vector<double>& solution,
+        moveit_msgs::MoveItErrorCodes &error_code,
         const kinematics::KinematicsQueryOptions &options = kinematics::KinematicsQueryOptions()) const
     {
         LOG_FNC();
         return false;
     }
-    
+
     virtual bool searchPositionIK(
-        const geometry_msgs::Pose& ik_pose, 
+        const geometry_msgs::Pose& ik_pose,
         const std::vector<double>& ik_seed_state,
-        double timeout, 
-        std::vector<double> &solution, 
-        const IKCallbackFn& solution_callback, 
-        moveit_msgs::MoveItErrorCodes& error_code, 
+        double timeout,
+        std::vector<double> &solution,
+        const IKCallbackFn& solution_callback,
+        moveit_msgs::MoveItErrorCodes& error_code,
         const kinematics::KinematicsQueryOptions& options = kinematics::KinematicsQueryOptions()) const
     {
         LOG_FNC();
         return false;
     }
-    
+
     virtual bool searchPositionIK(const geometry_msgs::Pose &ik_pose, const std::vector< double > &ik_seed_state, double timeout, const std::vector< double > &consistency_limits, std::vector< double > &solution, const IKCallbackFn &solution_callback, moveit_msgs::MoveItErrorCodes &error_code, const kinematics::KinematicsQueryOptions &options=kinematics::KinematicsQueryOptions()) const
     {
         LOG_FNC();
         return false;
     }
-    
+
     /*struct OptMod : kinematics::KinematicsQueryOptions
     {
         int test;
@@ -441,19 +441,19 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                                 const moveit::core::RobotState* context_state = NULL) const
     {
         double t0 = ros::Time::now().toSec();
-        
+
         //timeout = 0.1;
-        
+
         //LOG("a");
-        
+
         if(enable_profiler) Profiler::start();
-        
+
         auto* bio_ik_options = toBioIKKinematicsQueryOptions(&options);
 
         LOG_FNC();
 
         FNPROFILER();
-        
+
         //LOG(typeid(options).name());
         //LOG(((OptMod*)&options)->test);
 
@@ -463,7 +463,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         if(context_state)
             for(size_t i = 0; i < robot_model->getVariableCount(); i++)
                 state[i] = context_state->getVariablePositions()[i];
-                
+
         // overwrite used variables with seed state
         solution = ik_seed_state;
         {
@@ -476,7 +476,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                     state.at(joint_model->getFirstVariableIndex() + vi) = solution.at(i++);
             }
         }
-        
+
         if(!bio_ik_options || !bio_ik_options->replace)
         {
             // transform tips to baseframe
@@ -497,23 +497,23 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 tipFrames.emplace_back(r * p);
             }
         }
-        
+
         // init ik
-        
+
         ikrequest.timeout = t0 + timeout;
         ikrequest.initial_guess = state;
-        
+
         //for(auto& v : state) LOG("var", &v - &state.front(), v);
-        
+
         //ikrequest.tip_objectives = tipFrames;
-        
+
         /*for(size_t i = 0; i < ikrequest.goals.size(); i++)
         {
             ikrequest.goals[i].frame = tipFrames[i];
         }*/
-        
+
         //LOG("---");
-        
+
         /*{
             BLOCKPROFILER("ik goals");
             std::vector<std::unique_ptr<Goal>> goals;
@@ -531,7 +531,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
             //LOG_VAR(goals.size());
             setRequestGoals(ikrequest, goals, ikparams);
         }*/
-        
+
         {
             if(!bio_ik_options || !bio_ik_options->replace)
             {
@@ -542,29 +542,29 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                     goal->orientation = tipFrames[i].rot;
                 }
             }
-            
+
             all_goals.clear();
-            
+
             if(!bio_ik_options || !bio_ik_options->replace)
                 for(auto& goal : default_goals)
                     all_goals.push_back(goal.get());
-                    
+
             if(bio_ik_options)
                 for(auto& goal : bio_ik_options->goals)
                     all_goals.push_back(goal.get());
-            
+
             ikrequest.setGoals(all_goals, ikparams);
             //ikrequest.setGoals(default_goals, ikparams);
         }
-        
+
         {
             BLOCKPROFILER("ik init");
             ik->initialize(ikrequest);
         }
-        
+
         // run ik solver
         ik->solve();
-        
+
         // get solution
         state = ik->getSolution();
 
@@ -602,7 +602,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                     solution.push_back(state.at(joint_model->getFirstVariableIndex() + vi));
             }
         }
-        
+
         // return an error if an accurate solution was requested, but no accurate solution was found
         if(!ik->getSuccess() && !options.return_approximate_solution)
         {
@@ -615,7 +615,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         {
             // run callback
             solution_callback(ik_poses.front(), solution, error_code);
-            
+
             // return success if callback has accepted the solution
             return error_code.val == error_code.SUCCESS;
         }
@@ -627,12 +627,12 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         }
 
     }
-    
+
     // MoveIt version compatability
     // API changed from "const bool" to "bool"
     // Automatically select correct return type
-    typedef decltype(((kinematics::KinematicsBase*)0)->supportsGroup(0)) supportsGroup_Result; 
-    
+    typedef decltype(((kinematics::KinematicsBase*)0)->supportsGroup(0)) supportsGroup_Result;
+
     //virtual const bool supportsGroup(const moveit::core::JointModelGroup* jmg, std::string* error_text_out = NULL) const
     virtual supportsGroup_Result supportsGroup(const moveit::core::JointModelGroup* jmg, std::string* error_text_out = 0) const
     {
@@ -640,7 +640,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         //LOG_VAR(jmg->getName());
         return true;
     }
-    
+
 };
 
 }
@@ -656,23 +656,3 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 #undef LOG
 #undef ERROR
 PLUGINLIB_EXPORT_CLASS(bio_ik_kinematics_plugin::BioIKKinematicsPlugin, kinematics::KinematicsBase);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
