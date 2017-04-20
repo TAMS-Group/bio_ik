@@ -1,5 +1,5 @@
 // Bio IK for ROS
-// Philipp Ruppel
+// (c) 2016-2017 Philipp Ruppel
 
 #pragma once
 
@@ -138,7 +138,3 @@ struct BioIKKinematicsQueryOptions : kinematics::KinematicsQueryOptions
 };
 
 }
-
-
-
-
