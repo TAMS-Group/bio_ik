@@ -1077,8 +1077,12 @@ class RobotFK_Mutator : public RobotFK_Jacobian
 {
     typedef RobotFK_Jacobian Base;
     Eigen::MatrixXd mutation_approx_jacobian;
-    aligned_vector<aligned_vector<Frame>> mutation_approx_frames;
-    aligned_vector<aligned_vector<Vector3>> mutation_approx_quadratics;
+    std::vector<aligned_vector<Frame>> mutation_approx_frames;
+    std::vector<aligned_vector<Vector3>> mutation_approx_quadratics;
+    std::vector<size_t> mutation_approx_variable_indices;
+    std::vector<std::vector<int>> mutation_approx_mask;
+    std::vector<std::vector<size_t>> mutation_approx_map;
+
 public:
     RobotFK_Mutator(MoveItRobotModelConstPtr model) : RobotFK_Jacobian(model)
     {
@@ -1088,11 +1092,14 @@ public:
     {
         FNPROFILER();
 
+        mutation_approx_variable_indices = variable_indices;
+
         auto tip_count = tip_names.size();
 
         // init first order approximators
         {
-            mutation_approx_frames.resize(tip_count);
+            if(mutation_approx_frames.size() < tip_count) mutation_approx_frames.resize(tip_count);
+
             for(size_t itip = 0; itip < tip_count; itip++)
                 mutation_approx_frames[itip].resize(robot_model->getVariableCount());
 
@@ -1132,7 +1139,7 @@ public:
 
         // init second order approximators
         {
-            mutation_approx_quadratics.resize(tip_count);
+            if(mutation_approx_quadratics.size() < tip_count) mutation_approx_quadratics.resize(tip_count);
             for(size_t itip = 0; itip < tip_count; itip++)
                 mutation_approx_quadratics[itip].resize(robot_model->getVariableCount());
             for(size_t itip = 0; itip < tip_count; itip++)
@@ -1177,6 +1184,31 @@ public:
                 }
             }
         }
+
+        // init mask
+        if(mutation_approx_mask.size() < tip_count) mutation_approx_mask.resize(tip_count);
+        if(mutation_approx_map.size() < tip_count) mutation_approx_map.resize(tip_count);
+        for(size_t itip = 0; itip < tip_count; itip++)
+        {
+            if(mutation_approx_mask[itip].size() < robot_model->getVariableCount()) mutation_approx_mask[itip].resize(robot_model->getVariableCount());
+            mutation_approx_map[itip].clear();
+            for(size_t ii = 0; ii < variable_indices.size(); ii++)
+            //for(size_t ivar : variable_indices)
+            {
+                auto ivar = variable_indices[ii];
+                auto& frame = mutation_approx_frames[itip][ivar];
+                bool b = false;
+                b |= (frame.pos.x() != 0.0);
+                b |= (frame.pos.y() != 0.0);
+                b |= (frame.pos.z() != 0.0);
+                b |= (frame.rot.x() != 0.0);
+                b |= (frame.rot.y() != 0.0);
+                b |= (frame.rot.z() != 0.0);
+                mutation_approx_mask[itip][ivar] = b;
+                if(b) mutation_approx_map[itip].push_back(ii);
+            }
+        }
+
     }
 
 
@@ -1191,6 +1223,8 @@ public:
         output.resize(tip_count);
         for(size_t itip = 0; itip < tip_count; itip++)
         {
+            if(mutation_approx_mask[itip][variable_index] == 0) continue;
+
             auto& joint_delta = mutation_approx_frames[itip][variable_index];
 
             const Frame& tip_frame = input[itip];
@@ -1232,18 +1266,12 @@ public:
     }
 
     void computeApproximateMutations(
-        size_t variable_count,
-        const size_t* variable_indices,
         size_t mutation_count,
         const double * const * mutation_values,
         std::vector<std::vector<Frame>>& tip_frame_mutations) const
     {
-        BLOCKPROFILER("computeApproximateMutations C");
-
-        //FNPROFILER();
         const double* p_variables = variables.data();
         auto tip_count = tip_names.size();
-        //while(tip_frame_mutations.size() < mutation_count) tip_frame_mutations.emplace_back(tip_count);
         tip_frame_mutations.resize(mutation_count);
         for(auto& m : tip_frame_mutations) m.resize(tip_count);
         for(size_t itip = 0; itip < tip_count; itip++)
@@ -1262,9 +1290,15 @@ public:
                 double rz = tip_frame.rot.z();
                 double rw = tip_frame.rot.w();
 
-                for(size_t vii = 0; vii < variable_count; vii++)
+                //for(size_t vii = 0; vii < mutation_approx_variable_indices.size(); vii++)
+                for(size_t vii : mutation_approx_map[itip])
                 {
-                    size_t variable_index = variable_indices[vii];
+                    //LOG_VAR(vii);
+
+                    size_t variable_index = mutation_approx_variable_indices[vii];
+
+                    //if(mutation_approx_mask[itip][variable_index] == 0) continue;
+
                     double variable_delta = mutation_values[imutation][vii] - p_variables[variable_index];
 
                     px += joint_deltas[variable_index].pos.x() * variable_delta;

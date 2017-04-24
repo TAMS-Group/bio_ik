@@ -440,7 +440,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                                 const kinematics::KinematicsQueryOptions& options = kinematics::KinematicsQueryOptions(),
                                 const moveit::core::RobotState* context_state = NULL) const
     {
-        double t0 = ros::Time::now().toSec();
+        double t0 = ros::WallTime::now().toSec();
 
         //timeout = 0.1;
 

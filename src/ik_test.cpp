@@ -79,7 +79,7 @@ struct IKTest : IKBase
                 mutation_values.push_back(temp[ivar]);
             const double* mutation_ptr = mutation_values.data();
 
-            model.computeApproximateMutations(request.active_variables.size(), request.active_variables.data(), 1, &mutation_ptr, fbm);
+            model.computeApproximateMutations(1, &mutation_ptr, fbm);
 
             auto& fb = fbm[0];
 

@@ -32,7 +32,7 @@ struct IKOptLibProblem : cppoptlib::Problem<double>
     bool callback(const cppoptlib::Criteria<double>& state, const TVector& x)
     {
         // check ik timeout
-        return ros::Time::now().toSec() < ik->request.timeout;
+        return ros::WallTime::now().toSec() < ik->request.timeout;
     }
 };
 */
@@ -68,7 +68,7 @@ struct IKOptLibProblem : cppoptlib::BoundedProblem<double>
     bool callback(const cppoptlib::Criteria<double>& state, const TVector& x)
     {
         // check ik timeout
-        return ros::Time::now().toSec() < ik->request.timeout;
+        return ros::WallTime::now().toSec() < ik->request.timeout;
     }
 };
 

@@ -122,14 +122,14 @@ private:
         }
 
         // run solver iterations until solution found or timeout
-        for(size_t iteration = 0; (ros::Time::now().toSec() < timeout && finished == 0) || (iteration == 0 && i == 0); iteration++)
+        for(size_t iteration = 0; (ros::WallTime::now().toSec() < timeout && finished == 0) || (iteration == 0 && i == 0); iteration++)
         {
             if(finished) break;
 
             // run solver for a few steps
             solvers[i]->step();
             for(int it2 = 1; it2 < 4; it2++)
-                if(ros::Time::now().toSec() < timeout && finished == 0)
+                if(ros::WallTime::now().toSec() < timeout && finished == 0)
                     solvers[i]->step();
 
             if(finished) break;

@@ -20,7 +20,7 @@
 
 #include <tf_conversions/tf_kdl.h>
 
-#include <xmlrpcpp/XmlRpcException.h>
+#include <XmlRpcException.h>
 
 //#include <link.h>
 
@@ -94,6 +94,7 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
     {
         const char* volatile name; // name of scope or function, also used as indicator if it is currently being executed
         std::atomic<int> counter; // only used by CounterScope / COUNTERPROFILER
+        ProfilerBin() : name(0) { }
     };
 
     // allocate globally unique profiler buffer via template
@@ -221,7 +222,7 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
                         std::this_thread::sleep_for(std::chrono::duration<size_t, std::micro>(rand() % 1000));
                     }
                     {
-                        double thistime = ros::Time::now().toSec();
+                        double thistime = ros::WallTime::now().toSec();
                         static double lasttime = 0.0;
                         if(thistime < lasttime + 1) continue;
                         lasttime = thistime;

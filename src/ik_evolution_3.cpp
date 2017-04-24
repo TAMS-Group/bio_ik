@@ -7,7 +7,7 @@ namespace bio_ik
 {
 
 // fast evolutionary inverse kinematics
-template<int memetic>
+template<int memetic, bool approx_fk>
 struct IKEvolution3 : IKBase
 {
     struct Individual
@@ -325,9 +325,11 @@ struct IKEvolution3 : IKBase
             for(size_t i = 1; i < population.size(); i++) population[i] = population[0];
 
             // initialize forward kinematics approximator
-            genesToJointVariables(population[0], temp_joint_variables);
-            model.applyConfiguration(temp_joint_variables);
-            model.initializeMutationApproximator(gene_subset_vars);
+            {
+                genesToJointVariables(population[0], temp_joint_variables);
+                model.applyConfiguration(temp_joint_variables);
+                model.initializeMutationApproximator(gene_subset_vars);
+            }
 
             // run evolution for a few generations
             size_t generation_count = 16;
@@ -375,28 +377,50 @@ struct IKEvolution3 : IKBase
                     }
                 }
 
-                // genotype-phenotype mapping
+
+                if(approx_fk)
                 {
-                    BLOCKPROFILER("phenotype");
-                    genotypes.resize(child_count);
-                    genotype_buffer.resize(child_count);
+
+                    BLOCKPROFILER("phenotype & fitness");
+
+                    // genotype-phenotype mapping
+                    {
+                        BLOCKPROFILER("phenotype");
+                        genotypes.resize(child_count);
+                        genotype_buffer.resize(child_count);
+                        for(size_t child_index = 0; child_index < child_count; child_index++)
+                        {
+                            genotype_buffer[child_index].clear();
+                            for(auto gene_index : gene_subset) genotype_buffer[child_index].push_back(children[child_index].genes[gene_index]);
+                            genotypes[child_index] = genotype_buffer[child_index].data();
+                        }
+                        model.computeApproximateMutations(child_count, genotypes.data(), phenotypes);
+                    }
+
+                    // fitness
+                    {
+                        BLOCKPROFILER("fitness");
+                        for(size_t child_index = 0; child_index < child_count; child_index++)
+                        {
+                            children[child_index].fitness = computeFitnessActiveVariables(phenotypes[child_index], children[child_index].genes.data());
+                        }
+                    }
+
+                }
+                else
+                {
+
+                    BLOCKPROFILER("phenotype & fitness");
                     for(size_t child_index = 0; child_index < child_count; child_index++)
                     {
-                        genotype_buffer[child_index].clear();
-                        for(auto gene_index : gene_subset) genotype_buffer[child_index].push_back(children[child_index].genes[gene_index]);
-                        genotypes[child_index] = genotype_buffer[child_index].data();
+                        genesToJointVariables(children[child_index], temp_joint_variables);
+                        model.applyConfiguration(temp_joint_variables);
+                        children[child_index].fitness = computeFitnessActiveVariables(model.getTipFrames(), children[child_index].genes.data());
                     }
-                    model.computeApproximateMutations(gene_subset_vars.size(), gene_subset_vars.data(), child_count, genotypes.data(), phenotypes);
+
                 }
 
-                // fitness
-                {
-                    BLOCKPROFILER("fitness");
-                    for(size_t child_index = 0; child_index < child_count; child_index++)
-                    {
-                        children[child_index].fitness = computeFitnessActiveVariables(phenotypes[child_index], children[child_index].genes.data());
-                    }
-                }
+
 
                 // selection
                 {
@@ -425,6 +449,13 @@ struct IKEvolution3 : IKBase
             }
 
 
+            if(memetic && !approx_fk)
+            {
+                genesToJointVariables(population[0], temp_joint_variables);
+                model.applyConfiguration(temp_joint_variables);
+                model.initializeMutationApproximator(gene_subset_vars);
+            }
+
 
             // memetic optimization
             {
@@ -434,8 +465,13 @@ struct IKEvolution3 : IKBase
                     // init
                     auto& individual = population[0];
                     gradient.resize(gene_subset.size());
-                    //if(genotypes.empty()) genotypes.resize(2);
-                    //if(genotype_buffer.empty()) genotype_buffer.resize(2);
+                    if(genotypes.empty()) genotypes.resize(2);
+                    if(genotype_buffer.empty()) genotype_buffer.resize(2);
+                    for(size_t i = 0; i < 2; i++)
+                    {
+                        genotype_buffer[i].resize(active_variables.size());
+                        genotypes[i] = genotype_buffer[i].data();
+                    }
                     phenotypes2.resize(1);
                     phenotypes3.resize(1);
 
@@ -453,7 +489,7 @@ struct IKEvolution3 : IKBase
                         genotype_buffer[1] = individual.genes;
                         genotypes[0] = genotype_buffer[0].data();
                         genotypes[1] = genotype_buffer[1].data();
-                        model.computeApproximateMutations(gene_subset_vars.size(), gene_subset_vars.data(), 1, genotypes.data(), phenotypes2);
+                        model.computeApproximateMutations(1, genotypes.data(), phenotypes2);
                         double f2p = computeFitnessActiveVariables(phenotypes2[0], genotypes[1]);
                         double fa = f2p + computeSecondaryFitnessActiveVariables(genotypes[1]);
                         for(size_t j = 0; j < gene_subset.size(); j++)
@@ -483,7 +519,7 @@ struct IKEvolution3 : IKBase
                             genotypes[0][i] = individual.genes[gene_subset[i]] - gradient[i];
                             genotypes[1][gene_subset[i]] = genotypes[0][i];
                         }
-                        model.computeApproximateMutations(gene_subset_vars.size(), gene_subset_vars.data(), 1, genotypes.data(), phenotypes3);
+                        model.computeApproximateMutations(1, genotypes.data(), phenotypes3);
                         double f1 = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[1]);
 
                         double f2 = fa;
@@ -493,7 +529,7 @@ struct IKEvolution3 : IKBase
                             genotypes[0][i] = individual.genes[gene_subset[i]] + gradient[i];
                             genotypes[1][gene_subset[i]] = genotypes[0][i];
                         }
-                        model.computeApproximateMutations(gene_subset_vars.size(), gene_subset_vars.data(), 1, genotypes.data(), phenotypes3);
+                        model.computeApproximateMutations(1, genotypes.data(), phenotypes3);
                         double f3 = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[1]);
 
                         // quadratic step size
@@ -528,7 +564,7 @@ struct IKEvolution3 : IKBase
                                     genotypes[0][i] = modelInfo.clip(individual.genes[gene_subset[i]] + gradient[i] * step_size * f, active_variables[gene_subset[i]]);
                                     genotypes[1][gene_subset[i]] = genotypes[0][i];
                                 }
-                                model.computeApproximateMutations(gene_subset_vars.size(), gene_subset_vars.data(), 1, genotypes.data(), phenotypes2);
+                                model.computeApproximateMutations(1, genotypes.data(), phenotypes2);
                                 double f4p = computeFitnessActiveVariables(phenotypes2[0], genotypes[1]);
 
 
@@ -615,8 +651,12 @@ struct IKEvolution3 : IKBase
     virtual size_t concurrency() const { return 4; }
 };
 
-static IKFactory::Class<IKEvolution3<0>> bio3("bio3");
-static IKFactory::Class<IKEvolution3<'q'>> bio3_memetic("bio3_memetic");
-static IKFactory::Class<IKEvolution3<'l'>> bio3_memetic_l("bio3_memetic_l");
+static IKFactory::Class<IKEvolution3<0, 1>> bio3("bio3");
+static IKFactory::Class<IKEvolution3<'q', 1>> bio3_memetic("bio3_memetic");
+static IKFactory::Class<IKEvolution3<'l', 1>> bio3_memetic_l("bio3_memetic_l");
+
+static IKFactory::Class<IKEvolution3<0, 0>> bio3b("bio3b");
+static IKFactory::Class<IKEvolution3<'q', 0>> bio3b_memetic("bio3b_memetic");
+static IKFactory::Class<IKEvolution3<'l', 0>> bio3b_memetic_l("bio3b_memetic_l");
 
 }

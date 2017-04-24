@@ -53,7 +53,7 @@ struct IKEvolution2 : IKBase
         double value(const TVector& x)
         {
             const double* genes = x.data();
-            ik->model.computeApproximateMutations(ik->active_variables.size(), ik->active_variables.data(), 1, &genes, ik->phenotypes);
+            ik->model.computeApproximateMutations(1, &genes, ik->phenotypes);
             return ik->computeCombinedFitnessActiveVariables(ik->phenotypes[0], genes);
         }
     };
@@ -373,7 +373,7 @@ struct IKEvolution2 : IKBase
                     genotypes.resize(child_count);
                     for(size_t i = 0; i < child_count; i++)
                         genotypes[i] = children[i].genes.data();
-                    model.computeApproximateMutations(active_variables.size(), active_variables.data(), child_count, genotypes.data(), phenotypes);
+                    model.computeApproximateMutations(child_count, genotypes.data(), phenotypes);
                 }
 
                 // fitness
@@ -436,7 +436,7 @@ struct IKEvolution2 : IKBase
                         // compute gradient
                         temp = individual.genes;
                         genotypes[0] = temp.data();
-                        model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes2);
+                        model.computeApproximateMutations(1, genotypes.data(), phenotypes2);
                         double f2p = computeFitnessActiveVariables(phenotypes2[0], genotypes[0]);
                         double fa = f2p + computeSecondaryFitnessActiveVariables(genotypes[0]);
                         for(size_t i = 0; i < active_variables.size(); i++)
@@ -460,13 +460,13 @@ struct IKEvolution2 : IKBase
 
                         // sample support points for line search
                         for(size_t i = 0; i < active_variables.size(); i++) genotypes[0][i] = individual.genes[i] - gradient[i];
-                        model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3);
+                        model.computeApproximateMutations(1, genotypes.data(), phenotypes3);
                         double f1 = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);
 
                         double f2 = fa;
 
                         for(size_t i = 0; i < active_variables.size(); i++) genotypes[0][i] = individual.genes[i] + gradient[i];
-                        model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes3);
+                        model.computeApproximateMutations(1, genotypes.data(), phenotypes3);
                         double f3 = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);
 
                         // quadratic step size
@@ -497,7 +497,7 @@ struct IKEvolution2 : IKBase
 
                                 // move by step size along gradient and compute fitness
                                 for(size_t i = 0; i < active_variables.size(); i++) genotypes[0][i] = modelInfo.clip(individual.genes[i] + gradient[i] * step_size * f, active_variables[i]);
-                                model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes2);
+                                model.computeApproximateMutations(1, genotypes.data(), phenotypes2);
                                 double f4p = computeFitnessActiveVariables(phenotypes2[0], genotypes[0]);
 
 
@@ -530,7 +530,7 @@ struct IKEvolution2 : IKBase
 
                             // move by step size along gradient and compute fitness
                             for(size_t i = 0; i < active_variables.size(); i++) temp[i] = modelInfo.clip(individual.genes[i] - gradient[i] * step_size, active_variables[i]);
-                            model.computeApproximateMutations(active_variables.size(), active_variables.data(), 1, genotypes.data(), phenotypes2);
+                            model.computeApproximateMutations(1, genotypes.data(), phenotypes2);
                             double f4p = computeFitnessActiveVariables(phenotypes2[0], genotypes[0]);
 
                             // accept new position if better
