@@ -542,7 +542,7 @@ struct IKBase : IKBase2, RandomBase
 
 
 
-        fitness_evaluations++;
+        //fitness_evaluations++;
 
         double sum = 0.0;
 
@@ -950,7 +950,7 @@ struct IKBase : IKBase2, RandomBase
 
 
 
-    uint64_t fitness_evaluations = 0;
+    //uint64_t fitness_evaluations = 0;
 
     double computeFitness(const std::vector<double>& variable_positions)
     {
