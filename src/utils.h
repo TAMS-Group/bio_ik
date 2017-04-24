@@ -31,9 +31,15 @@ namespace bio_ik
 {
 
 
+
+//#define ENABLE_CPP_OPTLIB
+
+
 #define ENABLE_LOG
 
+
 #define ENABLE_PROFILER
+
 
 
 

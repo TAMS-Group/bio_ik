@@ -1,6 +1,8 @@
 // Bio IK for ROS
 // (c) 2016-2017 Philipp Ruppel
 
+#ifdef ENABLE_CPP_OPTLIB
+
 #include "ik_base.h"
 
 #include "../../CppNumericalSolvers/include/cppoptlib/meta.h"
@@ -226,3 +228,5 @@ IKCPPOPT("nm", NelderMeadSolver);
 
 #include "../../CppNumericalSolvers/include/cppoptlib/solver/newtondescentsolver.h"
 IKCPPOPT("nd", NewtonDescentSolver);
+
+#endif

@@ -3,7 +3,9 @@
 
 #include "ik_base.h"
 
+#ifdef ENABLE_CPP_OPTLIB
 #include "../../CppNumericalSolvers/include/cppoptlib/solver/lbfgssolver.h"
+#endif
 
 namespace bio_ik
 {
@@ -44,6 +46,7 @@ struct IKEvolution2 : IKBase
     {
     }
 
+#ifdef ENABLE_CPP_OPTLIB
     struct OptlibProblem : cppoptlib::Problem<double>
     {
         IKEvolution2* ik;
@@ -61,6 +64,7 @@ struct IKEvolution2 : IKBase
     std::shared_ptr<OptlibSolver> optlib_solver;
     std::shared_ptr<OptlibProblem> optlib_problem;
     typename OptlibSolver::TVector optlib_vector;
+#endif
 
     void genesToJointVariables(const Individual& individual, std::vector<double>& variables)
     {
@@ -549,7 +553,7 @@ struct IKEvolution2 : IKBase
                 }
 
 
-
+#ifdef ENABLE_CPP_OPTLIB
                 // cppoptlib::LbfgsSolver memetic test
                 if(memetic == 'o')
                 {
@@ -575,6 +579,9 @@ struct IKEvolution2 : IKBase
                     // get result
                     for(size_t i = 0; i < active_variables.size(); i++) individual.genes[i] = modelInfo.clip(optlib_vector[i], active_variables[i]);
                 }
+#endif
+
+
             }
 
         }
@@ -668,6 +675,9 @@ struct IKEvolution2 : IKBase
 static IKFactory::Class<IKEvolution2<0>> bio2("bio2");
 static IKFactory::Class<IKEvolution2<'q'>> bio2_memetic("bio2_memetic");
 static IKFactory::Class<IKEvolution2<'l'>> bio2_memetic_l("bio2_memetic_l");
+
+#ifdef ENABLE_CPP_OPTLIB
 static IKFactory::Class<IKEvolution2<'o'>> bio2_memetic_0("bio2_memetic_lbfgs");
+#endif
 
 }
