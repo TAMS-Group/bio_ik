@@ -144,8 +144,10 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
     {
         LOG_FNC();
 
-        LOG_VAR(robot_description);
-        LOG_VAR(group_name);
+        //LOG_VAR(robot_description);
+        //LOG_VAR(group_name);
+
+        LOG("bio ik init", ros::this_node::getName());
 
         rdf_loader::RDFLoader rdf_loader(robot_description_);
         auto srdf = rdf_loader.getSRDF();
@@ -178,8 +180,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
         link_names = tip_frames_;
 
-        for(auto& n : joint_names) LOG("joint", n);
-        for(auto& n : link_names) LOG("link", n);
+        //for(auto& n : joint_names) LOG("joint", n);
+        //for(auto& n : link_names) LOG("link", n);
 
         ros::NodeHandle node_handle("~");
         std::string rdesc;
@@ -265,7 +267,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
                             std::string type;
                             d.param("type", type);
-                            LOG("goal", "type", type);
+                            //LOG("goal", "type", type);
 
                             if(type == "LookAt")
                             {
@@ -355,7 +357,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         }
 
 
-        LOG("init ready");
+        //LOG("init ready");
 
         return true;
     }

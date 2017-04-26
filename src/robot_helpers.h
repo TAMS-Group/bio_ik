@@ -74,7 +74,7 @@ public:
             info.span = info.max - info.min;
 
 
-            LOG("joint variable", name, info.min, info.max);
+            //LOG("joint variable", name, info.min, info.max);
 
 
             //if(info.span == DBL_MAX || !std::isfinite(info.span)) info.span = 0;
