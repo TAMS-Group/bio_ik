@@ -80,9 +80,9 @@ struct IKParallel
         std::string name;
         //params.node_handle.param("mode", name, std::string("jac"));
         //params.node_handle.param("mode", name, std::string("bio2_memetic_l"));
-        //params.node_handle.param("mode", name, std::string("bio2_memetic"));
-        params.node_handle.param("mode", name, std::string("bio3_memetic"));
-
+        params.node_handle.param("mode", name, std::string("bio2_memetic"));
+        //params.node_handle.param("mode", name, std::string("bio3_memetic"));
+ 
         // create solvers
         solvers.emplace_back(IKFactory::create(name, params));
         thread_count = solvers.front()->concurrency();
