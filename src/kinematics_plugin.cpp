@@ -574,18 +574,31 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         for(auto ivar : ikrequest.active_variables)
         {
             auto v = state[ivar];
-            // TODO: correct ???
-            // TODO: force close to initial_guess ???
-            if(robot_info.isRevolute(ivar))
+            if(robot_info.isRevolute(ivar) && robot_model->getMimicJointModels().empty())
             {
-                if(v < robot_info.getMin(ivar))
+                auto r = ikrequest.initial_guess[ivar];
+                auto lo = robot_info.getClipMin(ivar);
+                auto hi = robot_info.getClipMax(ivar);
+                
+                // move close to initial guess
+                if(r < v - M_PI || r > v + M_PI)
                 {
-                    v += std::ceil((robot_info.getMin(ivar) - v) * (1.0 / (2.0 * M_PI))) * (2.0 * M_PI);
+                    v -= r;
+                    v /= (2 * M_PI);
+                    v += 0.5;
+                    v -= std::floor(v);
+                    v -= 0.5;
+                    v *= (2 * M_PI);
+                    v += r;
                 }
-                if(v > robot_info.getMax(ivar))
-                {
-                    v += std::floor((robot_info.getMax(ivar) - v) * (1.0 / (2.0 * M_PI))) * (2.0 * M_PI);
-                }
+                
+                // wrap at joint limits
+                if(v > hi) v -= std::ceil(std::max(0.0, v - hi) / (2 * M_PI)) * (2 * M_PI);
+                if(v < lo) v += std::ceil(std::max(0.0, lo - v) / (2 * M_PI)) * (2 * M_PI);
+                
+                // clamp at edges
+                if(v < lo) v = lo;
+                if(v > hi) v = hi;
             }
             state[ivar] = v;
         }
