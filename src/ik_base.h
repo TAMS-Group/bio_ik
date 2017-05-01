@@ -157,14 +157,14 @@ public:
             if(auto* g = dynamic_cast<const OrientationGoal*>(goal))
             {
                 goal_info.goal_type = GoalType::Orientation;
-                goal_info.frame.rot = g->orientation;
+                goal_info.frame.rot = g->orientation.normalized();
             }
 
             if(auto* g = dynamic_cast<const PoseGoal*>(goal))
             {
                 goal_info.goal_type = GoalType::Pose;
                 goal_info.frame.pos = g->position;
-                goal_info.frame.rot = g->orientation;
+                goal_info.frame.rot = g->orientation.normalized();
                 goal_info.rotation_scale = g->rotation_scale;
                 if(!(goal_info.rotation_scale > 0)) goal_info.goal_type = GoalType::Position;
 
@@ -177,7 +177,7 @@ public:
             {
                 goal_info.goal_type = GoalType::LookAt;
                 goal_info.target = g->target;
-                goal_info.axis = g->axis;
+                goal_info.axis = g->axis.normalized();
             }
 
             if(auto* g = dynamic_cast<const MaxDistanceGoal*>(goal))
