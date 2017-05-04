@@ -126,6 +126,55 @@ struct MaxDistanceGoal : LinkGoalBase
     }
 };
 
+struct MinDistanceGoal : LinkGoalBase
+{
+    tf::Vector3 target;
+    double distance;
+    MinDistanceGoal()
+        : target(0, 0, 0)
+        , distance(1)
+    {
+    }
+    MinDistanceGoal(const std::string& link_name, const tf::Vector3& target, double distance, double weight = 1.0)
+        : LinkGoalBase(link_name, weight)
+        , target(target)
+        , distance(distance)
+    {
+    }
+};
+
+struct LineGoal : LinkGoalBase
+{
+    tf::Vector3 position, direction;
+    LineGoal()
+        : position(0, 0, 0)
+        , direction(0, 0, 0)
+    {
+    }
+    LineGoal(const std::string& link_name, const tf::Vector3& position, const tf::Vector3& direction, double weight = 1.0)
+        : LinkGoalBase(link_name, weight)
+        , position(position)
+        , direction(direction)
+    {
+    }
+};
+
+struct TouchGoal : LinkGoalBase
+{
+    tf::Vector3 position, normal;
+    TouchGoal()
+        : position(0, 0, 0)
+        , normal(0, 0, 0)
+    {
+    }
+    TouchGoal(const std::string& link_name, const tf::Vector3& position, const tf::Vector3& normal, double weight = 1.0)
+        : LinkGoalBase(link_name, weight)
+        , position(position)
+        , normal(normal)
+    {
+    }
+};
+
 struct AvoidJointLimitsGoal : GoalBase
 {
     bool secondary;

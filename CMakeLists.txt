@@ -53,6 +53,7 @@ include_directories(
 
 add_library(bio_ik_kinematics_plugin
     src/kinematics_plugin.cpp
+    src/ik_base.cpp
     src/ik_cppoptlib.cpp
     src/ik_evolution_1.cpp
     src/ik_evolution_2.cpp
