@@ -24,7 +24,7 @@ struct IKTest : IKBase
     /*double tipdiff(const std::vector<Frame>& fa, const std::vector<Frame>& fb)
     {
         double diff = 0.0;
-        for(size_t i = 0; i < request.tip_link_indices.size(); i++)
+        for(size_t i = 0; i < problem.tip_link_indices.size(); i++)
         {
             //LOG_VAR(fa[i]);
             //LOG_VAR(fb[i]);
@@ -37,15 +37,15 @@ struct IKTest : IKBase
 
 
 
-    void initialize(const IKRequest& request)
+    void initialize(const Problem& problem)
     {
-        IKBase::initialize(request);
+        IKBase::initialize(problem);
 
-        fkref.initialize(request.tip_link_indices);
-        model.initialize(request.tip_link_indices);
+        fkref.initialize(problem.tip_link_indices);
+        model.initialize(problem.tip_link_indices);
 
-        fkref.applyConfiguration(request.initial_guess);
-        model.applyConfiguration(request.initial_guess);
+        fkref.applyConfiguration(problem.initial_guess);
+        model.applyConfiguration(problem.initial_guess);
 
         //double diff = tipdiff(fkref.getTipFrames(), model.getTipFrames());
         //LOG_VAR(diff);
@@ -53,7 +53,7 @@ struct IKTest : IKBase
         /*{
             auto& fa = fkref.getTipFrames();
             auto& fb = model.getTipFrames();
-            for(size_t i = 0; i < request.tip_link_indices.size(); i++)
+            for(size_t i = 0; i < problem.tip_link_indices.size(); i++)
             {
                 LOG("d rot", i, fa[i].rot.angleShortestPath(fb[i].rot));
                 LOG("d pos", i, fa[i].pos.distance(fb[i].pos));
@@ -61,21 +61,21 @@ struct IKTest : IKBase
         }*/
 
         {
-            temp = request.initial_guess;
-            for(size_t ivar : request.active_variables)
+            temp = problem.initial_guess;
+            for(size_t ivar : problem.active_variables)
                 if(modelInfo.isRevolute(ivar) || modelInfo.isPrismatic(ivar))
                     temp[ivar] = modelInfo.clip(temp[ivar] + random(-0.1, 0.1), ivar);
 
             fkref.applyConfiguration(temp);
             auto& fa = fkref.getTipFrames();
 
-            model.applyConfiguration(request.initial_guess);
-            model.initializeMutationApproximator(request.active_variables);
+            model.applyConfiguration(problem.initial_guess);
+            model.initializeMutationApproximator(problem.active_variables);
 
             std::vector<std::vector<Frame>> fbm;
 
             std::vector<double> mutation_values;
-            for(size_t ivar : request.active_variables)
+            for(size_t ivar : problem.active_variables)
                 mutation_values.push_back(temp[ivar]);
             const double* mutation_ptr = mutation_values.data();
 
@@ -85,7 +85,7 @@ struct IKTest : IKBase
 
             //auto& fb = model.getTipFrames();
 
-            for(size_t i = 0; i < request.tip_link_indices.size(); i++)
+            for(size_t i = 0; i < problem.tip_link_indices.size(); i++)
             {
                 //LOG("d rot", i, fa[i].rot.angleShortestPath(fb[i].rot));
                 //LOG("d pos", i, fa[i].pos.distance(fb[i].pos));
@@ -107,7 +107,7 @@ struct IKTest : IKBase
 
     const std::vector<double>& getSolution() const
     {
-        return request.initial_guess;
+        return problem.initial_guess;
     }
 
 };

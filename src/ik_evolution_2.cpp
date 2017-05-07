@@ -70,8 +70,8 @@ struct IKEvolution2 : IKBase
     {
         auto& genes = individual.genes;
         variables.resize(params.robot_model->getVariableCount());
-        for(size_t i = 0; i < active_variables.size(); i++)
-            variables[active_variables[i]] = genes[i];
+        for(size_t i = 0; i < problem.active_variables.size(); i++)
+            variables[problem.active_variables[i]] = genes[i];
     }
 
     const std::vector<double>& getSolution() const
@@ -79,17 +79,17 @@ struct IKEvolution2 : IKBase
         return solution;
     }
 
-    void initialize(const IKRequest& request)
+    void initialize(const Problem& problem)
     {
         BLOCKPROFILER("initialization");
 
-        IKBase::initialize(request);
+        IKBase::initialize(problem);
 
         // init list of quaternion joint genes to be normalized during each mutation
         quaternion_genes.clear();
-        for(size_t igene = 0; igene < active_variables.size(); igene++)
+        for(size_t igene = 0; igene < problem.active_variables.size(); igene++)
         {
-            size_t ivar = active_variables[igene];
+            size_t ivar = problem.active_variables[igene];
             auto* joint_model = params.robot_model->getJointOfVariable(ivar);
             if(joint_model->getFirstVariableIndex() + 3 != ivar) continue;
             if(joint_model->getType() != moveit::core::JointModel::FLOATING) continue;
@@ -97,7 +97,7 @@ struct IKEvolution2 : IKBase
         }
 
         // set solution to initial guess
-        initial_guess = request.initial_guess;
+        initial_guess = problem.initial_guess;
         solution = initial_guess;
         solution_fitness = computeFitness(solution);
 
@@ -122,25 +122,25 @@ struct IKEvolution2 : IKBase
                 auto& v = s.individuals[0];
 
                 // init genes
-                v.genes.resize(active_variables.size());
+                v.genes.resize(problem.active_variables.size());
                 //if(thread_index == 0) // on first island?
                 //if(thread_index % 2 == 0) // on every second island...
                 if(1)
                 {
                     // set to initial_guess
                     for(size_t i = 0; i < v.genes.size(); i++)
-                        v.genes[i] = initial_guess[active_variables[i]];
+                        v.genes[i] = initial_guess[problem.active_variables[i]];
                 }
                 else
                 {
                     // initialize populations on other islands randomly
                     for(size_t i = 0; i < v.genes.size(); i++)
-                        v.genes[i] = random(modelInfo.getMin(active_variables[i]), modelInfo.getMax(active_variables[i]));
+                        v.genes[i] = random(modelInfo.getMin(problem.active_variables[i]), modelInfo.getMax(problem.active_variables[i]));
                 }
 
                 // set gradients to zero
                 v.gradients.clear();
-                v.gradients.resize(active_variables.size(), 0);
+                v.gradients.resize(problem.active_variables.size(), 0);
             }
 
             // clone first individual
@@ -155,21 +155,21 @@ struct IKEvolution2 : IKBase
         children.resize(population_size + child_count);
         for(auto& child : children)
         {
-            child.genes.resize(active_variables.size());
-            child.gradients.resize(active_variables.size());
+            child.genes.resize(problem.active_variables.size());
+            child.gradients.resize(problem.active_variables.size());
         }
 
         // init gene infos
         //if(genes_min.empty())
         {
-            genes_min.resize(active_variables.size());
-            genes_max.resize(active_variables.size());
-            genes_span.resize(active_variables.size());
-            for(size_t i = 0; i < active_variables.size(); i++)
+            genes_min.resize(problem.active_variables.size());
+            genes_max.resize(problem.active_variables.size());
+            genes_span.resize(problem.active_variables.size());
+            for(size_t i = 0; i < problem.active_variables.size(); i++)
             {
-                genes_min[i] = modelInfo.getClipMin(active_variables[i]);
-                genes_max[i] = modelInfo.getClipMax(active_variables[i]);
-                genes_span[i] = modelInfo.getSpan(active_variables[i]);
+                genes_min[i] = modelInfo.getClipMin(problem.active_variables[i]);
+                genes_max[i] = modelInfo.getClipMax(problem.active_variables[i]);
+                genes_span[i] = modelInfo.getSpan(problem.active_variables[i]);
             }
         }
 
@@ -179,9 +179,9 @@ struct IKEvolution2 : IKBase
         for(auto& chain_mutation_mask : chain_mutation_masks)
         {
             temp_mutation_chain.clear();
-            if(request.tip_link_indices.size() > 1)
+            if(problem.tip_link_indices.size() > 1)
             {
-                for(auto* chain_link = params.robot_model->getLinkModel(random_element(request.tip_link_indices)); chain_link; chain_link = chain_link->getParentLinkModel())
+                for(auto* chain_link = params.robot_model->getLinkModel(random_element(problem.tip_link_indices)); chain_link; chain_link = chain_link->getParentLinkModel())
                     temp_mutation_chain.push_back(chain_link);
                 temp_mutation_chain.resize(random_index(temp_mutation_chain.size()) + 1);
             }
@@ -195,9 +195,9 @@ struct IKEvolution2 : IKBase
                     temp_chain_mutation_var_mask[ivar] = 1;
             }
 
-            chain_mutation_mask.resize(active_variables.size());
-            for(size_t igene = 0; igene < active_variables.size(); igene++)
-                chain_mutation_mask[igene] = temp_chain_mutation_var_mask[active_variables[igene]];
+            chain_mutation_mask.resize(problem.active_variables.size());
+            for(size_t igene = 0; igene < problem.active_variables.size(); igene++)
+                chain_mutation_mask[igene] = temp_chain_mutation_var_mask[problem.active_variables[igene]];
         }
         */
     }
@@ -283,7 +283,7 @@ struct IKEvolution2 : IKBase
             rr += (gene_count + 3) / 4 * 4;
             //dm += (gene_count + 3) / 4 * 4;
 
-            /*if(request.tip_link_indices.size() > 1)
+            /*if(problem.tip_link_indices.size() > 1)
             {
                 if(fast_random() < 0.5)
                 {
@@ -322,7 +322,7 @@ struct IKEvolution2 : IKBase
             // initialize forward kinematics approximator
             genesToJointVariables(species.individuals[0], temp_joint_variables);
             model.applyConfiguration(temp_joint_variables);
-            model.initializeMutationApproximator(active_variables);
+            model.initializeMutationApproximator(problem.active_variables);
 
             // run evolution for a few generations
             size_t generation_count = 16;
@@ -339,7 +339,7 @@ struct IKEvolution2 : IKBase
                 size_t child_count = children.size();
 
                 // pre-selection by secondary objectives
-                if(request.secondary_goals.size())
+                if(problem.secondary_goals.size())
                 {
                     BLOCKPROFILER("pre-selection");
                     child_count = random_index(children.size() - population.size() - 1) + 1 + population.size();
@@ -424,7 +424,7 @@ struct IKEvolution2 : IKBase
 
                     // init
                     auto& individual = population[0];
-                    gradient.resize(active_variables.size());
+                    gradient.resize(problem.active_variables.size());
                     if(genotypes.empty()) genotypes.emplace_back();
                     phenotypes2.resize(1);
                     phenotypes3.resize(1);
@@ -443,11 +443,11 @@ struct IKEvolution2 : IKBase
                         model.computeApproximateMutations(1, genotypes.data(), phenotypes2);
                         double f2p = computeFitnessActiveVariables(phenotypes2[0], genotypes[0]);
                         double fa = f2p + computeSecondaryFitnessActiveVariables(genotypes[0]);
-                        for(size_t i = 0; i < active_variables.size(); i++)
+                        for(size_t i = 0; i < problem.active_variables.size(); i++)
                         {
                             double* pp = &(genotypes[0][i]);
                             genotypes[0][i] = individual.genes[i] + dp;
-                            model.computeApproximateMutation1(active_variables[i], +dp, phenotypes2[0], phenotypes3[0]);
+                            model.computeApproximateMutation1(problem.active_variables[i], +dp, phenotypes2[0], phenotypes3[0]);
                             double fb = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);
                             genotypes[0][i] = individual.genes[i];
                             double d = fb - fa;
@@ -456,20 +456,20 @@ struct IKEvolution2 : IKBase
 
                         // normalize gradient
                         double sum = dp * dp;
-                        for(size_t i = 0; i < active_variables.size(); i++)
+                        for(size_t i = 0; i < problem.active_variables.size(); i++)
                             sum += fabs(gradient[i]);
                         double f = 1.0 / sum * dp;
-                        for(size_t i = 0; i < active_variables.size(); i++)
+                        for(size_t i = 0; i < problem.active_variables.size(); i++)
                             gradient[i] *= f;
 
                         // sample support points for line search
-                        for(size_t i = 0; i < active_variables.size(); i++) genotypes[0][i] = individual.genes[i] - gradient[i];
+                        for(size_t i = 0; i < problem.active_variables.size(); i++) genotypes[0][i] = individual.genes[i] - gradient[i];
                         model.computeApproximateMutations(1, genotypes.data(), phenotypes3);
                         double f1 = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);
 
                         double f2 = fa;
 
-                        for(size_t i = 0; i < active_variables.size(); i++) genotypes[0][i] = individual.genes[i] + gradient[i];
+                        for(size_t i = 0; i < problem.active_variables.size(); i++) genotypes[0][i] = individual.genes[i] + gradient[i];
                         model.computeApproximateMutations(1, genotypes.data(), phenotypes3);
                         double f3 = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);
 
@@ -500,7 +500,7 @@ struct IKEvolution2 : IKBase
                                 double f = 1.0;
 
                                 // move by step size along gradient and compute fitness
-                                for(size_t i = 0; i < active_variables.size(); i++) genotypes[0][i] = modelInfo.clip(individual.genes[i] + gradient[i] * step_size * f, active_variables[i]);
+                                for(size_t i = 0; i < problem.active_variables.size(); i++) genotypes[0][i] = modelInfo.clip(individual.genes[i] + gradient[i] * step_size * f, problem.active_variables[i]);
                                 model.computeApproximateMutations(1, genotypes.data(), phenotypes2);
                                 double f4p = computeFitnessActiveVariables(phenotypes2[0], genotypes[0]);
 
@@ -533,7 +533,7 @@ struct IKEvolution2 : IKBase
                             double step_size = f2 / cost_diff; // f / (f / j) = j
 
                             // move by step size along gradient and compute fitness
-                            for(size_t i = 0; i < active_variables.size(); i++) temp[i] = modelInfo.clip(individual.genes[i] - gradient[i] * step_size, active_variables[i]);
+                            for(size_t i = 0; i < problem.active_variables.size(); i++) temp[i] = modelInfo.clip(individual.genes[i] - gradient[i] * step_size, problem.active_variables[i]);
                             model.computeApproximateMutations(1, genotypes.data(), phenotypes2);
                             double f4p = computeFitnessActiveVariables(phenotypes2[0], genotypes[0]);
 
@@ -570,14 +570,14 @@ struct IKEvolution2 : IKBase
                     }
 
                     // init starting point
-                    optlib_vector.resize(active_variables.size());
-                    for(size_t i = 0; i < active_variables.size(); i++) optlib_vector[i] = individual.genes[i];
+                    optlib_vector.resize(problem.active_variables.size());
+                    for(size_t i = 0; i < problem.active_variables.size(); i++) optlib_vector[i] = individual.genes[i];
 
                     // solve
                     optlib_solver->minimize(*optlib_problem, optlib_vector);
 
                     // get result
-                    for(size_t i = 0; i < active_variables.size(); i++) individual.genes[i] = modelInfo.clip(optlib_vector[i], active_variables[i]);
+                    for(size_t i = 0; i < problem.active_variables.size(); i++) individual.genes[i] = modelInfo.clip(optlib_vector[i], problem.active_variables[i]);
                 }
 #endif
 
@@ -611,7 +611,7 @@ struct IKEvolution2 : IKBase
                         auto& individual = species[species_index].individuals[0];
 
                         for(size_t i = 0; i < individual.genes.size(); i++)
-                            individual.genes[i] = random(modelInfo.getMin(active_variables[i]), modelInfo.getMax(active_variables[i]));
+                            individual.genes[i] = random(modelInfo.getMin(problem.active_variables[i]), modelInfo.getMax(problem.active_variables[i]));
 
                         /*
                         switch(random_index(4))
@@ -619,26 +619,26 @@ struct IKEvolution2 : IKBase
                             case 0:
                             {
                                 for(size_t i = 0; i < individual.genes.size(); i++)
-                                    individual.genes[i] = random(modelInfo.getMin(active_variables[i]), modelInfo.getMax(active_variables[i]));
+                                    individual.genes[i] = random(modelInfo.getMin(problem.active_variables[i]), modelInfo.getMax(problem.active_variables[i]));
                                 break;
                             }
                             case 1:
                             {
                                 for(size_t i = 0; i < individual.genes.size(); i++)
-                                    individual.genes[i] = request.initial_guess[active_variables[i]];
+                                    individual.genes[i] = problem.initial_guess[problem.active_variables[i]];
                                 break;
                             }
                             case 2:
                             {
-                                if(request.tip_link_indices.size() > 1)
+                                if(problem.tip_link_indices.size() > 1)
                                 {
                                     double f = random_gauss();
                                     for(size_t i = 0; i < individual.genes.size(); i++)
-                                        individual.genes[i] = modelInfo.clip(request.initial_guess[active_variables[i]] + f * random_gauss(), active_variables[i]);
+                                        individual.genes[i] = modelInfo.clip(problem.initial_guess[problem.active_variables[i]] + f * random_gauss(), problem.active_variables[i]);
                                     auto& mask = random_element(chain_mutation_masks);
                                     for(size_t i = 0; i < individual.genes.size(); i++)
                                         if(!mask[i])
-                                            individual.genes[i] = request.initial_guess[active_variables[i]];
+                                            individual.genes[i] = problem.initial_guess[problem.active_variables[i]];
                                     break;
                                 }
                             }
@@ -646,7 +646,7 @@ struct IKEvolution2 : IKBase
                             {
                                 double f = random_gauss();
                                 for(size_t i = 0; i < individual.genes.size(); i++)
-                                    individual.genes[i] = modelInfo.clip(request.initial_guess[active_variables[i]] + f * random_gauss(), active_variables[i]);
+                                    individual.genes[i] = modelInfo.clip(problem.initial_guess[problem.active_variables[i]] + f * random_gauss(), problem.active_variables[i]);
                                 break;
                             }
                         }

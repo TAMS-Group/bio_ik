@@ -107,7 +107,7 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
     template<class force_weak_linker_symbol = void>
     ProfilerBin* getProfilerBuffer()
     {
-        static std::vector<ProfilerBin> buffer(1000);
+        static std::vector<ProfilerBin> buffer(10000);
         return buffer.data();
     }
 
@@ -207,7 +207,7 @@ inline void vprint(std::ostream& s, const T& a, const AA&... aa) {
             pthread_attr_getstack(&attr, &stack_addr, &stack_size);
             profiler_info.stack_begin = stack_addr;
             profiler_info.stack_end = (char*)stack_addr + stack_size;
-            const size_t maxbin = 100;
+            const size_t maxbin = 1000;
             static std::mutex mutex;
             static std::unordered_map<const char*, size_t> samples;
             exit_flag = 0;

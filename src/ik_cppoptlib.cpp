@@ -23,7 +23,7 @@ struct IKOptLibProblem : cppoptlib::Problem<double>
     void initialize()
     {
         // set all variables to initial guess, including inactive ones
-        fk_values = ik->request.initial_guess;
+        fk_values = ik->problem.initial_guess;
     }
     double value(const TVector& x)
     {
@@ -34,7 +34,7 @@ struct IKOptLibProblem : cppoptlib::Problem<double>
     bool callback(const cppoptlib::Criteria<double>& state, const TVector& x)
     {
         // check ik timeout
-        return ros::WallTime::now().toSec() < ik->request.timeout;
+        return ros::WallTime::now().toSec() < ik->problem.timeout;
     }
 };
 */
@@ -44,24 +44,24 @@ struct IKOptLibProblem : cppoptlib::BoundedProblem<double>
 {
     IKBase* ik;
     std::vector<double> fk_values;
-    IKOptLibProblem(IKBase* ik) : cppoptlib::BoundedProblem<double>(TVector(ik->active_variables.size()), TVector(ik->active_variables.size())), ik(ik)
+    IKOptLibProblem(IKBase* ik) : cppoptlib::BoundedProblem<double>(TVector(ik->problem.active_variables.size()), TVector(ik->problem.active_variables.size())), ik(ik)
     {
         // init bounds
-        for(size_t i = 0; i < ik->active_variables.size(); i++)
+        for(size_t i = 0; i < ik->problem.active_variables.size(); i++)
         {
-            m_lowerBound[i] = ik->modelInfo.getMin(ik->active_variables[i]);
-            m_upperBound[i] = ik->modelInfo.getMax(ik->active_variables[i]);
+            m_lowerBound[i] = ik->modelInfo.getMin(ik->problem.active_variables[i]);
+            m_upperBound[i] = ik->modelInfo.getMax(ik->problem.active_variables[i]);
         }
     }
     void initialize()
     {
         // set all variables to initial guess, including inactive ones
-        fk_values = ik->request.initial_guess;
+        fk_values = ik->problem.initial_guess;
     }
     double value(const TVector& x)
     {
         // fill in active variables and compute fitness
-        for(size_t i = 0; i < ik->active_variables.size(); i++) fk_values[ik->active_variables[i]] = x[i];
+        for(size_t i = 0; i < ik->problem.active_variables.size(); i++) fk_values[ik->problem.active_variables[i]] = x[i];
         //for(size_t i = 0; i < ik->active_variables.size(); i++) LOG(i, x[i]); LOG("");
         //for(size_t i = 0; i < ik->active_variables.size(); i++) std::cerr << ((void*)*(uint64_t*)&x[i]) << " "; std::cerr << std::endl;
         //size_t h = 0; for(size_t i = 0; i < ik->active_variables.size(); i++) h ^= (std::hash<double>()(x[i]) << i); LOG((void*)h);
@@ -70,7 +70,7 @@ struct IKOptLibProblem : cppoptlib::BoundedProblem<double>
     bool callback(const cppoptlib::Criteria<double>& state, const TVector& x)
     {
         // check ik timeout
-        return ros::WallTime::now().toSec() < ik->request.timeout;
+        return ros::WallTime::now().toSec() < ik->problem.timeout;
     }
 };
 
@@ -100,12 +100,12 @@ struct IKOptLib : IKBase
     {
     }
 
-    void initialize(const IKRequest& request)
+    void initialize(const Problem& problem)
     {
-        IKBase::initialize(request);
+        IKBase::initialize(problem);
 
         // set initial guess
-        solution = request.initial_guess;
+        solution = problem.initial_guess;
 
         // randomize if more than 1 thread
         reset = false;
@@ -142,20 +142,20 @@ struct IKOptLib : IKBase
         {
             //LOG("RESET");
             reset = false;
-            for(auto& vi : active_variables)
+            for(auto& vi : problem.active_variables)
                 solution[vi] = random(modelInfo.getMin(vi), modelInfo.getMax(vi));
         }
 
         // set to current positions
         temp = solution;
-        typename SOLVER::TVector x(active_variables.size());
-        for(size_t i = 0; i < active_variables.size(); i++) x[i] = temp[active_variables[i]];
+        typename SOLVER::TVector x(problem.active_variables.size());
+        for(size_t i = 0; i < problem.active_variables.size(); i++) x[i] = temp[problem.active_variables[i]];
 
         // solve
         solver->minimize(f, x);
 
         // get results
-        for(size_t i = 0; i < active_variables.size(); i++) temp[active_variables[i]] = x[i];
+        for(size_t i = 0; i < problem.active_variables.size(); i++) temp[problem.active_variables[i]] = x[i];
 
         // update solution
         if(computeFitness(temp) < computeFitness(solution))

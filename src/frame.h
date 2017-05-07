@@ -5,8 +5,8 @@
 
 #include <vector>
 
-#include <tf_conversions/tf_kdl.h>
 #include <Eigen/Dense>
+#include <tf_conversions/tf_kdl.h>
 
 namespace bio_ik
 {
@@ -19,10 +19,10 @@ struct Frame
     Vector3 pos;
     double __padding[4 - (sizeof(Vector3) / sizeof(double))];
     Quaternion rot;
-    inline Frame()
-    {
-    }
-    inline Frame(const tf::Vector3& pos, const tf::Quaternion& rot) : pos(pos), rot(rot)
+    inline Frame() {}
+    inline Frame(const tf::Vector3& pos, const tf::Quaternion& rot)
+        : pos(pos)
+        , rot(rot)
     {
     }
     explicit inline Frame(const KDL::Frame& kdl)
@@ -43,17 +43,15 @@ struct Frame
         Eigen::Quaterniond q(f.rotation());
         rot = tf::Quaternion(q.x(), q.y(), q.z(), q.w());
     }
+
 private:
-    template<size_t i>
-    struct IdentityFrameTemplate
+    template <size_t i> struct IdentityFrameTemplate
     {
         static const Frame identity_frame;
     };
+
 public:
-    static inline const Frame& identity()
-    {
-        return IdentityFrameTemplate<0>::identity_frame;
-    }
+    static inline const Frame& identity() { return IdentityFrameTemplate<0>::identity_frame; }
 };
 
 inline void frameToKDL(const Frame& frame, KDL::Frame& kdl_frame)
@@ -65,32 +63,31 @@ inline void frameToKDL(const Frame& frame, KDL::Frame& kdl_frame)
     kdl_frame = KDL::Frame(kdl_rot, kdl_pos);
 }
 
-template<size_t i>
-const Frame Frame::IdentityFrameTemplate<i>::identity_frame(Vector3(0, 0, 0), Quaternion(0, 0, 0, 1));
+template <size_t i> const Frame Frame::IdentityFrameTemplate<i>::identity_frame(Vector3(0, 0, 0), Quaternion(0, 0, 0, 1));
 
-static std::ostream& operator << (std::ostream& os, const Frame& f)
-{
-    return os << "(" << f.pos.x() << "," << f.pos.y() << "," << f.pos.z() << ";" << f.rot.x() << "," << f.rot.y() << "," << f.rot.z() << "," << f.rot.w() << ")";
-}
+static std::ostream& operator<<(std::ostream& os, const Frame& f) { return os << "(" << f.pos.x() << "," << f.pos.y() << "," << f.pos.z() << ";" << f.rot.x() << "," << f.rot.y() << "," << f.rot.z() << "," << f.rot.w() << ")"; }
 
-__attribute__((always_inline))
-inline void quat_mul_vec(const tf::Quaternion& q, const tf::Vector3& v, tf::Vector3& r)
+__attribute__((always_inline)) inline void quat_mul_vec(const tf::Quaternion& q, const tf::Vector3& v, tf::Vector3& r)
 {
     double v_x = v.x();
     double v_y = v.y();
     double v_z = v.z();
 
-    //if(__builtin_expect(v_x == 0 && v_y == 0 && v_z == 0, 0)) { r = tf::Vector3(0, 0, 0); return; }
-    //if(v_x == 0 && v_y == 0 && v_z == 0) { r = tf::Vector3(0, 0, 0); return; }
+    // if(__builtin_expect(v_x == 0 && v_y == 0 && v_z == 0, 0)) { r = tf::Vector3(0, 0, 0); return; }
+    // if(v_x == 0 && v_y == 0 && v_z == 0) { r = tf::Vector3(0, 0, 0); return; }
 
     double q_x = q.x();
     double q_y = q.y();
     double q_z = q.z();
     double q_w = q.w();
 
-    if((v_x == 0 && v_y == 0 && v_z == 0) || (q_x == 0 && q_y == 0 && q_z == 0 && q_w == 1)) { r = v; return; }
-    //if((v_x + v_y + v_z == 0 && v_x == 0 && v_y == 0) || (q_x + q_y + q_z == 0 && q_x == 0 && q_y == 0 && q_w == 1)) { r = v; return; }
-    //if(q_x == 0 && q_y == 0 && q_z == 0 && q_w == 1) { r = v; return; }
+    if((v_x == 0 && v_y == 0 && v_z == 0) || (q_x == 0 && q_y == 0 && q_z == 0 && q_w == 1))
+    {
+        r = v;
+        return;
+    }
+    // if((v_x + v_y + v_z == 0 && v_x == 0 && v_y == 0) || (q_x + q_y + q_z == 0 && q_x == 0 && q_y == 0 && q_w == 1)) { r = v; return; }
+    // if(q_x == 0 && q_y == 0 && q_z == 0 && q_w == 1) { r = v; return; }
 
     double t_x = q_y * v_z - q_z * v_y;
     double t_y = q_z * v_x - q_x * v_z;
@@ -113,8 +110,7 @@ inline void quat_mul_vec(const tf::Quaternion& q, const tf::Vector3& v, tf::Vect
     r.setZ(r_z);
 }
 
-__attribute__((always_inline))
-inline void quat_mul_quat(const tf::Quaternion& p, const tf::Quaternion& q, tf::Quaternion& r)
+__attribute__((always_inline)) inline void quat_mul_quat(const tf::Quaternion& p, const tf::Quaternion& q, tf::Quaternion& r)
 {
     double p_x = p.x();
     double p_y = p.y();
@@ -137,8 +133,7 @@ inline void quat_mul_quat(const tf::Quaternion& p, const tf::Quaternion& q, tf::
     r.setW(r_w);
 }
 
-__attribute__((always_inline))
-inline void concat(const Frame& a, const Frame& b, Frame& r)
+__attribute__((always_inline)) inline void concat(const Frame& a, const Frame& b, Frame& r)
 {
     tf::Vector3 d;
     quat_mul_vec(a.rot, b.pos, d);
@@ -146,16 +141,14 @@ inline void concat(const Frame& a, const Frame& b, Frame& r)
     quat_mul_quat(a.rot, b.rot, r.rot);
 }
 
-__attribute__((always_inline))
-inline void concat(const Frame& a, const Frame& b, const Frame& c, Frame& r)
+__attribute__((always_inline)) inline void concat(const Frame& a, const Frame& b, const Frame& c, Frame& r)
 {
     Frame tmp;
     concat(a, b, tmp);
     concat(tmp, c, r);
 }
 
-__attribute__((always_inline))
-inline void quat_inv(const tf::Quaternion& q, tf::Quaternion& r)
+__attribute__((always_inline)) inline void quat_inv(const tf::Quaternion& q, tf::Quaternion& r)
 {
     r.setX(-q.x());
     r.setY(-q.y());
@@ -163,49 +156,41 @@ inline void quat_inv(const tf::Quaternion& q, tf::Quaternion& r)
     r.setW(q.w());
 }
 
-__attribute__((always_inline))
-inline void invert(const Frame& a, Frame& r)
+__attribute__((always_inline)) inline void invert(const Frame& a, Frame& r)
 {
     Frame tmp;
     quat_inv(a.rot, r.rot);
     quat_mul_vec(r.rot, -a.pos, r.pos);
 }
 
-__attribute__((always_inline))
-inline void change(const Frame& a, const Frame& b, const Frame& c, Frame& r)
+__attribute__((always_inline)) inline void change(const Frame& a, const Frame& b, const Frame& c, Frame& r)
 {
     Frame tmp;
     invert(b, tmp);
     concat(a, tmp, c, r);
 }
 
-
-__attribute__((always_inline))
-inline Frame inverse(const Frame& f)
+__attribute__((always_inline)) inline Frame inverse(const Frame& f)
 {
     Frame r;
     invert(f, r);
     return r;
 }
 
-__attribute__((always_inline))
-inline Frame operator * (const Frame& a, const Frame& b)
+__attribute__((always_inline)) inline Frame operator*(const Frame& a, const Frame& b)
 {
     Frame r;
     concat(a, b, r);
     return r;
 }
 
-__attribute__((always_inline))
-inline Frame& operator *= (Frame& a, const Frame& b)
+__attribute__((always_inline)) inline Frame& operator*=(Frame& a, const Frame& b)
 {
     a = a * b;
     return a;
 }
 
-
-__attribute__((always_inline))
-inline void normalizeFast(Quaternion& q)
+__attribute__((always_inline)) inline void normalizeFast(Quaternion& q)
 {
     double f = (3.0 - q.length2()) * 0.5;
     q.setX(q.x() * f);
@@ -214,10 +199,7 @@ inline void normalizeFast(Quaternion& q)
     q.setW(q.w() * f);
 }
 
-
-
-__attribute__((always_inline))
-inline KDL::Twist frameTwist(const Frame& a, const Frame& b)
+__attribute__((always_inline)) inline KDL::Twist frameTwist(const Frame& a, const Frame& b)
 {
     auto frame = inverse(a) * b;
     KDL::Twist t;
@@ -226,9 +208,9 @@ inline KDL::Twist frameTwist(const Frame& a, const Frame& b)
     t.vel.z(frame.pos.z());
 
     double ra = frame.rot.getAngle();
-    //double ra = frame.rot.getAngleShortestPath();
+    // double ra = frame.rot.getAngleShortestPath();
     if(ra > +M_PI) ra -= 2 * M_PI;
-    //if(ra < -M_PI) ra += 2 * M_PI;
+    // if(ra < -M_PI) ra += 2 * M_PI;
 
     auto r = frame.rot.getAxis() * ra;
     t.rot.x(r.x());
@@ -237,10 +219,4 @@ inline KDL::Twist frameTwist(const Frame& a, const Frame& b)
 
     return t;
 }
-
-
-
-
-
-
 }

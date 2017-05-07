@@ -3,10 +3,10 @@
 
 #include "frame.h"
 #include "utils.h"
-#include "robot_helpers.h"
 #include "forward_kinematics.h"
 #include "ik_base.h"
 #include "ik_parallel.h"
+#include "problem.h"
 
 #include <pluginlib/class_list_macros.h>
 #include <moveit/kinematics_base/kinematics_base.h>
@@ -77,14 +77,13 @@ namespace bio_ik_kinematics_plugin
 {
 
 
-typedef IKParallel PluginIKSolver;
 
 struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 {
     std::vector<std::string> joint_names, link_names;
     MoveItRobotModelConstPtr robot_model;
     const moveit::core::JointModelGroup* joint_model_group;
-    mutable std::unique_ptr<PluginIKSolver> ik;
+    mutable std::unique_ptr<IKParallel> ik;
     mutable std::vector<double> state, temp;
     mutable std::unique_ptr<moveit::core::RobotState> temp_state;
     mutable std::vector<Frame> tipFrames;
@@ -136,7 +135,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
     IKParams ikparams;
 
-    mutable IKRequest ikrequest;
+    mutable Problem problem;
 
 
 
@@ -200,7 +199,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
         temp_state.reset(new moveit::core::RobotState(robot_model));
 
-        ik.reset(new PluginIKSolver(ikparams));
+        ik.reset(new IKParallel(ikparams));
 
 
 
@@ -502,16 +501,16 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
         // init ik
 
-        ikrequest.timeout = t0 + timeout;
-        ikrequest.initial_guess = state;
+        problem.timeout = t0 + timeout;
+        problem.initial_guess = state;
 
         //for(auto& v : state) LOG("var", &v - &state.front(), v);
 
-        //ikrequest.tip_objectives = tipFrames;
+        //problem.tip_objectives = tipFrames;
 
-        /*for(size_t i = 0; i < ikrequest.goals.size(); i++)
+        /*for(size_t i = 0; i < problem.goals.size(); i++)
         {
-            ikrequest.goals[i].frame = tipFrames[i];
+            problem.goals[i].frame = tipFrames[i];
         }*/
 
         //LOG("---");
@@ -531,7 +530,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
             }
             //std::random_shuffle(goals.begin(), goals.end());
             //LOG_VAR(goals.size());
-            setRequestGoals(ikrequest, goals, ikparams);
+            setRequestGoals(problem, goals, ikparams);
         }*/
 
         {
@@ -555,13 +554,13 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 for(auto& goal : bio_ik_options->goals)
                     all_goals.push_back(goal.get());
 
-            ikrequest.setGoals(all_goals, ikparams);
-            //ikrequest.setGoals(default_goals, ikparams);
+            problem.initialize(ikparams.robot_model, ikparams.joint_model_group, ikparams.node_handle, all_goals);
+            //problem.setGoals(default_goals, ikparams);
         }
 
         {
             BLOCKPROFILER("ik init");
-            ik->initialize(ikrequest);
+            ik->initialize(problem);
         }
 
         // run ik solver
@@ -571,12 +570,12 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         state = ik->getSolution();
 
         // wrap angles
-        for(auto ivar : ikrequest.active_variables)
+        for(auto ivar : problem.active_variables)
         {
             auto v = state[ivar];
             if(robot_info.isRevolute(ivar) && robot_model->getMimicJointModels().empty())
             {
-                auto r = ikrequest.initial_guess[ivar];
+                auto r = problem.initial_guess[ivar];
                 auto lo = robot_info.getClipMin(ivar);
                 auto hi = robot_info.getClipMax(ivar);
                 

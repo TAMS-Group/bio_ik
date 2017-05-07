@@ -66,19 +66,19 @@ struct IKParallel
     std::vector<int> solver_success;
     std::vector<double> solver_fitness;
     int thread_count;
-    std::vector<RobotFK_Fast> fk; // TODO: remove
+    //std::vector<RobotFK_Fast> fk; // TODO: remove
     double timeout;
     bool success;
     std::atomic<int> finished;
     std::vector<double> result;
     std::unique_ptr<ParallelExecutor> par;
-    IKRequest request;
+    Problem problem;
 
     IKParallel(const IKParams& params) : params(params)
     {
         // solver class name
         std::string name;
-        //params.node_handle.param("mode", name, std::string("jac"));
+        //params.node_handle.param("mode", name, std::string("bio1"));
         //params.node_handle.param("mode", name, std::string("bio2_memetic_l"));
         params.node_handle.param("mode", name, std::string("bio2_memetic"));
         //params.node_handle.param("mode", name, std::string("bio3_memetic"));
@@ -90,7 +90,7 @@ struct IKParallel
         while(solvers.size() < thread_count) solvers.emplace_back(IKFactory::clone(solvers.front().get()));
         for(size_t i = 0; i < thread_count; i++) solvers[i]->thread_index = i;
 
-        while(fk.size() < thread_count) fk.emplace_back(params.robot_model);
+        //while(fk.size() < thread_count) fk.emplace_back(params.robot_model);
 
         // init buffers
         solver_solutions.resize(thread_count);
@@ -102,10 +102,10 @@ struct IKParallel
         par.reset(new ParallelExecutor(thread_count, [this] (size_t i) { solverthread(i); }));
     }
 
-    void initialize(const IKRequest& request)
+    void initialize(const Problem& problem)
     {
-        this->request = request;
-        for(auto& f : fk) f.initialize(request.tip_link_indices);
+        this->problem = problem;
+        //for(auto& f : fk) f.initialize(problem.tip_link_indices);
     }
 
 private:
@@ -118,7 +118,7 @@ private:
         // initialize ik solvers
         {
             BLOCKPROFILER("ik solver init");
-            solvers[i]->initialize(request);
+            solvers[i]->initialize(problem);
         }
 
         // run solver iterations until solution found or timeout
@@ -137,12 +137,13 @@ private:
             // get solution and check stop criterion
             auto& result = solver_temps[i];
             result = solvers[i]->getSolution();
-            fk[i].applyConfiguration(result);
-            bool success = solvers[i]->checkSolution(result, fk[i].getTipFrames());
+            auto& fk = solvers[i]->model;
+            fk.applyConfiguration(result);
+            bool success = solvers[i]->checkSolution(result, fk.getTipFrames());
             if(success) finished = 1;
             solver_success[i] = success;
             solver_solutions[i] = result;
-            solver_fitness[i] = solvers[i]->computeFitness(result, fk[i].getTipFrames());
+            solver_fitness[i] = solvers[i]->computeFitness(result, fk.getTipFrames());
 
             if(success) break;
         }
@@ -159,12 +160,12 @@ public:
         BLOCKPROFILER("solve mt");
 
         // prepare
-        result = request.initial_guess;
-        timeout = request.timeout;
+        result = problem.initial_guess;
+        timeout = problem.timeout;
         success = false;
         finished = 0;
-        for(auto& s : solver_solutions) s = request.initial_guess;
-        for(auto& s : solver_temps) s = request.initial_guess;
+        for(auto& s : solver_solutions) s = problem.initial_guess;
+        for(auto& s : solver_temps) s = problem.initial_guess;
         for(auto& s : solver_success) s = 0;
         for(auto& f : solver_fitness) f = DBL_MAX;
         for(auto& s : solvers) s->canceled = false;
@@ -184,7 +185,7 @@ public:
             if(solver_success[i])
             {
                 double fitness;
-                if(solvers[0]->request.secondary_goals.empty())
+                if(solvers[0]->problem.secondary_goals.empty())
                 {
                     // ... and if no secondary goals have been specified,
                     // select the best result according to primary goals

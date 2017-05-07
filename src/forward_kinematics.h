@@ -3,10 +3,11 @@
 
 #pragma once
 
-#include "robot_helpers.h"
-
 #include <kdl/treefksolverpos_recursive.hpp>
 #include <kdl_parser/kdl_parser.hpp>
+
+#include "frame.h"
+#include "robot_info.h"
 
 #include <emmintrin.h>
 #include <immintrin.h>
@@ -22,10 +23,12 @@ private:
     std::vector<double> joint_cache_variables;
     std::vector<Frame> joint_cache_frames;
     std::vector<Frame> link_frames;
+
 protected:
     std::vector<Vector3> joint_axis_list;
     MoveItRobotModelConstPtr robot_model;
     std::vector<double> variables;
+
 public:
     inline void getJointFrame(const moveit::core::JointModel* joint_model, const double* variables, Frame& frame)
     {
@@ -55,8 +58,8 @@ public:
             auto fcos = cos(half_angle);
             auto fsin = sin(half_angle);
 
-            //auto fsin = half_angle;
-            //auto fcos = 1.0 - half_angle * half_angle * 0.5;
+            // auto fsin = half_angle;
+            // auto fcos = 1.0 - half_angle * half_angle * 0.5;
 
             frame = Frame(Vector3(0.0, 0.0, 0.0), Quaternion(axis.x() * fsin, axis.y() * fsin, axis.z() * fsin, fcos));
 
@@ -74,7 +77,7 @@ public:
             auto* vv = variables + joint_model->getFirstVariableIndex();
             frame.pos = Vector3(vv[0], vv[1], vv[2]);
             frame.rot = Quaternion(vv[3], vv[4], vv[5], vv[6]).normalized();
-            //LOG("floating", joint_model->getFirstVariableIndex(), vv[0], vv[1], vv[2], vv[3], vv[4], vv[5], vv[6]);
+            // LOG("floating", joint_model->getFirstVariableIndex(), vv[0], vv[1], vv[2], vv[3], vv[4], vv[5], vv[6]);
             break;
         }
         default:
@@ -87,19 +90,12 @@ public:
         }
         }
 
-        //LOG("local joint frame", joint_model->getType(), joint_model->getName(), frame);
+        // LOG("local joint frame", joint_model->getType(), joint_model->getName(), frame);
     }
-    inline void getJointFrame(const moveit::core::JointModel* joint_model, const std::vector<double>& variables, Frame& frame)
-    {
-        getJointFrame(joint_model, variables.data(), frame);
-    }
+    inline void getJointFrame(const moveit::core::JointModel* joint_model, const std::vector<double>& variables, Frame& frame) { getJointFrame(joint_model, variables.data(), frame); }
+
 protected:
-    inline const Frame& getLinkFrame(const moveit::core::LinkModel* link_model)
-    {
-        return link_frames[link_model->getLinkIndex()];
-    }
-
-
+    inline const Frame& getLinkFrame(const moveit::core::LinkModel* link_model) { return link_frames[link_model->getLinkIndex()]; }
 
     inline bool checkJointMoved(const moveit::core::JointModel* joint_model)
     {
@@ -108,8 +104,7 @@ protected:
         if(cnt == 0) return true;
         if(cnt == 1) return !(variables[i0] == joint_cache_variables[i0]);
         for(size_t i = i0; i < i0 + cnt; i++)
-            if(!(variables[i] == joint_cache_variables[i]))
-                return true;
+            if(!(variables[i] == joint_cache_variables[i])) return true;
         return false;
     }
     inline void putJointCache(const moveit::core::JointModel* joint_model, const Frame& frame)
@@ -149,7 +144,8 @@ protected:
     }
 
 public:
-    RobotJointEvaluator(MoveItRobotModelConstPtr model) : robot_model(model)
+    RobotJointEvaluator(MoveItRobotModelConstPtr model)
+        : robot_model(model)
     {
         joint_cache_variables.clear();
         joint_cache_variables.resize(model->getVariableCount(), DBL_MAX);
@@ -166,15 +162,11 @@ public:
         for(size_t i = 0; i < joint_axis_list.size(); i++)
         {
             auto* joint_model = robot_model->getJointModel(i);
-            if(auto* j = dynamic_cast<const moveit::core::RevoluteJointModel*>(joint_model))
-                joint_axis_list[i] = Vector3(j->getAxis().x(), j->getAxis().y(), j->getAxis().z());
-            if(auto* j = dynamic_cast<const moveit::core::PrismaticJointModel*>(joint_model))
-                joint_axis_list[i] = Vector3(j->getAxis().x(), j->getAxis().y(), j->getAxis().z());
+            if(auto* j = dynamic_cast<const moveit::core::RevoluteJointModel*>(joint_model)) joint_axis_list[i] = Vector3(j->getAxis().x(), j->getAxis().y(), j->getAxis().z());
+            if(auto* j = dynamic_cast<const moveit::core::PrismaticJointModel*>(joint_model)) joint_axis_list[i] = Vector3(j->getAxis().x(), j->getAxis().y(), j->getAxis().z());
         }
     }
 };
-
-
 
 // fast tree fk
 class RobotFK_Fast_Base : protected RobotJointEvaluator
@@ -203,12 +195,14 @@ protected:
             // moveit doesn't seem to support multiple mimic dimensions either... ???
 
             // TODO: ok???
-            //for(size_t base = 0; base < joint->getVariableCount(); base++)
+            // for(size_t base = 0; base < joint->getVariableCount(); base++)
             //    values[base + dest] = values[base + src] * joint->getMimicFactor() + joint->getMimicOffset();
         }
     }
+
 public:
-    RobotFK_Fast_Base(MoveItRobotModelConstPtr model) : RobotJointEvaluator(model)
+    RobotFK_Fast_Base(MoveItRobotModelConstPtr model)
+        : RobotJointEvaluator(model)
     {
     }
     void initialize(const std::vector<size_t>& tip_link_indices)
@@ -254,7 +248,7 @@ public:
                 variable_to_link_map.push_back(std::make_pair(vi, link_index));
 
                 if(find(active_variables.begin(), active_variables.end(), vi) != active_variables.end()) continue;
-                    active_variables.push_back(vi);
+                active_variables.push_back(vi);
             }
         }
 
@@ -299,48 +293,25 @@ public:
             auto* parent_link_model = joint_model->getParentLinkModel();
             if(parent_link_model)
             {
-                concat(
-                    global_frames[parent_link_model->getLinkIndex()],
-                    getLinkFrame(link_model),
-                    getJointFrame(joint_model),
-                    global_frames[link_model->getLinkIndex()]);
+                concat(global_frames[parent_link_model->getLinkIndex()], getLinkFrame(link_model), getJointFrame(joint_model), global_frames[link_model->getLinkIndex()]);
             }
             else
             {
-                concat(
-                    getLinkFrame(link_model),
-                    getJointFrame(joint_model),
-                    global_frames[link_model->getLinkIndex()]);
+                concat(getLinkFrame(link_model), getJointFrame(joint_model), global_frames[link_model->getLinkIndex()]);
             }
-            //if(linkModel->getParentLinkModel() && linkModel->getParentLinkModel()->getLinkIndex() > linkModel->getLinkIndex()) { LOG("wrong link order"); throw runtime_error("wrong link order"); }
+            // if(linkModel->getParentLinkModel() && linkModel->getParentLinkModel()->getLinkIndex() > linkModel->getLinkIndex()) { LOG("wrong link order"); throw runtime_error("wrong link order"); }
         }
         for(size_t itip = 0; itip < tip_links.size(); itip++)
         {
             tip_frames[itip] = global_frames[tip_links[itip]->getLinkIndex()];
         }
     }
-    inline const Frame& getTipFrame(size_t fi) const
-    {
-        return tip_frames[fi];
-    }
-    inline const std::vector<Frame>& getTipFrames() const
-    {
-        return tip_frames;
-    }
-    inline void incrementalBegin(const std::vector<double>& jj)
-    {
-        applyConfiguration(jj);
-    }
-    inline void incrementalEnd()
-    {
-    }
-    inline const Frame& getJointVariableFrame(size_t variable_index)
-    {
-        return global_frames[variable_to_link_map_2[variable_index]];
-    }
+    inline const Frame& getTipFrame(size_t fi) const { return tip_frames[fi]; }
+    inline const std::vector<Frame>& getTipFrames() const { return tip_frames; }
+    inline void incrementalBegin(const std::vector<double>& jj) { applyConfiguration(jj); }
+    inline void incrementalEnd() {}
+    inline const Frame& getJointVariableFrame(size_t variable_index) { return global_frames[variable_to_link_map_2[variable_index]]; }
 };
-
-
 
 // incremental tip frame updates without full recomputation
 class RobotFK_Fast : public RobotFK_Fast_Base
@@ -356,14 +327,14 @@ protected:
     {
         FNPROFILER();
 
-        //PROFILER_COUNTER("incremental update count");
+        // PROFILER_COUNTER("incremental update count");
 
         // init variable lists
         vars = vars0;
         updateMimic(vars);
         for(auto& vi : active_variables)
         {
-            //vars[vi] = vars0[vi];
+            // vars[vi] = vars0[vi];
             variables0[vi] = variables[vi];
         }
 
@@ -452,12 +423,12 @@ protected:
                                 for(size_t vi = vstart; vi < vstart + vcount; vi++)
                                     variables[vi] = variables0[vi];
 
-                            //PROFILER_COUNTER("incremental update transforms");
+                            // PROFILER_COUNTER("incremental update transforms");
                         }
                         chain_cache[ichain][ipos] = after;
 
-                        //tipFrames[ichain] = inverse(before) * tipFrames[ichain];
-                        //tipFrames[ichain] = after * tipFrames[ichain];
+                        // tipFrames[ichain] = inverse(before) * tipFrames[ichain];
+                        // tipFrames[ichain] = after * tipFrames[ichain];
 
                         /*Frame before_inverse;
                         invert(before, before_inverse);
@@ -479,8 +450,9 @@ protected:
         }
 
         // set new vars
-        //variables = vars;
-        for(auto& vi : active_variables) variables[vi] = vars[vi];
+        // variables = vars;
+        for(auto& vi : active_variables)
+            variables[vi] = vars[vi];
 
         // test
         if(0)
@@ -500,9 +472,11 @@ protected:
             }
         }
     }
+
 public:
     RobotFK_Fast(MoveItRobotModelConstPtr model)
-        : RobotFK_Fast_Base(model), use_incremental(false)
+        : RobotFK_Fast_Base(model)
+        , use_incremental(false)
     {
     }
     inline void incrementalBegin(const std::vector<double>& jj)
@@ -518,7 +492,7 @@ public:
     inline void incrementalEnd()
     {
         use_incremental = false;
-        //applyConfiguration(variables);
+        // applyConfiguration(variables);
     }
     inline void applyConfiguration(const std::vector<double>& jj)
     {
@@ -529,22 +503,18 @@ public:
     }
 };
 
-
-
-
-
-
-
-
 // fast tree fk jacobian
 class RobotFK_Jacobian : public RobotFK_Fast
 {
     typedef RobotFK_Fast Base;
+
 protected:
     std::vector<std::vector<const moveit::core::JointModel*>> joint_dependencies;
     std::vector<int> tip_dependencies;
+
 public:
-    RobotFK_Jacobian(MoveItRobotModelConstPtr model) : RobotFK_Fast(model)
+    RobotFK_Jacobian(MoveItRobotModelConstPtr model)
+        : RobotFK_Fast(model)
     {
     }
     void initialize(const std::vector<size_t>& tip_link_indices)
@@ -552,7 +522,8 @@ public:
         Base::initialize(tip_link_indices);
         auto tip_count = tip_names.size();
         joint_dependencies.resize(robot_model->getJointModelCount());
-        for(auto& x : joint_dependencies) x.clear();
+        for(auto& x : joint_dependencies)
+            x.clear();
         for(auto* link_model : link_schedule)
         {
             auto* joint_model = link_model->getParentJointModel();
@@ -563,12 +534,14 @@ public:
             auto* joint_model = link_model->getParentJointModel();
             if(auto* mimic = joint_model->getMimic())
             {
-                while(mimic->getMimic() && mimic->getMimic() != joint_model) mimic = mimic->getMimic();
+                while(mimic->getMimic() && mimic->getMimic() != joint_model)
+                    mimic = mimic->getMimic();
                 joint_dependencies[mimic->getJointIndex()].push_back(joint_model);
             }
         }
         tip_dependencies.resize(robot_model->getJointModelCount() * tip_count);
-        for(auto& x : tip_dependencies) x = 0;
+        for(auto& x : tip_dependencies)
+            x = 0;
         for(size_t tip_index = 0; tip_index < tip_count; tip_index++)
         {
             for(auto* link_model = tip_links[tip_index]; link_model; link_model = link_model->getParentLinkModel())
@@ -677,11 +650,10 @@ public:
                 {
                     // numeric differentiation for joint types that are not yet implemented / or joint types that might be added to moveit in the future
                     auto ivar2 = ivar;
-                    if(joint_model->getMimic())
-                        ivar2 = ivar2 - var_joint_model->getFirstVariableIndex() + joint_model->getFirstVariableIndex();
+                    if(joint_model->getMimic()) ivar2 = ivar2 - var_joint_model->getFirstVariableIndex() + joint_model->getFirstVariableIndex();
                     auto& link_frame_1 = global_frames[link_model->getLinkIndex()];
                     auto v0 = variables[ivar2];
-                    //auto joint_frame_1 = getJointFrame(joint_model);
+                    // auto joint_frame_1 = getJointFrame(joint_model);
                     variables[ivar2] = v0 + step_size;
                     auto joint_frame_2 = getJointFrame(joint_model);
                     variables[ivar2] = v0;
@@ -711,19 +683,6 @@ public:
         }
     }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // fast linear fk approximation
 
@@ -1063,16 +1022,6 @@ public:
 };
 */
 
-
-
-
-
-
-
-
-
-
-
 class RobotFK_Mutator : public RobotFK_Jacobian
 {
     typedef RobotFK_Jacobian Base;
@@ -1084,7 +1033,8 @@ class RobotFK_Mutator : public RobotFK_Jacobian
     std::vector<std::vector<size_t>> mutation_approx_map;
 
 public:
-    RobotFK_Mutator(MoveItRobotModelConstPtr model) : RobotFK_Jacobian(model)
+    RobotFK_Mutator(MoveItRobotModelConstPtr model)
+        : RobotFK_Jacobian(model)
     {
     }
 
@@ -1159,27 +1109,29 @@ public:
                     auto* link_model = joint_model->getChildLinkModel();
                     switch(joint_model->getType())
                     {
-                        case moveit::core::JointModel::REVOLUTE:
+                    case moveit::core::JointModel::REVOLUTE:
+                    {
+                        auto& link_frame = global_frames[link_model->getLinkIndex()];
+                        for(size_t itip = 0; itip < tip_count; itip++)
                         {
-                            auto& link_frame = global_frames[link_model->getLinkIndex()];
+                            if(!tip_dependencies[joint_model->getJointIndex() * tip_count + itip]) continue;
 
-                            for(size_t itip = 0; itip < tip_count; itip++)
-                            {
-                                if(!tip_dependencies[joint_model->getJointIndex() * tip_count + itip]) continue;
+                            auto& tip_frame = tip_frames[itip];
 
-                                auto& tip_frame = tip_frames[itip];
+                            auto axis = joint_axis_list[joint_model->getJointIndex()];
+                            quat_mul_vec(link_frame.rot, axis, axis);
 
-                                auto axis = joint_axis_list[joint_model->getJointIndex()];
-                                quat_mul_vec(link_frame.rot, axis, axis);
+                            auto v = link_frame.pos - tip_frame.pos;
+                            v -= axis * v.dot(axis);
 
-                                auto v = link_frame.pos - tip_frame.pos;
-                                v -= axis * v.dot(axis);
-
-                                mutation_approx_quadratics[itip][ivar] = v * 0.5 * (scale * scale);
-                            }
-
-                            continue;
+                            mutation_approx_quadratics[itip][ivar] = v * 0.5 * (scale * scale);
                         }
+                        continue;
+                    }
+                    default:
+                    {
+                        continue;
+                    }
                     }
                 }
             }
@@ -1193,7 +1145,7 @@ public:
             if(mutation_approx_mask[itip].size() < robot_model->getVariableCount()) mutation_approx_mask[itip].resize(robot_model->getVariableCount());
             mutation_approx_map[itip].clear();
             for(size_t ii = 0; ii < variable_indices.size(); ii++)
-            //for(size_t ivar : variable_indices)
+            // for(size_t ivar : variable_indices)
             {
                 auto ivar = variable_indices[ii];
                 auto& frame = mutation_approx_frames[itip][ivar];
@@ -1208,17 +1160,11 @@ public:
                 if(b) mutation_approx_map[itip].push_back(ii);
             }
         }
-
     }
 
-
-    void computeApproximateMutation1(
-        size_t variable_index,
-        double variable_delta,
-        const std::vector<Frame>& input,
-        std::vector<Frame>& output) const
+    void computeApproximateMutation1(size_t variable_index, double variable_delta, const std::vector<Frame>& input, std::vector<Frame>& output) const
     {
-        //BLOCKPROFILER("computeApproximateMutations C");
+        // BLOCKPROFILER("computeApproximateMutations C");
         auto tip_count = tip_names.size();
         output.resize(tip_count);
         for(size_t itip = 0; itip < tip_count; itip++)
@@ -1265,15 +1211,13 @@ public:
         }
     }
 
-    void computeApproximateMutations(
-        size_t mutation_count,
-        const double * const * mutation_values,
-        std::vector<std::vector<Frame>>& tip_frame_mutations) const
+    void computeApproximateMutations(size_t mutation_count, const double* const* mutation_values, std::vector<std::vector<Frame>>& tip_frame_mutations) const
     {
         const double* p_variables = variables.data();
         auto tip_count = tip_names.size();
         tip_frame_mutations.resize(mutation_count);
-        for(auto& m : tip_frame_mutations) m.resize(tip_count);
+        for(auto& m : tip_frame_mutations)
+            m.resize(tip_count);
         for(size_t itip = 0; itip < tip_count; itip++)
         {
             auto& joint_deltas = mutation_approx_frames[itip];
@@ -1290,14 +1234,14 @@ public:
                 double rz = tip_frame.rot.z();
                 double rw = tip_frame.rot.w();
 
-                //for(size_t vii = 0; vii < mutation_approx_variable_indices.size(); vii++)
+                // for(size_t vii = 0; vii < mutation_approx_variable_indices.size(); vii++)
                 for(size_t vii : mutation_approx_map[itip])
                 {
-                    //LOG_VAR(vii);
+                    // LOG_VAR(vii);
 
                     size_t variable_index = mutation_approx_variable_indices[vii];
 
-                    //if(mutation_approx_mask[itip][variable_index] == 0) continue;
+                    // if(mutation_approx_mask[itip][variable_index] == 0) continue;
 
                     double variable_delta = mutation_values[imutation][vii] - p_variables[variable_index];
 
@@ -1329,55 +1273,9 @@ public:
             }
         }
     }
-
-
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 typedef RobotFK_Mutator RobotFK;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // for comparison
 class RobotFK_MoveIt
@@ -1387,9 +1285,11 @@ class RobotFK_MoveIt
     std::vector<Frame> tipFrames;
     std::vector<const moveit::core::LinkModel*> tipLinks;
     std::vector<double> jj;
+
 public:
     RobotFK_MoveIt(MoveItRobotModelConstPtr model)
-        : robot_model(model), robot_state(model)
+        : robot_model(model)
+        , robot_state(model)
     {
     }
     void initialize(const std::vector<size_t>& tip_link_indices)
@@ -1409,35 +1309,9 @@ public:
         for(size_t i = 0; i < tipFrames.size(); i++)
             tipFrames[i] = Frame(robot_state.getGlobalLinkTransform(tipLinks[i]));
     }
-    inline void incrementalBegin(const std::vector<double>& jj)
-    {
-    }
-    inline void incrementalEnd()
-    {
-    }
-    const Frame& getTipFrame(size_t fi) const
-    {
-        return tipFrames[fi];
-    }
-    const std::vector<Frame>& getTipFrames() const
-    {
-        return tipFrames;
-    }
+    inline void incrementalBegin(const std::vector<double>& jj) {}
+    inline void incrementalEnd() {}
+    const Frame& getTipFrame(size_t fi) const { return tipFrames[fi]; }
+    const std::vector<Frame>& getTipFrames() const { return tipFrames; }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
