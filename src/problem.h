@@ -48,9 +48,16 @@ private:
         }
     };
     std::vector<CollisionLink> collision_links;
+    size_t addTipLink(const moveit::core::LinkModel* link_model);
 
 public:
     enum class GoalType;
+    struct BalanceGoalInfo
+    {
+        ssize_t tip_index;
+        double mass;
+        Vector3 center;
+    };
     struct GoalInfo
     {
         const Goal* goal;
@@ -68,6 +75,7 @@ public:
         double variable_position;
         std::vector<ssize_t> variable_indices;
         mutable size_t last_collision_vertex;
+        std::vector<BalanceGoalInfo> balance_goal_infos;
     };
     double timeout;
     std::vector<double> initial_guess;

@@ -29,7 +29,18 @@ enum class Problem::GoalType
     JointVariable,
     CenterJoints,
     JointFunction,
+    Balance,
 };
+
+size_t Problem::addTipLink(const moveit::core::LinkModel* link_model)
+{
+    if(link_tip_indices[link_model->getLinkIndex()] < 0)
+    {
+        link_tip_indices[link_model->getLinkIndex()] = tip_link_indices.size();
+        tip_link_indices.push_back(link_model->getLinkIndex());
+    }
+    return link_tip_indices[link_model->getLinkIndex()];
+}
 
 void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::core::JointModelGroup* joint_model_group, ros::NodeHandle node_handle, const std::vector<const Goal*>& goals2)
 {
@@ -85,12 +96,7 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
         {
             auto* link_model = robot_model->getLinkModel(g->link_name);
             if(!link_model) ERROR("link not found", g->link_name);
-            if(link_tip_indices[link_model->getLinkIndex()] < 0)
-            {
-                link_tip_indices[link_model->getLinkIndex()] = tip_link_indices.size();
-                tip_link_indices.push_back(link_model->getLinkIndex());
-            }
-            goal_info.tip_index = link_tip_indices[link_model->getLinkIndex()];
+            goal_info.tip_index = addTipLink(link_model);
         }
 
         if(auto* g = dynamic_cast<const PositionGoal*>(goal))
@@ -112,10 +118,6 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
             goal_info.frame.rot = g->orientation.normalized();
             goal_info.rotation_scale = g->rotation_scale;
             if(!(goal_info.rotation_scale > 0)) goal_info.goal_type = GoalType::Position;
-
-            /*goal_info.goal_type = GoalType::MaxDistance;
-            goal_info.target = g->position;
-            goal_info.distance = 0.2;*/
         }
 
         if(auto* g = dynamic_cast<const LookAtGoal*>(goal))
@@ -172,19 +174,6 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
         {
             goal_info.goal_type = GoalType::JointVariable;
             goal_info.active_variable_index = -1;
-            /*for(size_t i = 0; i < active_variables.size(); i++)
-            {
-                LOG(params.robot_model->getVariableNames()[active_variables[i]]);
-                if(params.robot_model->getVariableNames()[active_variables[i]] == g->variable_name)
-                {
-                    goal_info.active_variable_index = i;
-                }
-            }
-            if(goal_info.active_variable_index < 0)
-            {
-                //continue;
-                ERROR("joint variable not found", g->variable_name);
-            }*/
             goal_info.variable_position = g->variable_position;
             secondary = g->secondary;
         }
@@ -195,16 +184,45 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
             secondary = g->secondary;
         }
 
+        if(auto* g = dynamic_cast<const BalanceGoal*>(goal))
+        {
+            //LOG("a");
+            goal_info.goal_type = GoalType::Balance;
+            goal_info.balance_goal_infos.resize(robot_model->getLinkModelCount());
+            for(auto& b : goal_info.balance_goal_infos)
+            {
+                b.tip_index = -1;
+                b.center = Vector3(0.0, 0.0, 0.0);
+                b.mass = 0.0;
+            }
+            //LOG("1");
+            for(auto link_model : robot_model->getLinkModels())
+            {
+                auto link_urdf = robot_model->getURDF()->getLink(link_model->getName());
+                if(!link_urdf) continue;
+                if(!link_urdf->inertial) continue;
+                const auto& center_urdf = link_urdf->inertial->origin.position;
+                tf::Vector3 center(center_urdf.x, center_urdf.y, center_urdf.z);
+                double mass = link_urdf->inertial->mass;
+                if(!(mass > 0)) continue;
+                goal_info.balance_goal_infos[link_model->getLinkIndex()].tip_index = addTipLink(link_model);
+                goal_info.balance_goal_infos[link_model->getLinkIndex()].center = center;
+                goal_info.balance_goal_infos[link_model->getLinkIndex()].mass = mass;
+            }
+            //LOG("2");
+            goal_info.balance_goal_infos.erase(std::remove_if(goal_info.balance_goal_infos.begin(), goal_info.balance_goal_infos.end(), [](const BalanceGoalInfo& b) { return b.tip_index < 0; }), goal_info.balance_goal_infos.end());
+            double mass_sum = 0.0;
+            for(auto& info : goal_info.balance_goal_infos)
+                mass_sum += info.mass;
+            for(auto& info : goal_info.balance_goal_infos)
+                info.mass /= mass_sum;
+            goal_info.target = g->center;
+            goal_info.axis = g->axis;
+            //LOG("b");
+        }
+
         goal_info.rotation_scale_sq = goal_info.rotation_scale * goal_info.rotation_scale;
         goal_info.weight_sq = goal_info.weight * goal_info.weight;
-
-        // LOG_VAR(goal_info.tip_index);
-
-        /*LOG_VAR(goal_info.rotation_scale);
-        LOG_VAR(goal_info.tip_index);
-        LOG_VAR(goal_info.weight);
-        LOG("goal_info.frame.pos", goal_info.frame.pos.x(), goal_info.frame.pos.y(), goal_info.frame.pos.z());
-        LOG("goal_info.frame.rot", goal_info.frame.rot.x(), goal_info.frame.rot.y(), goal_info.frame.rot.z(), goal_info.frame.rot.w());*/
 
         if(secondary)
             secondary_goals.push_back(goal_info);
@@ -226,12 +244,6 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
         if(joint_usage[joint_model->getJointIndex()] && !joint_model->getMimic())
             for(size_t ivar = joint_model->getFirstVariableIndex(); ivar < joint_model->getFirstVariableIndex() + joint_model->getVariableCount(); ivar++)
                 active_variables.push_back(ivar);
-
-    /*LOG_VAR(request.active_variables.size());
-    for(auto& active_variable : request.active_variables) LOG_VAR(active_variable);
-
-    LOG_VAR(request.tip_link_indices.size());
-    for(auto& tli : request.tip_link_indices) LOG_VAR(tli);*/
 
     for(auto* pgg : {&goals, &secondary_goals})
     {
@@ -383,7 +395,7 @@ double Problem::computeGoalFitness(const GoalInfo& goal, const Frame* tip_frames
                 auto& s = *collision_link.shapes[shape_index];
                 s.frame = Frame(link_model->getCollisionOriginTransforms()[shape_index]);
                 auto* shape = link_model->getShapes()[shape_index].get();
-                //LOG(link_model->getName(), shape_index, link_model->getShapes().size(), typeid(*shape).name());
+                // LOG(link_model->getName(), shape_index, link_model->getShapes().size(), typeid(*shape).name());
                 if(auto* mesh = dynamic_cast<const shapes::Mesh*>(shape))
                 {
                     struct : bodies::ConvexMesh
@@ -449,16 +461,16 @@ double Problem::computeGoalFitness(const GoalInfo& goal, const Frame* tip_frames
                 {
                     s.geometry = collision_detection::createCollisionGeometry(link_model->getShapes()[shape_index], link_model, shape_index);
                 }
-                //LOG("b");
+                // LOG("b");
             }
-            //getchar();
+            // getchar();
         }
         BLOCKPROFILER("touch goal");
         for(size_t shape_index = 0; shape_index < link_model->getShapes().size(); shape_index++)
         {
             if(!collision_link.shapes[shape_index]->geometry) continue;
             auto* shape = link_model->getShapes()[shape_index].get();
-            //LOG(shape_index, typeid(*shape).name());
+            // LOG(shape_index, typeid(*shape).name());
             if(auto* mesh = dynamic_cast<const shapes::Mesh*>(shape))
             {
                 auto& s = collision_link.shapes[shape_index];
@@ -596,6 +608,23 @@ double Problem::computeGoalFitness(const GoalInfo& goal, const Frame* tip_frames
             double d = joint_transmission_goal_temp[i] - joint_transmission_goal_temp2[i];
             sum += d * d * goal.weight_sq;
         }
+        break;
+    }
+
+    case GoalType::Balance:
+    {
+        Vector3 center;
+        for(auto& info : goal.balance_goal_infos)
+        {
+            auto& frame = tip_frames[info.tip_index];
+            auto c = info.center;
+            quat_mul_vec(frame.rot, c, c);
+            c += frame.pos;
+            center += c * info.mass;
+        }
+        center -= goal.target;
+        center -= goal.axis * goal.axis.dot(center);
+        sum += center.length2() * goal.weight_sq;
         break;
     }
 

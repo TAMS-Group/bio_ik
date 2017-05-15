@@ -242,6 +242,19 @@ struct JointFunctionGoal : GoalBase
     }
 };
 
+struct BalanceGoal : GoalBase
+{
+    tf::Vector3 center, axis;
+    BalanceGoal()
+        : center(0, 0, 0), axis(0, 0, 1)
+    {
+    }
+    BalanceGoal(const tf::Vector3& center, double weight = 1.0)
+        : center(center), axis(0, 0, 1), GoalBase(weight)
+    {
+    }
+};
+
 struct BioIKKinematicsQueryOptions : kinematics::KinematicsQueryOptions
 {
     std::vector<std::unique_ptr<Goal>> goals;
