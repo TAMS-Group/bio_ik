@@ -18,6 +18,7 @@ namespace bio_ik
 class Problem
 {
 private:
+    bool ros_params_initrd;
     std::vector<int> joint_usage;
     std::vector<ssize_t> link_tip_indices;
     std::vector<double> minimal_displacement_factors;
@@ -83,6 +84,7 @@ public:
     std::vector<size_t> tip_link_indices;
     std::vector<GoalInfo> goals;
     std::vector<GoalInfo> secondary_goals;
+    Problem();
     void initialize(MoveItRobotModelConstPtr robot_model, const moveit::core::JointModelGroup* joint_model_group, ros::NodeHandle node_handle, const std::vector<const Goal*>& goals2);
     double computeGoalFitness(const GoalInfo& goal, const Frame* tip_frames, const double* active_variable_positions);
     double computeGoalFitness(const std::vector<GoalInfo>& goals, const Frame* tip_frames, const double* active_variable_positions);

@@ -72,7 +72,7 @@ struct IKTest : IKBase
             model.applyConfiguration(problem.initial_guess);
             model.initializeMutationApproximator(problem.active_variables);
 
-            std::vector<std::vector<Frame>> fbm;
+            std::vector<aligned_vector<Frame>> fbm;
 
             std::vector<double> mutation_values;
             for(size_t ivar : problem.active_variables)

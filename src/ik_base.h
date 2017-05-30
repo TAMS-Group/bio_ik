@@ -138,8 +138,18 @@ struct IKBase : Random
     double computeSecondaryFitnessAllVariables(const std::vector<double>& variable_positions) { return computeSecondaryFitnessActiveVariables(extractActiveVariables(variable_positions)); }
 
     double computeFitnessActiveVariables(const std::vector<Frame>& tip_frames, const double* active_variable_positions) { return problem.computeGoalFitness(problem.goals, tip_frames.data(), active_variable_positions); }
+    
+    double computeFitnessActiveVariables(const aligned_vector<Frame>& tip_frames, const double* active_variable_positions) { return problem.computeGoalFitness(problem.goals, tip_frames.data(), active_variable_positions); }
 
     double computeCombinedFitnessActiveVariables(const std::vector<Frame>& tip_frames, const double* active_variable_positions)
+    {
+        double ret = 0.0;
+        ret += problem.computeGoalFitness(problem.goals, tip_frames.data(), active_variable_positions);
+        ret += problem.computeGoalFitness(problem.secondary_goals, null_tip_frames.data(), active_variable_positions);
+        return ret;
+    }
+    
+    double computeCombinedFitnessActiveVariables(const aligned_vector<Frame>& tip_frames, const double* active_variable_positions)
     {
         double ret = 0.0;
         ret += problem.computeGoalFitness(problem.goals, tip_frames.data(), active_variable_positions);

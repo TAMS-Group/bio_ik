@@ -56,6 +56,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftree-vectorize -ffast-math")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frecord-gcc-switches") 
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_CPP_OPTLIB") 
+
 message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}")
 
 set_target_properties(${MOVEIT_LIB_NAME} PROPERTIES VERSION ${${PROJECT_NAME}_VERSION})
@@ -67,6 +69,7 @@ target_link_libraries(bio_ik_kinematics_plugin
   ${OpenMP_LIBS}
   gcc_s
   gcc
+  fann
 )
 
 if(CATKIN_ENABLE_TESTING)

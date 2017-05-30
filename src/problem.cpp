@@ -42,6 +42,11 @@ size_t Problem::addTipLink(const moveit::core::LinkModel* link_model)
     return link_tip_indices[link_model->getLinkIndex()];
 }
 
+Problem::Problem()
+    : ros_params_initrd(false)
+{
+}
+
 void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::core::JointModelGroup* joint_model_group, ros::NodeHandle node_handle, const std::vector<const Goal*>& goals2)
 {
     if(robot_model != this->robot_model)
@@ -57,7 +62,9 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
 
     // robot_collision_model.initialize(robot_model);
 
+    if(!ros_params_initrd)
     {
+        ros_params_initrd = true;
         auto& n = node_handle;
         n.param("dpos", dpos, DBL_MAX);
         n.param("drot", drot, DBL_MAX);
@@ -186,7 +193,7 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
 
         if(auto* g = dynamic_cast<const BalanceGoal*>(goal))
         {
-            //LOG("a");
+            // LOG("a");
             goal_info.goal_type = GoalType::Balance;
             goal_info.balance_goal_infos.resize(robot_model->getLinkModelCount());
             for(auto& b : goal_info.balance_goal_infos)
@@ -195,7 +202,7 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
                 b.center = Vector3(0.0, 0.0, 0.0);
                 b.mass = 0.0;
             }
-            //LOG("1");
+            // LOG("1");
             for(auto link_model : robot_model->getLinkModels())
             {
                 auto link_urdf = robot_model->getURDF()->getLink(link_model->getName());
@@ -209,7 +216,7 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
                 goal_info.balance_goal_infos[link_model->getLinkIndex()].center = center;
                 goal_info.balance_goal_infos[link_model->getLinkIndex()].mass = mass;
             }
-            //LOG("2");
+            // LOG("2");
             goal_info.balance_goal_infos.erase(std::remove_if(goal_info.balance_goal_infos.begin(), goal_info.balance_goal_infos.end(), [](const BalanceGoalInfo& b) { return b.tip_index < 0; }), goal_info.balance_goal_infos.end());
             double mass_sum = 0.0;
             for(auto& info : goal_info.balance_goal_infos)
@@ -218,7 +225,7 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
                 info.mass /= mass_sum;
             goal_info.target = g->center;
             goal_info.axis = g->axis;
-            //LOG("b");
+            // LOG("b");
         }
 
         goal_info.rotation_scale_sq = goal_info.rotation_scale * goal_info.rotation_scale;

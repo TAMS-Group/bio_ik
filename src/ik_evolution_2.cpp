@@ -34,7 +34,7 @@ struct IKEvolution2 : IKBase
     double solution_fitness;
     std::vector<Species> species;
     std::vector<Individual> children;
-    std::vector<std::vector<Frame>> phenotypes, phenotypes2, phenotypes3;
+    std::vector<aligned_vector<Frame>> phenotypes, phenotypes2, phenotypes3;
     std::vector<size_t> child_indices;
     std::vector<double*> genotypes;
     std::vector<Frame> phenotype;
@@ -314,111 +314,120 @@ struct IKEvolution2 : IKBase
         for(size_t ispecies = 0; ispecies < species.size(); ispecies++)
         {
             auto& species = this->species[ispecies];
-
-            BLOCKPROFILER("evolution");
-
             auto& population = species.individuals;
-
-            // initialize forward kinematics approximator
-            genesToJointVariables(species.individuals[0], temp_joint_variables);
-            model.applyConfiguration(temp_joint_variables);
-            model.initializeMutationApproximator(problem.active_variables);
-
-            // run evolution for a few generations
-            size_t generation_count = 16;
-            if(memetic) generation_count = 8;
-            for(size_t generation = 0; generation < generation_count; generation++)
+            
             {
+                BLOCKPROFILER("evolution");
 
-                // reproduction
+                // initialize forward kinematics approximator
+                genesToJointVariables(species.individuals[0], temp_joint_variables);
                 {
-                    BLOCKPROFILER("reproduction");
-                    reproduce(population);
+                    BLOCKPROFILER("fk");
+                    model.applyConfiguration(temp_joint_variables);
+                    model.initializeMutationApproximator(problem.active_variables);
                 }
 
-                size_t child_count = children.size();
-
-                // pre-selection by secondary objectives
-                if(problem.secondary_goals.size())
+                // run evolution for a few generations
+                size_t generation_count = 16;
+                if(memetic) generation_count = 8;
+                for(size_t generation = 0; generation < generation_count; generation++)
                 {
-                    BLOCKPROFILER("pre-selection");
-                    child_count = random_index(children.size() - population.size() - 1) + 1 + population.size();
-                    for(size_t child_index = population.size(); child_index < children.size(); child_index++)
+                    //BLOCKPROFILER("evolution");
+                    
+                    if(canceled) break;
+                    
+
+                    // reproduction
                     {
-                        children[child_index].fitness = computeSecondaryFitnessActiveVariables(children[child_index].genes.data());
+                        BLOCKPROFILER("reproduction");
+                        reproduce(population);
                     }
-                    {
-                        BLOCKPROFILER("pre-selection sort");
-                        std::sort(
-                                children.begin() + population.size(),
-                                children.end(),
-                                [] (const Individual& a, const Individual& b)
-                                {
-                                    return a.fitness < b.fitness;
-                                }
-                            );
-                    }
-                }
 
-                // keep parents
-                {
-                    BLOCKPROFILER("keep alive");
-                    for(size_t i = 0; i < population.size(); i++)
-                    {
-                        children[i].genes = population[i].genes;
-                        children[i].gradients = population[i].gradients;
-                    }
-                }
+                    size_t child_count = children.size();
 
-                // genotype-phenotype mapping
-                {
-                    BLOCKPROFILER("phenotype");
-                    size_t gene_count = children[0].genes.size();
-                    genotypes.resize(child_count);
-                    for(size_t i = 0; i < child_count; i++)
-                        genotypes[i] = children[i].genes.data();
-                    model.computeApproximateMutations(child_count, genotypes.data(), phenotypes);
-                }
-
-                // fitness
-                {
-                    BLOCKPROFILER("fitness");
-                    for(size_t child_index = 0; child_index < child_count; child_index++)
+                    // pre-selection by secondary objectives
+                    if(problem.secondary_goals.size())
                     {
-                        children[child_index].fitness = computeFitnessActiveVariables(phenotypes[child_index], genotypes[child_index]);
-                    }
-                }
-
-                // selection
-                {
-                    BLOCKPROFILER("selection");
-                    child_indices.resize(child_count);
-                    for(size_t i = 0; i < child_count; i++)
-                        child_indices[i] = i;
-                    for(size_t i = 0; i < population.size(); i++)
-                    {
-                        size_t jmin = i;
-                        double fmin = children[child_indices[i]].fitness;
-                        for(size_t j = i + 1; j < child_count; j++)
+                        BLOCKPROFILER("pre-selection");
+                        child_count = random_index(children.size() - population.size() - 1) + 1 + population.size();
+                        for(size_t child_index = population.size(); child_index < children.size(); child_index++)
                         {
-                            double f = children[child_indices[j]].fitness;
-                            if(f < fmin)
-                                jmin = j, fmin = f;
+                            children[child_index].fitness = computeSecondaryFitnessActiveVariables(children[child_index].genes.data());
                         }
-                        std::swap(child_indices[i], child_indices[jmin]);
+                        {
+                            BLOCKPROFILER("pre-selection sort");
+                            std::sort(
+                                    children.begin() + population.size(),
+                                    children.end(),
+                                    [] (const Individual& a, const Individual& b)
+                                    {
+                                        return a.fitness < b.fitness;
+                                    }
+                                );
+                        }
                     }
-                    for(size_t i = 0; i < population.size(); i++)
+
+                    // keep parents
                     {
-                        std::swap(population[i].genes, children[child_indices[i]].genes);
-                        std::swap(population[i].gradients, children[child_indices[i]].gradients);
+                        BLOCKPROFILER("keep alive");
+                        for(size_t i = 0; i < population.size(); i++)
+                        {
+                            children[i].genes = population[i].genes;
+                            children[i].gradients = population[i].gradients;
+                        }
+                    }
+
+                    // genotype-phenotype mapping
+                    {
+                        BLOCKPROFILER("phenotype");
+                        size_t gene_count = children[0].genes.size();
+                        genotypes.resize(child_count);
+                        for(size_t i = 0; i < child_count; i++)
+                            genotypes[i] = children[i].genes.data();
+                        model.computeApproximateMutations(child_count, genotypes.data(), phenotypes);
+                    }
+
+                    // fitness
+                    {
+                        BLOCKPROFILER("fitness");
+                        for(size_t child_index = 0; child_index < child_count; child_index++)
+                        {
+                            children[child_index].fitness = computeFitnessActiveVariables(phenotypes[child_index], genotypes[child_index]);
+                        }
+                    }
+
+                    // selection
+                    {
+                        BLOCKPROFILER("selection");
+                        child_indices.resize(child_count);
+                        for(size_t i = 0; i < child_count; i++)
+                            child_indices[i] = i;
+                        for(size_t i = 0; i < population.size(); i++)
+                        {
+                            size_t jmin = i;
+                            double fmin = children[child_indices[i]].fitness;
+                            for(size_t j = i + 1; j < child_count; j++)
+                            {
+                                double f = children[child_indices[j]].fitness;
+                                if(f < fmin)
+                                    jmin = j, fmin = f;
+                            }
+                            std::swap(child_indices[i], child_indices[jmin]);
+                        }
+                        for(size_t i = 0; i < population.size(); i++)
+                        {
+                            std::swap(population[i].genes, children[child_indices[i]].genes);
+                            std::swap(population[i].gradients, children[child_indices[i]].gradients);
+                        }
                     }
                 }
             }
 
 
-
             // memetic optimization
             {
+                BLOCKPROFILER("memetics");
+                
                 if(memetic == 'q' || memetic == 'l')
                 {
 
@@ -433,9 +442,11 @@ struct IKEvolution2 : IKBase
                     double dp = 0.0000001;
                     if(fast_random() < 0.5) dp = -dp;
 
-                    //for(size_t generation = 0; generation < 8; generation++)
-                    for(size_t generation = 0; generation < 32; generation++)
+                    for(size_t generation = 0; generation < 8; generation++)
+                    //for(size_t generation = 0; generation < 32; generation++)
                     {
+                        
+                        if(canceled) break;
 
                         // compute gradient
                         temp = individual.genes;

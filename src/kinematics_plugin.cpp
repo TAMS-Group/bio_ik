@@ -228,7 +228,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 default_goals.emplace_back(goal);
             }
 
-            /*{
+            {
                 double weight = 0;
                 node_handle.param("avoid_joint_limits_weight", weight, weight);
                 if(weight > 0.0)
@@ -248,7 +248,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                     minimal_displacement_goal->weight = weight;
                     default_goals.emplace_back(minimal_displacement_goal);
                 }
-            }*/
+            }
 
             {
                 typedef XmlRpc::XmlRpcValue var;
@@ -534,6 +534,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         }*/
 
         {
+            
+            
             if(!bio_ik_options || !bio_ik_options->replace)
             {
                 for(size_t i = 0; i < tip_frames_.size(); i++)
@@ -554,8 +556,11 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 for(auto& goal : bio_ik_options->goals)
                     all_goals.push_back(goal.get());
 
-            problem.initialize(ikparams.robot_model, ikparams.joint_model_group, ikparams.node_handle, all_goals);
-            //problem.setGoals(default_goals, ikparams);
+            {
+                BLOCKPROFILER("problem init");
+                problem.initialize(ikparams.robot_model, ikparams.joint_model_group, ikparams.node_handle, all_goals);
+                //problem.setGoals(default_goals, ikparams);
+            }
         }
 
         {
@@ -564,7 +569,10 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         }
 
         // run ik solver
-        ik->solve();
+        {
+            BLOCKPROFILER("ik_solve");
+            ik->solve();
+        }
 
         // get solution
         state = ik->getSolution();
@@ -576,8 +584,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
             if(robot_info.isRevolute(ivar) && robot_model->getMimicJointModels().empty())
             {
                 auto r = problem.initial_guess[ivar];
-                auto lo = robot_info.getClipMin(ivar);
-                auto hi = robot_info.getClipMax(ivar);
+                auto lo = robot_info.getMin(ivar);
+                auto hi = robot_info.getMax(ivar);
                 
                 // move close to initial guess
                 if(r < v - M_PI || r > v + M_PI)

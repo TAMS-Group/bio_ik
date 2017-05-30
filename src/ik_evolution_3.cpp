@@ -30,7 +30,7 @@ struct IKEvolution3 : IKBase
     double solution_fitness;
     std::vector<Species> species;
     std::vector<Individual> children;
-    std::vector<std::vector<Frame>> phenotypes, phenotypes2, phenotypes3;
+    std::vector<aligned_vector<Frame>> phenotypes, phenotypes2, phenotypes3;
     std::vector<size_t> child_indices;
     std::vector<double*> genotypes;
     std::vector<aligned_vector<double>> genotype_buffer;
