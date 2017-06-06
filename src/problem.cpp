@@ -30,6 +30,9 @@ enum class Problem::GoalType
     CenterJoints,
     JointFunction,
     Balance,
+    LinkFunction,
+    Side,
+    Direction,
 };
 
 size_t Problem::addTipLink(const moveit::core::LinkModel* link_model)
@@ -226,6 +229,25 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
             goal_info.target = g->center;
             goal_info.axis = g->axis;
             // LOG("b");
+        }
+        
+        if(auto* g = dynamic_cast<const LinkFunctionGoal*>(goal))
+        {
+            goal_info.goal_type = GoalType::LinkFunction;
+        }
+        
+        if(auto* g = dynamic_cast<const SideGoal*>(goal))
+        {
+            goal_info.goal_type = GoalType::Side;
+            goal_info.axis = g->axis.normalized();
+            goal_info.direction = g->direction.normalized();
+        }
+        
+        if(auto* g = dynamic_cast<const DirectionGoal*>(goal))
+        {
+            goal_info.goal_type = GoalType::Direction;
+            goal_info.axis = g->axis.normalized();
+            goal_info.direction = g->direction.normalized();
         }
 
         goal_info.rotation_scale_sq = goal_info.rotation_scale * goal_info.rotation_scale;
@@ -632,6 +654,29 @@ double Problem::computeGoalFitness(const GoalInfo& goal, const Frame* tip_frames
         center -= goal.target;
         center -= goal.axis * goal.axis.dot(center);
         sum += center.length2() * goal.weight_sq;
+        break;
+    }
+    
+    case GoalType::LinkFunction:
+    {
+        sum += ((LinkFunctionGoal*)goal.goal)->function(fb.pos, fb.rot) * goal.weight_sq;
+        break;
+    }
+    
+    case GoalType::Side:
+    {
+        Vector3 v;
+        quat_mul_vec(fb.rot, goal.axis, v);
+        double f = fmax(0.0, v.dot(goal.direction));
+        sum += f * f * goal.weight_sq;
+        break;
+    }
+    
+    case GoalType::Direction:
+    {
+        Vector3 v;
+        quat_mul_vec(fb.rot, goal.axis, v);
+        sum += v.distance2(goal.direction) * goal.weight_sq;
         break;
     }
 

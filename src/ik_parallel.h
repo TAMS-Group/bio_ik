@@ -70,6 +70,7 @@ struct IKParallel
     double timeout;
     bool success;
     std::atomic<int> finished;
+    std::atomic<uint32_t> iteration_count;
     std::vector<double> result;
     std::unique_ptr<ParallelExecutor> par;
     Problem problem;
@@ -130,6 +131,7 @@ private:
 
             // run solver for a few steps
             solvers[i]->step();
+            iteration_count++;
             for(int it2 = 1; it2 < 4; it2++)
                 if(ros::WallTime::now().toSec() < timeout && finished == 0)
                     solvers[i]->step();
@@ -162,6 +164,7 @@ public:
         BLOCKPROFILER("solve mt");
 
         // prepare
+        iteration_count = 0;
         result = problem.initial_guess;
         timeout = problem.timeout;
         success = false;
@@ -220,6 +223,8 @@ public:
                 }
             }
         }
+        
+        //LOG("iterations", iteration_count);
 
         result = solver_solutions[best_index];
         success = solver_success[best_index];

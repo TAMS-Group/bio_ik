@@ -1,6 +1,8 @@
 // Bio IK for ROS
 // (c) 2016-2017 Philipp Ruppel
 
+#if 0
+
 #include "ik_base.h"
 
 #include <fann.h>
@@ -700,3 +702,6 @@ static IKFactory::Class<IKNeural2> neural2("neural2");
 
 
 }
+
+
+#endif

@@ -70,6 +70,7 @@ public:
         double rotation_scale_sq;
         Frame frame;
         tf::Vector3 target;
+        tf::Vector3 direction;
         tf::Vector3 axis;
         double distance;
         ssize_t active_variable_index;

@@ -69,7 +69,7 @@ target_link_libraries(bio_ik_kinematics_plugin
   ${OpenMP_LIBS}
   gcc_s
   gcc
-  fann
+#  fann
 )
 
 if(CATKIN_ENABLE_TESTING)

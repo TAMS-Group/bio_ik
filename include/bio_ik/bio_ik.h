@@ -145,7 +145,8 @@ struct MinDistanceGoal : LinkGoalBase
 
 struct LineGoal : LinkGoalBase
 {
-    tf::Vector3 position, direction;
+    tf::Vector3 position;
+    tf::Vector3 direction;
     LineGoal()
         : position(0, 0, 0)
         , direction(0, 0, 0)
@@ -161,7 +162,8 @@ struct LineGoal : LinkGoalBase
 
 struct TouchGoal : LinkGoalBase
 {
-    tf::Vector3 position, normal;
+    tf::Vector3 position;
+    tf::Vector3 normal;
     TouchGoal()
         : position(0, 0, 0)
         , normal(0, 0, 0)
@@ -246,11 +248,59 @@ struct BalanceGoal : GoalBase
 {
     tf::Vector3 center, axis;
     BalanceGoal()
-        : center(0, 0, 0), axis(0, 0, 1)
+        : center(0, 0, 0)
+        , axis(0, 0, 1)
     {
     }
     BalanceGoal(const tf::Vector3& center, double weight = 1.0)
-        : center(center), axis(0, 0, 1), GoalBase(weight)
+        : center(center)
+        , axis(0, 0, 1)
+        , GoalBase(weight)
+    {
+    }
+};
+
+struct LinkFunctionGoal : LinkGoalBase
+{
+    std::function<double(const tf::Vector3&, const tf::Quaternion&)> function;
+    LinkFunctionGoal() {}
+    LinkFunctionGoal(const std::string& link_name, const std::function<double(const tf::Vector3&, const tf::Quaternion&)>& function, double weight = 1.0)
+        : LinkGoalBase(link_name, weight)
+        , function(function)
+    {
+    }
+};
+
+struct SideGoal : LinkGoalBase
+{
+    tf::Vector3 axis;
+    tf::Vector3 direction;
+    SideGoal()
+        : axis(0, 0, 1)
+        , direction(0, 0, 1)
+    {
+    }
+    SideGoal(const std::string& link_name, const tf::Vector3& axis, const tf::Vector3& direction, double weight = 1.0)
+        : LinkGoalBase(link_name, weight)
+        , axis(axis)
+        , direction(direction)
+    {
+    }
+};
+
+struct DirectionGoal : LinkGoalBase
+{
+    tf::Vector3 axis;
+    tf::Vector3 direction;
+    DirectionGoal()
+        : axis(0, 0, 1)
+        , direction(0, 0, 1)
+    {
+    }
+    DirectionGoal(const std::string& link_name, const tf::Vector3& axis, const tf::Vector3& direction, double weight = 1.0)
+        : LinkGoalBase(link_name, weight)
+        , axis(axis)
+        , direction(direction)
     {
     }
 };
