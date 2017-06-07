@@ -305,6 +305,32 @@ struct DirectionGoal : LinkGoalBase
     }
 };
 
+struct ConeGoal : LinkGoalBase
+{
+    tf::Vector3 axis;
+    tf::Vector3 direction;
+    double angle;
+    ConeGoal()
+        : axis(0, 0, 1)
+        , direction(0, 0, 1)
+        , angle(0)
+    {
+    }
+    ConeGoal(
+        const std::string& link_name, 
+        const tf::Vector3& axis, 
+        const tf::Vector3& direction, 
+        double angle,
+        double weight = 1.0
+    )
+        : LinkGoalBase(link_name, weight)
+        , axis(axis)
+        , direction(direction)
+        , angle(angle)
+    {
+    }
+};
+
 struct BioIKKinematicsQueryOptions : kinematics::KinematicsQueryOptions
 {
     std::vector<std::unique_ptr<Goal>> goals;
