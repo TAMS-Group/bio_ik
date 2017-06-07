@@ -3,13 +3,10 @@
 
 #include "ik_base.h"
 
-
 #include <boost/thread/barrier.hpp>
 
 namespace bio_ik
 {
-
-
 
 // executes a function in parallel on pre-allocated threads
 class ParallelExecutor
@@ -18,19 +15,25 @@ class ParallelExecutor
     std::vector<std::thread> threads;
     boost::barrier barrier;
     volatile bool exit;
+
 public:
-    template<class FUN>
-    ParallelExecutor(size_t thread_count, const FUN& f) : exit(false), threads(thread_count), fun(f), barrier(thread_count)
+    template <class FUN>
+    ParallelExecutor(size_t thread_count, const FUN& f)
+        : exit(false)
+        , threads(thread_count)
+        , fun(f)
+        , barrier(thread_count)
     {
         for(size_t i = 1; i < thread_count; i++)
         {
-            std::thread t([this, i] ()
-            {
+            std::thread t([this, i]() {
                 while(true)
                 {
-                    barrier.wait(); if(exit) break;
+                    barrier.wait();
+                    if(exit) break;
                     fun(i);
-                    barrier.wait(); if(exit) break;
+                    barrier.wait();
+                    if(exit) break;
                 }
             });
             std::swap(t, threads[i]);
@@ -40,7 +43,8 @@ public:
     {
         exit = true;
         barrier.wait();
-        for(auto& t : threads) if(t.joinable()) t.join();
+        for(auto& t : threads)
+            if(t.joinable()) t.join();
     }
     void run()
     {
@@ -49,12 +53,6 @@ public:
         barrier.wait();
     }
 };
-
-
-
-
-
-
 
 // runs ik on multiple threads until a stop criterion is met
 struct IKParallel
@@ -66,7 +64,7 @@ struct IKParallel
     std::vector<int> solver_success;
     std::vector<double> solver_fitness;
     int thread_count;
-    //std::vector<RobotFK_Fast> fk; // TODO: remove
+    // std::vector<RobotFK_Fast> fk; // TODO: remove
     double timeout;
     bool success;
     std::atomic<int> finished;
@@ -74,26 +72,32 @@ struct IKParallel
     std::vector<double> result;
     std::unique_ptr<ParallelExecutor> par;
     Problem problem;
+    bool enable_counter;
 
-    IKParallel(const IKParams& params) : params(params)
+    IKParallel(const IKParams& params)
+        : params(params)
     {
         // solver class name
         std::string name;
-        //params.node_handle.param("mode", name, std::string("bio1"));
-        //params.node_handle.param("mode", name, std::string("bio2_memetic_l"));
-        //params.node_handle.param("mode", name, std::string("bio2"));
+        // params.node_handle.param("mode", name, std::string("bio1"));
+        // params.node_handle.param("mode", name, std::string("bio2_memetic_l"));
+        // params.node_handle.param("mode", name, std::string("bio2"));
         params.node_handle.param("mode", name, std::string("bio2_memetic"));
-        //params.node_handle.param("mode", name, std::string("bio3_memetic"));
-        //params.node_handle.param("mode", name, std::string("neural"));
- 
+        // params.node_handle.param("mode", name, std::string("bio3_memetic"));
+        // params.node_handle.param("mode", name, std::string("neural"));
+
+        params.node_handle.param("counter", enable_counter, false);
+
         // create solvers
         solvers.emplace_back(IKFactory::create(name, params));
         thread_count = solvers.front()->concurrency();
         params.node_handle.param("threads", thread_count, thread_count);
-        while(solvers.size() < thread_count) solvers.emplace_back(IKFactory::clone(solvers.front().get()));
-        for(size_t i = 0; i < thread_count; i++) solvers[i]->thread_index = i;
+        while(solvers.size() < thread_count)
+            solvers.emplace_back(IKFactory::clone(solvers.front().get()));
+        for(size_t i = 0; i < thread_count; i++)
+            solvers[i]->thread_index = i;
 
-        //while(fk.size() < thread_count) fk.emplace_back(params.robot_model);
+        // while(fk.size() < thread_count) fk.emplace_back(params.robot_model);
 
         // init buffers
         solver_solutions.resize(thread_count);
@@ -102,17 +106,16 @@ struct IKParallel
         solver_fitness.resize(thread_count);
 
         // create parallel executor
-        par.reset(new ParallelExecutor(thread_count, [this] (size_t i) { solverthread(i); }));
+        par.reset(new ParallelExecutor(thread_count, [this](size_t i) { solverthread(i); }));
     }
 
     void initialize(const Problem& problem)
     {
         this->problem = problem;
-        //for(auto& f : fk) f.initialize(problem.tip_link_indices);
+        // for(auto& f : fk) f.initialize(problem.tip_link_indices);
     }
 
 private:
-
     void solverthread(size_t i)
     {
         THREADPROFILER("thread", i);
@@ -133,8 +136,7 @@ private:
             solvers[i]->step();
             iteration_count++;
             for(int it2 = 1; it2 < 4; it2++)
-                if(ros::WallTime::now().toSec() < timeout && finished == 0)
-                    solvers[i]->step();
+                if(ros::WallTime::now().toSec() < timeout && finished == 0) solvers[i]->step();
 
             if(finished) break;
 
@@ -154,11 +156,11 @@ private:
 
         finished = 1;
 
-        for(auto& s : solvers) s->canceled = true;
+        for(auto& s : solvers)
+            s->canceled = true;
     }
 
 public:
-
     void solve()
     {
         BLOCKPROFILER("solve mt");
@@ -169,11 +171,16 @@ public:
         timeout = problem.timeout;
         success = false;
         finished = 0;
-        for(auto& s : solver_solutions) s = problem.initial_guess;
-        for(auto& s : solver_temps) s = problem.initial_guess;
-        for(auto& s : solver_success) s = 0;
-        for(auto& f : solver_fitness) f = DBL_MAX;
-        for(auto& s : solvers) s->canceled = false;
+        for(auto& s : solver_solutions)
+            s = problem.initial_guess;
+        for(auto& s : solver_temps)
+            s = problem.initial_guess;
+        for(auto& s : solver_success)
+            s = 0;
+        for(auto& f : solver_fitness)
+            f = DBL_MAX;
+        for(auto& s : solvers)
+            s->canceled = false;
 
         // run solvers
         {
@@ -223,8 +230,11 @@ public:
                 }
             }
         }
-        
-        //LOG("iterations", iteration_count);
+
+        if(enable_counter)
+        {
+            LOG("iterations", iteration_count);
+        }
 
         result = solver_solutions[best_index];
         success = solver_success[best_index];
@@ -233,10 +243,5 @@ public:
     bool getSuccess() const { return success; }
 
     const std::vector<double>& getSolution() const { return result; }
-
 };
-
-
-
-
 }

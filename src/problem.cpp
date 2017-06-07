@@ -33,6 +33,7 @@ enum class Problem::GoalType
     LinkFunction,
     Side,
     Direction,
+    Cone,
 };
 
 size_t Problem::addTipLink(const moveit::core::LinkModel* link_model)
@@ -265,6 +266,14 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
             goal_info.goal_type = GoalType::Direction;
             goal_info.axis = g->axis.normalized();
             goal_info.direction = g->direction.normalized();
+        }
+        
+        if(auto* g = dynamic_cast<const ConeGoal*>(goal))
+        {
+            goal_info.goal_type = GoalType::Cone;
+            goal_info.axis = g->axis.normalized();
+            goal_info.direction = g->direction.normalized();
+            goal_info.distance = g->angle;
         }
 
         goal_info.rotation_scale_sq = goal_info.rotation_scale * goal_info.rotation_scale;
@@ -641,6 +650,14 @@ double Problem::computeGoalFitness(const GoalInfo& goal, const Frame* tip_frames
         quat_mul_vec(fb.rot, goal.axis, v);
         sum += v.distance2(goal.direction) * goal.weight_sq;
         break;
+    }
+    
+    case GoalType::Cone:
+    {
+        Vector3 v;
+        quat_mul_vec(fb.rot, goal.axis, v);
+        double d = fmax(0.0, v.angle(goal.direction) - goal.distance);
+        sum += d * d * goal.weight_sq;
     }
 
     default:
