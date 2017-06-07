@@ -592,12 +592,7 @@ double Problem::computeGoalFitness(const GoalInfo& goal, const Frame* tip_frames
     {
         joint_transmission_goal_temp.resize(goal.variable_indices.size());
         for(size_t i = 0; i < goal.variable_indices.size(); i++)
-        {
-            if(goal.variable_indices[i] >= 0)
-                joint_transmission_goal_temp[i] = active_variable_positions[active_variables[goal.variable_indices[i]]];
-            else
-                joint_transmission_goal_temp[i] = initial_guess[-goal.variable_indices[i] - 1];
-        }
+            joint_transmission_goal_temp[i] = active_variable_positions[goal.variable_indices[i]];
         joint_transmission_goal_temp2 = joint_transmission_goal_temp;
         ((const JointFunctionGoal*)goal.goal)->function(joint_transmission_goal_temp2);
         for(size_t i = 0; i < goal.variable_indices.size(); i++)
