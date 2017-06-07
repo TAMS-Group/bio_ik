@@ -63,8 +63,6 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
     this->joint_model_group = joint_model_group;
     this->node_handle = node_handle;
 
-    // robot_collision_model.initialize(robot_model);
-
     if(!ros_params_initrd)
     {
         ros_params_initrd = true;
@@ -80,6 +78,23 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
     link_tip_indices.clear();
     link_tip_indices.resize(robot_model->getLinkModelCount(), -1);
     tip_link_indices.clear();
+    
+    active_variables.clear();
+    auto addActiveVariable = [this, robot_model, joint_model_group] (const std::string& name)
+    {
+        for(size_t i = 0; i < active_variables.size(); i++)
+            if(name == robot_model->getVariableNames()[active_variables[i]])
+                return i;
+        for(auto& n : joint_model_group->getVariableNames())
+        {
+            if(n == name)
+            {
+                active_variables.push_back(robot_model->getVariableIndex(name));
+                return active_variables.size() - 1;
+            }
+        }
+        ERROR("joint variable not found", name);
+    };
 
     goals.clear();
     secondary_goals.clear();
@@ -183,7 +198,7 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
         if(auto* g = dynamic_cast<const JointVariableGoal*>(goal))
         {
             goal_info.goal_type = GoalType::JointVariable;
-            goal_info.active_variable_index = -1;
+            goal_info.active_variable_index = addActiveVariable(g->variable_name);
             goal_info.variable_position = g->variable_position;
             secondary = g->secondary;
         }
@@ -191,6 +206,8 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
         if(auto* g = dynamic_cast<const JointFunctionGoal*>(goal))
         {
             goal_info.goal_type = GoalType::JointFunction;
+            for(auto& variable_name : g->variable_names)
+                goal_info.variable_indices.push_back(addActiveVariable(variable_name));
             secondary = g->secondary;
         }
 
@@ -259,68 +276,19 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
             goals.push_back(goal_info);
     }
 
-    // std::sort(goals.begin(), goals.end(), [] (const IKGoalInfo& a, const IKGoalInfo& b) { return a.goal_type < b.goal_type; });
-
-    // update active variables
+    // update active variables from active subtree
     joint_usage.resize(robot_model->getJointModelCount());
     for(auto& u : joint_usage)
         u = 0;
     for(auto tip_index : tip_link_indices)
         for(auto* link_model = robot_model->getLinkModels()[tip_index]; link_model; link_model = link_model->getParentLinkModel())
             joint_usage[link_model->getParentJointModel()->getJointIndex()] = 1;
-    active_variables.clear();
     for(auto* joint_model : joint_model_group->getActiveJointModels())
         if(joint_usage[joint_model->getJointIndex()] && !joint_model->getMimic())
-            for(size_t ivar = joint_model->getFirstVariableIndex(); ivar < joint_model->getFirstVariableIndex() + joint_model->getVariableCount(); ivar++)
-                active_variables.push_back(ivar);
-
-    for(auto* pgg : {&goals, &secondary_goals})
-    {
-        for(auto& goal_info : *pgg)
-        {
-            if(goal_info.goal_type == GoalType::JointVariable)
-            {
-                for(size_t i = 0; i < active_variables.size(); i++)
-                {
-                    if(robot_model->getVariableNames()[active_variables[i]] == ((const JointVariableGoal*)goal_info.goal)->variable_name)
-                    {
-                        goal_info.active_variable_index = i;
-                        break;
-                    }
-                }
-            }
-
-            if(goal_info.goal_type == GoalType::JointFunction)
-            {
-                auto* g = dynamic_cast<const JointFunctionGoal*>(goal_info.goal);
-                for(auto& variable_name : g->variable_names)
-                {
-                    for(size_t i = 0; i < active_variables.size(); i++)
-                    {
-                        if(robot_model->getVariableNames()[active_variables[i]] == variable_name)
-                        {
-                            goal_info.variable_indices.push_back(i);
-                            goto ok;
-                        }
-                    }
-
-                    for(ssize_t i = 0; i < robot_model->getVariableCount(); i++)
-                    {
-                        if(robot_model->getVariableNames()[i] == variable_name)
-                        {
-                            goal_info.variable_indices.push_back(-1 - i);
-                            goto ok;
-                        }
-                    }
-
-                    ERROR("joint not found", variable_name);
-
-                ok:;
-                }
-            }
-        }
-    }
-
+            for(auto& n : joint_model->getVariableNames())
+                addActiveVariable(n);
+    
+    // init weights for minimal displacement goals
     {
         minimal_displacement_factors.resize(active_variables.size());
         double s = 0;

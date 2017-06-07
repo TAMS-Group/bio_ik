@@ -13,7 +13,7 @@
 #include <immintrin.h>
 #include <x86intrin.h>
 
-#if(__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8))
+#if(__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 9))
 #define FUNCTION_MULTIVERSIONING 1
 #else
 #define FUNCTION_MULTIVERSIONING 0
