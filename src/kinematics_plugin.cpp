@@ -43,7 +43,9 @@ namespace bio_ik
 
 std::unordered_set<const void*> idBioIKKinematicsQueryOptions;
 
-BioIKKinematicsQueryOptions::BioIKKinematicsQueryOptions() : replace(false)
+BioIKKinematicsQueryOptions::BioIKKinematicsQueryOptions() 
+    : replace(false)
+    , solution_fitness(0)
 {
     idBioIKKinematicsQueryOptions.insert(this);
 }
@@ -558,7 +560,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
             {
                 BLOCKPROFILER("problem init");
-                problem.initialize(ikparams.robot_model, ikparams.joint_model_group, ikparams.node_handle, all_goals);
+                problem.initialize(ikparams.robot_model, ikparams.joint_model_group, ikparams.node_handle, all_goals, bio_ik_options);
                 //problem.setGoals(default_goals, ikparams);
             }
         }
@@ -623,6 +625,12 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 for(size_t vi = 0; vi < joint_model->getVariableCount(); vi++)
                     solution.push_back(state.at(joint_model->getFirstVariableIndex() + vi));
             }
+        }
+        
+        // set solution fitness
+        if(bio_ik_options)
+        {
+            bio_ik_options->solution_fitness = ik->getSolutionFitness();
         }
 
         // return an error if an accurate solution was requested, but no accurate solution was found

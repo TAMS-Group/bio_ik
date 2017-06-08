@@ -86,7 +86,7 @@ public:
     std::vector<GoalInfo> goals;
     std::vector<GoalInfo> secondary_goals;
     Problem();
-    void initialize(MoveItRobotModelConstPtr robot_model, const moveit::core::JointModelGroup* joint_model_group, ros::NodeHandle node_handle, const std::vector<const Goal*>& goals2);
+    void initialize(MoveItRobotModelConstPtr robot_model, const moveit::core::JointModelGroup* joint_model_group, ros::NodeHandle node_handle, const std::vector<const Goal*>& goals2, const BioIKKinematicsQueryOptions* options);
     double computeGoalFitness(const GoalInfo& goal, const Frame* tip_frames, const double* active_variable_positions);
     double computeGoalFitness(const std::vector<GoalInfo>& goals, const Frame* tip_frames, const double* active_variable_positions);
     bool checkSolutionActiveVariables(const std::vector<Frame>& tip_frames, const double* active_variable_positions);

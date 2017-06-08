@@ -51,7 +51,7 @@ Problem::Problem()
 {
 }
 
-void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::core::JointModelGroup* joint_model_group, ros::NodeHandle node_handle, const std::vector<const Goal*>& goals2)
+void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::core::JointModelGroup* joint_model_group, ros::NodeHandle node_handle, const std::vector<const Goal*>& goals2, const BioIKKinematicsQueryOptions* options)
 {
     if(robot_model != this->robot_model)
     {
@@ -81,8 +81,19 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
     tip_link_indices.clear();
     
     active_variables.clear();
-    auto addActiveVariable = [this, robot_model, joint_model_group] (const std::string& name)
+    auto addActiveVariable = [this, robot_model, joint_model_group, options] (const std::string& name) -> ssize_t
     {
+        if(options)
+        {
+            auto& joint_name = robot_model->getJointOfVariable(name)->getName();
+            for(auto& fixed_joint_name : options->fixed_joints)
+            {
+                if(fixed_joint_name == joint_name)
+                {
+                    return (ssize_t)-1 - (ssize_t)robot_model->getVariableIndex(name);
+                }
+            }
+        }
         for(size_t i = 0; i < active_variables.size(); i++)
             if(name == robot_model->getVariableNames()[active_variables[i]])
                 return i;
@@ -292,6 +303,9 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
     for(auto tip_index : tip_link_indices)
         for(auto* link_model = robot_model->getLinkModels()[tip_index]; link_model; link_model = link_model->getParentLinkModel())
             joint_usage[link_model->getParentJointModel()->getJointIndex()] = 1;
+    if(options)
+        for(auto& fixed_joint_name : options->fixed_joints)
+            joint_usage[robot_model->getJointModel(fixed_joint_name)->getJointIndex()] = 0;
     for(auto* joint_model : joint_model_group->getActiveJointModels())
         if(joint_usage[joint_model->getJointIndex()] && !joint_model->getMimic())
             for(auto& n : joint_model->getVariableNames())
@@ -548,7 +562,12 @@ double Problem::computeGoalFitness(const GoalInfo& goal, const Frame* tip_frames
     case GoalType::JointVariable:
     {
         if(goal.active_variable_index < 0) break;
-        double d = active_variable_positions[goal.active_variable_index] - goal.variable_position;
+        double v;
+        if(goal.active_variable_index >= 0)
+            v = active_variable_positions[goal.active_variable_index];
+        else
+            v = initial_guess[-1 - goal.active_variable_index];
+        double d = v - goal.variable_position;
         sum += d * d * goal.weight_sq;
         break;
     }
@@ -600,8 +619,16 @@ double Problem::computeGoalFitness(const GoalInfo& goal, const Frame* tip_frames
     case GoalType::JointFunction:
     {
         joint_transmission_goal_temp.resize(goal.variable_indices.size());
+        //for(size_t i = 0; i < goal.variable_indices.size(); i++)
+        //    joint_transmission_goal_temp[i] = active_variable_positions[goal.variable_indices[i]];
         for(size_t i = 0; i < goal.variable_indices.size(); i++)
-            joint_transmission_goal_temp[i] = active_variable_positions[goal.variable_indices[i]];
+        {
+            ssize_t vi = goal.variable_indices[i];
+            if(vi >= 0)
+                joint_transmission_goal_temp[i] = active_variable_positions[vi];
+            else
+                joint_transmission_goal_temp[i] = initial_guess[-1 - vi];
+        }
         joint_transmission_goal_temp2 = joint_transmission_goal_temp;
         ((const JointFunctionGoal*)goal.goal)->function(joint_transmission_goal_temp2);
         for(size_t i = 0; i < goal.variable_indices.size(); i++)

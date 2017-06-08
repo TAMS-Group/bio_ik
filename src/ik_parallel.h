@@ -15,6 +15,7 @@ class ParallelExecutor
     std::vector<std::thread> threads;
     boost::barrier barrier;
     volatile bool exit;
+    double best_fitness;
 
 public:
     template <class FUN>
@@ -73,6 +74,7 @@ struct IKParallel
     std::unique_ptr<ParallelExecutor> par;
     Problem problem;
     bool enable_counter;
+    double best_fitness;
 
     IKParallel(const IKParams& params)
         : params(params)
@@ -189,7 +191,7 @@ public:
         }
 
         size_t best_index = 0;
-        double best_fitness = DBL_MAX;
+        best_fitness = DBL_MAX;
 
         // if exact primary goal matches have been found ...
         for(size_t i = 0; i < thread_count; i++)
@@ -239,6 +241,8 @@ public:
         result = solver_solutions[best_index];
         success = solver_success[best_index];
     }
+
+    double getSolutionFitness() const { return best_fitness; }
 
     bool getSuccess() const { return success; }
 
