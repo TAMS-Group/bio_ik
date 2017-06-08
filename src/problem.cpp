@@ -285,6 +285,7 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
             goal_info.axis = g->axis.normalized();
             goal_info.direction = g->direction.normalized();
             goal_info.distance = g->angle;
+            goal_info.frame.pos = g->position;
         }
 
         goal_info.rotation_scale_sq = goal_info.rotation_scale * goal_info.rotation_scale;
@@ -685,6 +686,8 @@ double Problem::computeGoalFitness(const GoalInfo& goal, const Frame* tip_frames
         quat_mul_vec(fb.rot, goal.axis, v);
         double d = fmax(0.0, v.angle(goal.direction) - goal.distance);
         sum += d * d * goal.weight_sq;
+        double w = ((const ConeGoal*)goal.goal)->position_weight;
+        sum += goal.weight_sq * w * w * (fa.pos - fb.pos).length2();
     }
 
     default:

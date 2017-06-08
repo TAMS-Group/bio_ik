@@ -307,11 +307,15 @@ struct DirectionGoal : LinkGoalBase
 
 struct ConeGoal : LinkGoalBase
 {
+    tf::Vector3 position;
+    double position_weight;
     tf::Vector3 axis;
     tf::Vector3 direction;
     double angle;
     ConeGoal()
-        : axis(0, 0, 1)
+        : position(0, 0, 0)
+        , position_weight(0)
+        , axis(0, 0, 1)
         , direction(0, 0, 1)
         , angle(0)
     {
@@ -324,6 +328,41 @@ struct ConeGoal : LinkGoalBase
         double weight = 1.0
     )
         : LinkGoalBase(link_name, weight)
+        , position(0, 0, 0)
+        , position_weight(0)
+        , axis(axis)
+        , direction(direction)
+        , angle(angle)
+    {
+    }
+    ConeGoal(
+        const std::string& link_name, 
+        const tf::Vector3& position,
+        const tf::Vector3& axis, 
+        const tf::Vector3& direction, 
+        double angle,
+        double weight = 1.0
+    )
+        : LinkGoalBase(link_name, weight)
+        , position(position)
+        , position_weight(1)
+        , axis(axis)
+        , direction(direction)
+        , angle(angle)
+    {
+    }
+    ConeGoal(
+        const std::string& link_name, 
+        const tf::Vector3& position,
+        double position_weight,
+        const tf::Vector3& axis, 
+        const tf::Vector3& direction, 
+        double angle,
+        double weight = 1.0
+    )
+        : LinkGoalBase(link_name, weight)
+        , position(position)
+        , position_weight(position_weight)
         , axis(axis)
         , direction(direction)
         , angle(angle)
