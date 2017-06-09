@@ -457,7 +457,14 @@ double Problem::computeGoalFitness(const GoalInfo& goal, const Frame* tip_frames
                     s.polygons = convex.polygons;
                     s.plane_normals = convex.plane_normals;
                     s.plane_dis = convex.plane_dis;
-                    auto* fcl = new fcl::Convex(s.plane_normals.data(), s.plane_dis.data(), s.plane_normals.size(), s.points.data(), s.points.size(), s.polygons.data());
+
+                    //auto* fcl = new fcl::Convex(s.plane_normals.data(), s.plane_dis.data(), s.plane_normals.size(), s.points.data(), s.points.size(), s.polygons.data());
+
+                    // workaround for fcl::Convex initialization bug
+                    auto* fcl = (fcl::Convex*) ::operator new(sizeof(fcl::Convex));
+                    fcl->num_points = s.points.size();
+                    fcl = new(fcl) fcl::Convex(s.plane_normals.data(), s.plane_dis.data(), s.plane_normals.size(), s.points.data(), s.points.size(), s.polygons.data());
+
                     s.geometry = decltype(s.geometry)(new collision_detection::FCLGeometry(fcl, link_model, shape_index));
                     s.edges.resize(s.points.size());
                     std::vector<std::unordered_set<size_t>> edge_sets(s.points.size());
