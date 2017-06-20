@@ -1,7 +1,8 @@
 // Bio IK for ROS
 // (c) 2016-2017 Philipp Ruppel
 
-#include "frame.h"
+#include <bio_ik/goal.h>
+
 #include "utils.h"
 #include "forward_kinematics.h"
 #include "ik_base.h"
@@ -29,12 +30,9 @@
 #include <atomic>
 #include <tuple>
 
-
+#include <bio_ik/goal_types.h>
 
 using namespace bio_ik;
-
-
-
 
 // implement BioIKKinematicsQueryOptions
 
@@ -215,19 +213,32 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
             {
                 PoseGoal* goal = new PoseGoal();
 
-                goal->link_name = tip_frames_[i];
+                goal->setLinkName(tip_frames_[i]);
 
                 //LOG_VAR(goal->link_name);
+                
+                double rotation_scale = 0.5;
 
-                goal->rotation_scale = 0.5;
-
-                node_handle.param("rotation_scale", goal->rotation_scale, goal->rotation_scale);
+                node_handle.param("rotation_scale", rotation_scale, rotation_scale);
 
                 bool position_only_ik = false;
                 node_handle.param("position_only_ik", position_only_ik, position_only_ik);
-                if(position_only_ik) goal->rotation_scale = 0;
+                if(position_only_ik) rotation_scale = 0;
+                
+                goal->setRotationScale(rotation_scale);
 
                 default_goals.emplace_back(goal);
+            }
+            
+            {
+                double weight = 0;
+                node_handle.param("center_joints_weight", weight, weight);
+                if(weight > 0.0)
+                {
+                    auto* avoid_joint_limits_goal = new bio_ik::CenterJointsGoal();
+                    avoid_joint_limits_goal->setWeight(weight);
+                    default_goals.emplace_back(avoid_joint_limits_goal);
+                }
             }
 
             {
@@ -236,7 +247,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 if(weight > 0.0)
                 {
                     auto* avoid_joint_limits_goal = new bio_ik::AvoidJointLimitsGoal();
-                    avoid_joint_limits_goal->weight = weight;
+                    avoid_joint_limits_goal->setWeight(weight);
                     default_goals.emplace_back(avoid_joint_limits_goal);
                 }
             }
@@ -247,12 +258,12 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 if(weight > 0.0)
                 {
                     auto* minimal_displacement_goal = new bio_ik::MinimalDisplacementGoal();
-                    minimal_displacement_goal->weight = weight;
+                    minimal_displacement_goal->setWeight(weight);
                     default_goals.emplace_back(minimal_displacement_goal);
                 }
             }
 
-            {
+            /*{
                 typedef XmlRpc::XmlRpcValue var;
 
                 var goals;
@@ -355,6 +366,9 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                     }
                 }
             }
+            */
+            
+            
         }
 
 
@@ -543,8 +557,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
                 for(size_t i = 0; i < tip_frames_.size(); i++)
                 {
                     auto* goal = (PoseGoal*)default_goals[i].get();
-                    goal->position = tipFrames[i].pos;
-                    goal->orientation = tipFrames[i].rot;
+                    goal->setPosition(tipFrames[i].pos);
+                    goal->setOrientation(tipFrames[i].rot);
                 }
             }
 

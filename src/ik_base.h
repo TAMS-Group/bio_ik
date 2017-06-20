@@ -3,12 +3,11 @@
 
 #pragma once
 
-#include <bio_ik/bio_ik.h>
+#include <bio_ik/goal.h>
 
 #include "forward_kinematics.h"
-#include "frame.h"
 #include "problem.h"
-#include "robot_info.h"
+#include <bio_ik/robot_info.h>
 #include "utils.h"
 
 namespace bio_ik
@@ -128,6 +127,7 @@ struct IKBase : Random
     virtual void initialize(const Problem& problem)
     {
         this->problem = problem;
+        this->problem.initialize2();
         model.initialize(problem.tip_link_indices);
         // active_variables = problem.active_variables;
         null_tip_frames.resize(problem.tip_link_indices.size());

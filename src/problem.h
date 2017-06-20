@@ -3,14 +3,14 @@
 #include "utils.h"
 #include <vector>
 
-#include "robot_info.h"
+#include <bio_ik/robot_info.h>
 
 #include <geometric_shapes/shapes.h>
 
 #include <moveit/collision_detection/collision_robot.h>
 #include <moveit/collision_detection_fcl/collision_robot_fcl.h>
 
-#include <bio_ik/bio_ik.h>
+#include <bio_ik/goal.h>
 
 namespace bio_ik
 {
@@ -52,7 +52,7 @@ private:
     size_t addTipLink(const moveit::core::LinkModel* link_model);
 
 public:
-    enum class GoalType;
+    /*enum class GoalType;
     struct BalanceGoalInfo
     {
         ssize_t tip_index;
@@ -78,6 +78,19 @@ public:
         std::vector<ssize_t> variable_indices;
         mutable size_t last_collision_vertex;
         std::vector<BalanceGoalInfo> balance_goal_infos;
+    };*/
+    enum class GoalType;
+    //std::vector<const Frame*> temp_frames;
+    //std::vector<double> temp_variables;
+    struct GoalInfo
+    {
+        const Goal* goal;
+        double weight_sq;
+        double weight;
+        GoalType goal_type;
+        size_t tip_index;
+        Frame frame;
+        GoalContext goal_context;
     };
     double timeout;
     std::vector<double> initial_guess;
@@ -87,8 +100,9 @@ public:
     std::vector<GoalInfo> secondary_goals;
     Problem();
     void initialize(MoveItRobotModelConstPtr robot_model, const moveit::core::JointModelGroup* joint_model_group, ros::NodeHandle node_handle, const std::vector<const Goal*>& goals2, const BioIKKinematicsQueryOptions* options);
-    double computeGoalFitness(const GoalInfo& goal, const Frame* tip_frames, const double* active_variable_positions);
-    double computeGoalFitness(const std::vector<GoalInfo>& goals, const Frame* tip_frames, const double* active_variable_positions);
+    void initialize2();
+    double computeGoalFitness(GoalInfo& goal, const Frame* tip_frames, const double* active_variable_positions);
+    double computeGoalFitness(std::vector<GoalInfo>& goals, const Frame* tip_frames, const double* active_variable_positions);
     bool checkSolutionActiveVariables(const std::vector<Frame>& tip_frames, const double* active_variable_positions);
 };
 }

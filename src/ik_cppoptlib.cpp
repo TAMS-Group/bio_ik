@@ -28,7 +28,7 @@ struct IKOptLibProblem : cppoptlib::Problem<double>
     double value(const TVector& x)
     {
         // fill in active variables and compute fitness
-        for(size_t i = 0; i < ik->active_variables.size(); i++) fk_values[ik->active_variables[i]] = x[i];
+        for(size_t i = 0; i < ik->problem.active_variables.size(); i++) fk_values[ik->problem.active_variables[i]] = x[i];
         return ik->computeFitness(fk_values);
     }
     bool callback(const cppoptlib::Criteria<double>& state, const TVector& x)
@@ -51,6 +51,8 @@ struct IKOptLibProblem : cppoptlib::BoundedProblem<double>
         {
             m_lowerBound[i] = ik->modelInfo.getMin(ik->problem.active_variables[i]);
             m_upperBound[i] = ik->modelInfo.getMax(ik->problem.active_variables[i]);
+            //m_lowerBound[i] = fmax(m_lowerBound[i], -100);
+            //m_upperBound[i] = fmin(m_upperBound[i], 100);
         }
     }
     void initialize()

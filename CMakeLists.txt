@@ -16,7 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   tf_conversions
 )
-
+ 
 find_package(OpenMP REQUIRED)
 if(OPENMP_FOUND)
     message(STATUS "OPENMP FOUND")
@@ -38,14 +38,16 @@ include_directories(
     ${catkin_INCLUDE_DIRS}
 )
 
-FILE(GLOB bio_ik_source_files src/*.cpp)
+FILE(GLOB bio_ik_header_files include/bio_ik/*.h)
+message(STATUS "HEADERS ${bio_ik_header_files}")
 
+FILE(GLOB bio_ik_source_files src/*.cpp)
 message(STATUS "SOURCES ${bio_ik_source_files}")
 
-add_library(bio_ik_kinematics_plugin ${bio_ik_source_files})
+add_library(bio_ik_kinematics_plugin ${bio_ik_source_files} ${bio_ik_header_files})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_FLAGS}")
-
+ 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
@@ -69,7 +71,7 @@ target_link_libraries(bio_ik_kinematics_plugin
   ${OpenMP_LIBS}
   gcc_s
   gcc
-#  fann
+  fann
 )
 
 if(CATKIN_ENABLE_TESTING)

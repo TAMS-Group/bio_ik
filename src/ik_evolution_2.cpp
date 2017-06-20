@@ -267,18 +267,20 @@ struct IKEvolution2 : IKBase
                 aligned(rr:32)
             for(size_t gene_index = 0; gene_index < gene_count; gene_index++)
             {
+                //double mutation_rate = (1 << fast_random_index(16)) * (1.0 / (1 << 23));
+                
                 double r = rr[gene_index];
                 //r *= dm[gene_index];
                 double f = mutation_rate * genes_span[gene_index];
                 double gene = parent_genes[gene_index];
                 double parent_gene = gene;
                 gene += r * f;
-                double parent_gradient = mix(parent_gradients[gene_index], parent2_gradients[gene_index], fmix);
-                double gradient = parent_gradient * gradient_factor;
-                gene += gradient;
+                //double parent_gradient = mix(parent_gradients[gene_index], parent2_gradients[gene_index], fmix);
+                //double gradient = parent_gradient * gradient_factor;
+                //gene += gradient;
                 gene = clamp(gene, genes_min[gene_index], genes_max[gene_index]);
                 child_genes[gene_index] = gene;
-                child_gradients[gene_index] = mix(parent_gradient, gene - parent_gene, 0.3);
+                //child_gradients[gene_index] = mix(parent_gradient, gene - parent_gene, 0.3);
             }
             rr += (gene_count + 3) / 4 * 4;
             //dm += (gene_count + 3) / 4 * 4;
@@ -623,45 +625,6 @@ struct IKEvolution2 : IKBase
 
                         for(size_t i = 0; i < individual.genes.size(); i++)
                             individual.genes[i] = random(modelInfo.getMin(problem.active_variables[i]), modelInfo.getMax(problem.active_variables[i]));
-
-                        /*
-                        switch(random_index(4))
-                        {
-                            case 0:
-                            {
-                                for(size_t i = 0; i < individual.genes.size(); i++)
-                                    individual.genes[i] = random(modelInfo.getMin(problem.active_variables[i]), modelInfo.getMax(problem.active_variables[i]));
-                                break;
-                            }
-                            case 1:
-                            {
-                                for(size_t i = 0; i < individual.genes.size(); i++)
-                                    individual.genes[i] = problem.initial_guess[problem.active_variables[i]];
-                                break;
-                            }
-                            case 2:
-                            {
-                                if(problem.tip_link_indices.size() > 1)
-                                {
-                                    double f = random_gauss();
-                                    for(size_t i = 0; i < individual.genes.size(); i++)
-                                        individual.genes[i] = modelInfo.clip(problem.initial_guess[problem.active_variables[i]] + f * random_gauss(), problem.active_variables[i]);
-                                    auto& mask = random_element(chain_mutation_masks);
-                                    for(size_t i = 0; i < individual.genes.size(); i++)
-                                        if(!mask[i])
-                                            individual.genes[i] = problem.initial_guess[problem.active_variables[i]];
-                                    break;
-                                }
-                            }
-                            case 3:
-                            {
-                                double f = random_gauss();
-                                for(size_t i = 0; i < individual.genes.size(); i++)
-                                    individual.genes[i] = modelInfo.clip(problem.initial_guess[problem.active_variables[i]] + f * random_gauss(), problem.active_variables[i]);
-                                break;
-                            }
-                        }
-                        */
 
                         for(auto& v : individual.gradients) v = 0;
                     }

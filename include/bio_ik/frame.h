@@ -43,6 +43,11 @@ struct Frame
         Eigen::Quaterniond q(f.rotation());
         rot = tf::Quaternion(q.x(), q.y(), q.z(), q.w());
     }
+    
+    inline const Vector3& getPosition() const { return pos; }
+    inline const Quaternion& getOrientation() const { return rot; }
+    inline void setPosition(const Vector3& p) { pos = p; }
+    inline void setOrientation(const Quaternion& q) { rot = q; }
 
 private:
     template <size_t i> struct IdentityFrameTemplate

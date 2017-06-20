@@ -1,12 +1,14 @@
 // Bio IK for ROS
 // (c) 2016-2017 Philipp Ruppel
 
-#if 0
+#if 1
 
 #include "ik_base.h"
 
 #include <fann.h>
 #include <fann_cpp.h>
+
+#include <mutex>
 
 #define LOG_LIST(l) { LOG(#l "[]"); for(std::size_t i = 0; i < l.size(); i++) { LOG(#l "[" + std::to_string(i) + "]", l[i]); } }
 
@@ -230,13 +232,20 @@ struct IKNeural : IKBase
     }
     
     size_t iterations = 0;
+    
+    
 
     void initialize(const Problem& problem)
     {
+        static std::mutex mutex;
+        std::lock_guard<std::mutex> lock(mutex);
         IKBase::initialize(problem);
         solution = problem.initial_guess;
         if(!trained) train();
         iterations = 0;
+        if(thread_index > 0)
+            for(auto& vi : problem.active_variables)
+                solution[vi] = random(modelInfo.getMin(vi), modelInfo.getMax(vi));
     }
 
     const std::vector<double>& getSolution() const { return solution; }

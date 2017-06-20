@@ -98,6 +98,8 @@ struct IKEvolution : IKBase
     std::vector<double> initialGuess;
 
     bool opt_no_wipeout;
+    
+    bool linear_fitness;
 
     void setParams(const IKParams& p)
     {
@@ -105,6 +107,7 @@ struct IKEvolution : IKBase
         n.param("no_wipeout", opt_no_wipeout, false);
         n.param("population_size", populationSize, 8);
         n.param("elite_count", eliteCount, 4);
+        n.param("linear_fitness", linear_fitness, false);
     }
 
     bool in_final_adjustment_loop;
@@ -219,7 +222,27 @@ struct IKEvolution : IKBase
         offspring.fitness = computeFitness(offspring.genes, false);
     }
 
-    double computeFitness(const std::vector<double>& genes, bool b) { return IKBase::computeFitness(genes); }
+    double computeFitness(const std::vector<double>& genes, bool balanced) 
+    { 
+        if(linear_fitness)
+        {
+            model.applyConfiguration(genes);
+            double fitness_sum = 0.0;
+            for(size_t goal_index = 0; goal_index < problem.goals.size(); goal_index++)
+            {
+                const auto& ta = problem.goals[goal_index].frame;
+                const auto& tb = model.getTipFrame(problem.goals[goal_index].tip_index);
+
+                double tdist = ta.pos.distance(tb.pos) / computeAngularScale(problem.goals[goal_index].tip_index, ta);
+                double rdist = ta.rot.angle(tb.rot); 
+
+                fitness_sum += mix(tdist, rdist, (balanced || in_final_adjustment_loop) ? 0.5 : random());
+            }
+            return fitness_sum; 
+        } else {
+            return IKBase::computeFitness(genes);
+        }
+    }
 
     bool checkWipeout()
     {
@@ -321,9 +344,9 @@ struct IKEvolution : IKBase
 
             // offspring.genes[i] = mix(offspring.genes[i], (modelInfo.getMin(i) + modelInfo.getMax(i)) * 0.5, random() * 0.1 * fabs(offspring.genes[i] - storage) / modelInfo.getSpan(i));
 
-            // offspring.genes[i] = clip(offspring.genes[i], i);
+            offspring.genes[i] = clip(offspring.genes[i], i);
 
-            offspring.genes[i] = bounce(offspring.genes[i], i);
+            //offspring.genes[i] = bounce(offspring.genes[i], i);
 
             offspring.gradients[i] = random() * offspring.gradients[i] + offspring.genes[i] - storage;
         }

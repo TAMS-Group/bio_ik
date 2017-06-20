@@ -7,12 +7,11 @@
 #include <moveit/robot_model/robot_model.h>
 #include <moveit/robot_state/robot_state.h>
 
-#include "frame.h"
-#include "utils.h"
+#include <bio_ik/goal.h>
 
 namespace bio_ik
 {
-    
+
 // Compatability
 // MoveIt API changed from boost::shared_ptr to std::shared_ptr
 // Built-in RobotModelConstPtr is only available in recent versions
@@ -25,7 +24,6 @@ class RobotInfo
     {
         double clip_min, clip_max;
         double span;
-
         double min;
         double max;
         double max_velocity, max_velocity_rcp;
@@ -34,6 +32,13 @@ class RobotInfo
     std::vector<size_t> activeVariables;
     std::vector<moveit::core::JointModel::JointType> variable_joint_types;
     MoveItRobotModelConstPtr robot_model;
+
+    __attribute__((always_inline)) static inline double clamp2(double v, double lo, double hi)
+    {
+        if(__builtin_expect(v < lo, 0)) v = lo;
+        if(__builtin_expect(v > hi, 0)) v = hi;
+        return v;
+    }
 
 public:
     RobotInfo() {}
@@ -79,7 +84,6 @@ public:
     __attribute__((always_inline)) inline double clip(double p, size_t i) const
     {
         auto& info = variables[i];
-
         return clamp2(p, info.clip_min, info.clip_max);
     }
 
@@ -94,5 +98,4 @@ public:
     inline double getMaxVelocity(size_t i) const { return variables[i].max_velocity; }
     inline double getMaxVelocityRcp(size_t i) const { return variables[i].max_velocity_rcp; }
 };
-
 }

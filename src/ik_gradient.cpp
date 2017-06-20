@@ -176,11 +176,13 @@ struct IKGradientDescent : IKBase
         for(auto ivar : problem.active_variables) temp[ivar] = solution[ivar] - gradient[ivar];
         double p1 = computeFitness(temp);
 
-        for(auto ivar : problem.active_variables) temp[ivar] = solution[ivar];
-        double p2 = computeFitness(temp);
+        //for(auto ivar : problem.active_variables) temp[ivar] = solution[ivar];
+        //double p2 = computeFitness(temp);
 
         for(auto ivar : problem.active_variables) temp[ivar] = solution[ivar] + gradient[ivar];
         double p3 = computeFitness(temp);
+        
+        double p2 = (p1 + p3) * 0.5;
 
         // linear step size estimation
         double cost_diff = (p3 - p1) * 0.5;
@@ -191,23 +193,24 @@ struct IKGradientDescent : IKBase
         for(auto ivar : problem.active_variables)
             temp[ivar] = modelInfo.clip(solution[ivar] - gradient[ivar] * joint_diff, ivar);
 
-        // has solution improved?
-        if(computeFitness(temp) < computeFitness(solution))
+        if(if_stuck == 'c')
         {
-            // solution improved -> accept solution
+            // always accept solution and continue
             solution = temp;
-        }
-        else
-        {
-            if(if_stuck == 'r')
+        } else {
+            // has solution improved?
+            if(computeFitness(temp) < computeFitness(solution))
             {
-                // reset if stuck
-                reset = true;
-            }
-            if(if_stuck == 'c')
-            {
-                // always accept solution and continue
+                // solution improved -> accept solution
                 solution = temp;
+            }
+            else
+            {
+                if(if_stuck == 'r')
+                {
+                    // reset if stuck
+                    reset = true;
+                }
             }
         }
 
