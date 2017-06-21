@@ -275,12 +275,12 @@ struct IKEvolution2 : IKBase
                 double gene = parent_genes[gene_index];
                 double parent_gene = gene;
                 gene += r * f;
-                //double parent_gradient = mix(parent_gradients[gene_index], parent2_gradients[gene_index], fmix);
-                //double gradient = parent_gradient * gradient_factor;
-                //gene += gradient;
+                double parent_gradient = mix(parent_gradients[gene_index], parent2_gradients[gene_index], fmix);
+                double gradient = parent_gradient * gradient_factor;
+                gene += gradient;
                 gene = clamp(gene, genes_min[gene_index], genes_max[gene_index]);
                 child_genes[gene_index] = gene;
-                //child_gradients[gene_index] = mix(parent_gradient, gene - parent_gene, 0.3);
+                child_gradients[gene_index] = mix(parent_gradient, gene - parent_gene, 0.3);
             }
             rr += (gene_count + 3) / 4 * 4;
             //dm += (gene_count + 3) / 4 * 4;

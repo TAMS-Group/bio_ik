@@ -13,6 +13,7 @@
 #include <immintrin.h>
 #include <x86intrin.h>
 
+
 #if(__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 9))
 #define FUNCTION_MULTIVERSIONING 1
 #else
@@ -691,6 +692,74 @@ public:
         }
     }
 };
+
+
+
+
+
+
+
+#if 0
+
+struct RobotFK : public RobotFK_Jacobian
+{
+    std::vector<size_t> mutation_variable_indices;
+    std::vector<double> mutation_initial_variable_positions;
+    std::vector<double> mutation_temp;
+    RobotFK(MoveItRobotModelConstPtr model)
+        : RobotFK_Jacobian(model)
+    {
+    }
+    void initializeMutationApproximator(const std::vector<size_t>& variable_indices)
+    {
+        mutation_variable_indices = variable_indices;
+        mutation_initial_variable_positions = variables;
+    }
+    void computeApproximateMutation1(size_t variable_index, double variable_delta, const aligned_vector<Frame>& input, aligned_vector<Frame>& output)
+    {
+        mutation_temp = mutation_initial_variable_positions;
+        mutation_temp[variable_index] += variable_delta;
+        applyConfiguration(mutation_temp);
+        output.clear();
+        for(auto& f : tip_frames) output.push_back(f);
+    }
+    void computeApproximateMutations(size_t mutation_count, const double* const* mutation_values, std::vector<aligned_vector<Frame>>& tip_frame_mutations)
+    {
+        auto tip_count = tip_names.size();
+        tip_frame_mutations.resize(mutation_count);
+        for(auto& m : tip_frame_mutations)
+            m.resize(tip_count);
+        for(size_t mutation_index = 0; mutation_index < mutation_count; mutation_index++)
+        {
+            mutation_temp = mutation_initial_variable_positions;
+            for(size_t i = 0; i < mutation_variable_indices.size(); i++)
+            {
+                mutation_temp[mutation_variable_indices[i]] = mutation_values[mutation_index][i];
+            }
+            applyConfiguration(mutation_temp);
+            for(size_t tip_index = 0; tip_index < tip_count; tip_index++)
+            {
+                tip_frame_mutations[mutation_index][tip_index] = tip_frames[tip_index];
+            }
+        }
+    }
+};
+
+
+
+
+
+
+
+
+
+#else
+
+
+
+
+
+
 
 #define USE_QUADRATIC_EXTRAPOLATION 0
 
@@ -1375,6 +1444,10 @@ typedef RobotFK_Mutator_2 RobotFK;
 typedef RobotFK_Mutator RobotFK;
 
 #endif
+
+#endif
+
+
 
 // for comparison
 class RobotFK_MoveIt

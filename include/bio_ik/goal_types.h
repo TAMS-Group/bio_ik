@@ -126,6 +126,20 @@ public:
             (getOrientation() + context.getLinkFrame().getOrientation()).length2() * 
             (rotation_scale_ * rotation_scale_) * 0.5;*/
             
+        /*double a = getOrientation().angleShortestPath(context.getLinkFrame().getOrientation());
+        e += a * a;
+        return e;*/
+        
+        /*e += 1 - getOrientation().dot(context.getLinkFrame().getOrientation());
+        return e;*/
+        
+        /*double l = getOrientation().length2() * context.getLinkFrame().getOrientation().length2();
+        //double x = _mm_rsqrt_ss(_mm_set_ss((float)l))[0];
+        double x = 1.0 / l;
+        e += (1 - getOrientation().dot(context.getLinkFrame().getOrientation()) * x) * (rotation_scale_ * rotation_scale_);
+        return e;*/
+
+            
         e += fmin( 
             (getOrientation() - context.getLinkFrame().getOrientation()).length2(),
             (getOrientation() + context.getLinkFrame().getOrientation()).length2()
