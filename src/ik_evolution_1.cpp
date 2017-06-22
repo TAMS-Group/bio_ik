@@ -8,7 +8,7 @@ namespace bio_ik
 
 #if 1
 
-struct IKEvolution : IKBase
+struct IKEvolution1 : IKBase
 {
     struct Individual
     {
@@ -401,7 +401,7 @@ struct IKEvolution : IKBase
         individual.fitness = fitness_sum / individual.genes.size();
     }
 
-    IKEvolution(const IKParams& p)
+    IKEvolution1(const IKParams& p)
         : IKBase(p)
         , populationSize(12)
         , eliteCount(4)
@@ -526,7 +526,7 @@ struct IKEvolution : IKBase
     virtual size_t concurrency() const { return 4; }
 };
 
-static IKFactory::Class<IKEvolution> cIKEvolution("bio1");
+static IKFactory::Class<IKEvolution1> cIKEvolution1("bio1");
 
 #endif
 }
