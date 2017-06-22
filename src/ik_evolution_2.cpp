@@ -1,5 +1,36 @@
-// Bio IK for ROS
-// (c) 2016-2017 Philipp Ruppel
+/*********************************************************************
+ * Software License Agreement (BSD License)
+ *
+ *  Copyright (c) 2016-2017, Philipp Sebastian Ruppel
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials provided
+ *     with the distribution.
+ *   * Neither the name of Willow Garage nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ *********************************************************************/
 
 #include "ik_base.h"
 
@@ -11,8 +42,7 @@ namespace bio_ik
 {
 
 // fast evolutionary inverse kinematics
-template<int memetic>
-struct IKEvolution2 : IKBase
+template <int memetic> struct IKEvolution2 : IKBase
 {
     struct Individual
     {
@@ -42,7 +72,8 @@ struct IKEvolution2 : IKBase
     aligned_vector<double> genes_min, genes_max, genes_span;
     aligned_vector<double> gradient, temp;
 
-    IKEvolution2(const IKParams& p) : IKBase(p)
+    IKEvolution2(const IKParams& p)
+        : IKBase(p)
     {
     }
 
@@ -50,7 +81,8 @@ struct IKEvolution2 : IKBase
     struct OptlibProblem : cppoptlib::Problem<double>
     {
         IKEvolution2* ik;
-        OptlibProblem(IKEvolution2* ik) : ik(ik)
+        OptlibProblem(IKEvolution2* ik)
+            : ik(ik)
         {
         }
         double value(const TVector& x)
@@ -74,10 +106,7 @@ struct IKEvolution2 : IKBase
             variables[problem.active_variables[i]] = genes[i];
     }
 
-    const std::vector<double>& getSolution() const
-    {
-        return solution;
-    }
+    const std::vector<double>& getSolution() const { return solution; }
 
     void initialize(const Problem& problem)
     {
@@ -101,8 +130,6 @@ struct IKEvolution2 : IKBase
         solution = initial_guess;
         solution_fitness = computeFitness(solution);
 
-
-
         // init temporary buffer with positions of inactive joints
         temp_joint_variables = initial_guess;
 
@@ -123,8 +150,8 @@ struct IKEvolution2 : IKBase
 
                 // init genes
                 v.genes.resize(problem.active_variables.size());
-                //if(thread_index == 0) // on first island?
-                //if(thread_index % 2 == 0) // on every second island...
+                // if(thread_index == 0) // on first island?
+                // if(thread_index % 2 == 0) // on every second island...
                 if(1)
                 {
                     // set to initial_guess
@@ -160,7 +187,7 @@ struct IKEvolution2 : IKBase
         }
 
         // init gene infos
-        //if(genes_min.empty())
+        // if(genes_min.empty())
         {
             genes_min.resize(problem.active_variables.size());
             genes_max.resize(problem.active_variables.size());
@@ -209,19 +236,18 @@ struct IKEvolution2 : IKBase
     std::vector<int> temp_chain_mutation_var_mask;
     */
 
-
-    //aligned_vector<double> rmask;
+    // aligned_vector<double> rmask;
 
     // create offspring and mutate
-    __attribute__((hot))
-    __attribute__((noinline))
+    __attribute__((hot)) __attribute__((noinline))
     //__attribute__((target_clones("avx2", "avx", "sse2", "default")))
     //__attribute__((target("avx")))
-    void reproduce(const std::vector<Individual>& population)
+    void
+    reproduce(const std::vector<Individual>& population)
     {
-        const auto __attribute__((aligned(32))) * __restrict__ genes_span = this->genes_span.data();
-        const auto __attribute__((aligned(32))) * __restrict__ genes_min = this->genes_min.data();
-        const auto __attribute__((aligned(32))) * __restrict__ genes_max = this->genes_max.data();
+        const auto __attribute__((aligned(32)))* __restrict__ genes_span = this->genes_span.data();
+        const auto __attribute__((aligned(32)))* __restrict__ genes_min = this->genes_min.data();
+        const auto __attribute__((aligned(32)))* __restrict__ genes_max = this->genes_max.data();
 
         auto gene_count = children[0].genes.size();
 
@@ -242,35 +268,25 @@ struct IKEvolution2 : IKBase
             double fmix = (child_index % 2 == 0) * 0.2;
             double gradient_factor = child_index % 3;
 
-            auto __attribute__((aligned(32))) * __restrict__ parent_genes = parent.genes.data();
-            auto __attribute__((aligned(32))) * __restrict__ parent_gradients = parent.gradients.data();
+            auto __attribute__((aligned(32)))* __restrict__ parent_genes = parent.genes.data();
+            auto __attribute__((aligned(32)))* __restrict__ parent_gradients = parent.gradients.data();
 
-            auto __attribute__((aligned(32))) * __restrict__ parent2_genes = parent2.genes.data();
-            auto __attribute__((aligned(32))) * __restrict__ parent2_gradients = parent2.gradients.data();
+            auto __attribute__((aligned(32)))* __restrict__ parent2_genes = parent2.genes.data();
+            auto __attribute__((aligned(32)))* __restrict__ parent2_gradients = parent2.gradients.data();
 
             auto& child = children[child_index];
 
-            auto __attribute__((aligned(32))) * __restrict__ child_genes = child.genes.data();
-            auto __attribute__((aligned(32))) * __restrict__ child_gradients = child.gradients.data();
+            auto __attribute__((aligned(32)))* __restrict__ child_genes = child.genes.data();
+            auto __attribute__((aligned(32)))* __restrict__ child_gradients = child.gradients.data();
 
-            #pragma unroll
-            #pragma omp simd \
-                aligned(genes_span:32), \
-                aligned(genes_min:32), \
-                aligned(genes_max:32), \
-                aligned(parent_genes:32), \
-                aligned(parent_gradients:32), \
-                aligned(parent2_genes:32), \
-                aligned(parent2_gradients:32), \
-                aligned(child_genes:32), \
-                aligned(child_gradients:32) \
-                aligned(rr:32)
+#pragma unroll
+#pragma omp simd aligned(genes_span : 32), aligned(genes_min : 32), aligned(genes_max : 32), aligned(parent_genes : 32), aligned(parent_gradients : 32), aligned(parent2_genes : 32), aligned(parent2_gradients : 32), aligned(child_genes : 32), aligned(child_gradients : 32) aligned(rr : 32)
             for(size_t gene_index = 0; gene_index < gene_count; gene_index++)
             {
-                //double mutation_rate = (1 << fast_random_index(16)) * (1.0 / (1 << 23));
-                
+                // double mutation_rate = (1 << fast_random_index(16)) * (1.0 / (1 << 23));
+
                 double r = rr[gene_index];
-                //r *= dm[gene_index];
+                // r *= dm[gene_index];
                 double f = mutation_rate * genes_span[gene_index];
                 double gene = parent_genes[gene_index];
                 double parent_gene = gene;
@@ -283,7 +299,7 @@ struct IKEvolution2 : IKBase
                 child_gradients[gene_index] = mix(parent_gradient, gene - parent_gene, 0.3);
             }
             rr += (gene_count + 3) / 4 * 4;
-            //dm += (gene_count + 3) / 4 * 4;
+            // dm += (gene_count + 3) / 4 * 4;
 
             /*if(problem.tip_link_indices.size() > 1)
             {
@@ -317,7 +333,7 @@ struct IKEvolution2 : IKBase
         {
             auto& species = this->species[ispecies];
             auto& population = species.individuals;
-            
+
             {
                 BLOCKPROFILER("evolution");
 
@@ -334,10 +350,9 @@ struct IKEvolution2 : IKBase
                 if(memetic) generation_count = 8;
                 for(size_t generation = 0; generation < generation_count; generation++)
                 {
-                    //BLOCKPROFILER("evolution");
-                    
+                    // BLOCKPROFILER("evolution");
+
                     if(canceled) break;
-                    
 
                     // reproduction
                     {
@@ -358,14 +373,7 @@ struct IKEvolution2 : IKBase
                         }
                         {
                             BLOCKPROFILER("pre-selection sort");
-                            std::sort(
-                                    children.begin() + population.size(),
-                                    children.end(),
-                                    [] (const Individual& a, const Individual& b)
-                                    {
-                                        return a.fitness < b.fitness;
-                                    }
-                                );
+                            std::sort(children.begin() + population.size(), children.end(), [](const Individual& a, const Individual& b) { return a.fitness < b.fitness; });
                         }
                     }
 
@@ -411,8 +419,7 @@ struct IKEvolution2 : IKBase
                             for(size_t j = i + 1; j < child_count; j++)
                             {
                                 double f = children[child_indices[j]].fitness;
-                                if(f < fmin)
-                                    jmin = j, fmin = f;
+                                if(f < fmin) jmin = j, fmin = f;
                             }
                             std::swap(child_indices[i], child_indices[jmin]);
                         }
@@ -425,11 +432,10 @@ struct IKEvolution2 : IKBase
                 }
             }
 
-
             // memetic optimization
             {
                 BLOCKPROFILER("memetics");
-                
+
                 if(memetic == 'q' || memetic == 'l')
                 {
 
@@ -445,9 +451,9 @@ struct IKEvolution2 : IKBase
                     if(fast_random() < 0.5) dp = -dp;
 
                     for(size_t generation = 0; generation < 8; generation++)
-                    //for(size_t generation = 0; generation < 32; generation++)
+                    // for(size_t generation = 0; generation < 32; generation++)
                     {
-                        
+
                         if(canceled) break;
 
                         // compute gradient
@@ -476,13 +482,15 @@ struct IKEvolution2 : IKBase
                             gradient[i] *= f;
 
                         // sample support points for line search
-                        for(size_t i = 0; i < problem.active_variables.size(); i++) genotypes[0][i] = individual.genes[i] - gradient[i];
+                        for(size_t i = 0; i < problem.active_variables.size(); i++)
+                            genotypes[0][i] = individual.genes[i] - gradient[i];
                         model.computeApproximateMutations(1, genotypes.data(), phenotypes3);
                         double f1 = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);
 
                         double f2 = fa;
 
-                        for(size_t i = 0; i < problem.active_variables.size(); i++) genotypes[0][i] = individual.genes[i] + gradient[i];
+                        for(size_t i = 0; i < problem.active_variables.size(); i++)
+                            genotypes[0][i] = individual.genes[i] + gradient[i];
                         model.computeApproximateMutations(1, genotypes.data(), phenotypes3);
                         double f3 = computeCombinedFitnessActiveVariables(phenotypes3[0], genotypes[0]);
 
@@ -507,16 +515,16 @@ struct IKEvolution2 : IKBase
                             // // x = -v / a;
                             // double step_size = -v / a / dp;
 
-                            //for(double f : { 1.0, 0.5, 0.25 })
+                            // for(double f : { 1.0, 0.5, 0.25 })
                             {
 
                                 double f = 1.0;
 
                                 // move by step size along gradient and compute fitness
-                                for(size_t i = 0; i < problem.active_variables.size(); i++) genotypes[0][i] = modelInfo.clip(individual.genes[i] + gradient[i] * step_size * f, problem.active_variables[i]);
+                                for(size_t i = 0; i < problem.active_variables.size(); i++)
+                                    genotypes[0][i] = modelInfo.clip(individual.genes[i] + gradient[i] * step_size * f, problem.active_variables[i]);
                                 model.computeApproximateMutations(1, genotypes.data(), phenotypes2);
                                 double f4p = computeFitnessActiveVariables(phenotypes2[0], genotypes[0]);
-
 
                                 // accept new position if better
                                 if(f4p < f2p)
@@ -528,14 +536,10 @@ struct IKEvolution2 : IKBase
                                 {
                                     break;
                                 }
-
                             }
 
-                            //break;
-
+                            // break;
                         }
-
-
 
                         // linear step size
                         if(memetic == 'l')
@@ -546,7 +550,8 @@ struct IKEvolution2 : IKBase
                             double step_size = f2 / cost_diff; // f / (f / j) = j
 
                             // move by step size along gradient and compute fitness
-                            for(size_t i = 0; i < problem.active_variables.size(); i++) temp[i] = modelInfo.clip(individual.genes[i] - gradient[i] * step_size, problem.active_variables[i]);
+                            for(size_t i = 0; i < problem.active_variables.size(); i++)
+                                temp[i] = modelInfo.clip(individual.genes[i] - gradient[i] * step_size, problem.active_variables[i]);
                             model.computeApproximateMutations(1, genotypes.data(), phenotypes2);
                             double f4p = computeFitnessActiveVariables(phenotypes2[0], genotypes[0]);
 
@@ -560,11 +565,9 @@ struct IKEvolution2 : IKBase
                             {
                                 break;
                             }
-
                         }
                     }
                 }
-
 
 #ifdef ENABLE_CPP_OPTLIB
                 // cppoptlib::LbfgsSolver memetic test
@@ -584,19 +587,18 @@ struct IKEvolution2 : IKBase
 
                     // init starting point
                     optlib_vector.resize(problem.active_variables.size());
-                    for(size_t i = 0; i < problem.active_variables.size(); i++) optlib_vector[i] = individual.genes[i];
+                    for(size_t i = 0; i < problem.active_variables.size(); i++)
+                        optlib_vector[i] = individual.genes[i];
 
                     // solve
                     optlib_solver->minimize(*optlib_problem, optlib_vector);
 
                     // get result
-                    for(size_t i = 0; i < problem.active_variables.size(); i++) individual.genes[i] = modelInfo.clip(optlib_vector[i], problem.active_variables[i]);
+                    for(size_t i = 0; i < problem.active_variables.size(); i++)
+                        individual.genes[i] = modelInfo.clip(optlib_vector[i], problem.active_variables[i]);
                 }
 #endif
-
-
             }
-
         }
 
         {
@@ -612,13 +614,13 @@ struct IKEvolution2 : IKBase
             }
 
             // sort species by fitness
-            std::sort(species.begin(), species.end(), [] (const Species& a, const Species& b) { return a.fitness < b.fitness; });
+            std::sort(species.begin(), species.end(), [](const Species& a, const Species& b) { return a.fitness < b.fitness; });
 
             // wipeouts
             for(size_t species_index = 1; species_index < species.size(); species_index++)
             {
                 if(fast_random() < 0.1 || !species[species_index].improved)
-                //if(fast_random() < 0.05 || !species[species_index].improved)
+                // if(fast_random() < 0.05 || !species[species_index].improved)
                 {
                     {
                         auto& individual = species[species_index].individuals[0];
@@ -626,7 +628,8 @@ struct IKEvolution2 : IKBase
                         for(size_t i = 0; i < individual.genes.size(); i++)
                             individual.genes[i] = random(modelInfo.getMin(problem.active_variables[i]), modelInfo.getMax(problem.active_variables[i]));
 
-                        for(auto& v : individual.gradients) v = 0;
+                        for(auto& v : individual.gradients)
+                            v = 0;
                     }
                     for(size_t i = 0; i < species[species_index].individuals.size(); i++)
                         species[species_index].individuals[i] = species[species_index].individuals[0];
@@ -653,5 +656,4 @@ static IKFactory::Class<IKEvolution2<'l'>> bio2_memetic_l("bio2_memetic_l");
 #ifdef ENABLE_CPP_OPTLIB
 static IKFactory::Class<IKEvolution2<'o'>> bio2_memetic_0("bio2_memetic_lbfgs");
 #endif
-
 }

@@ -1,5 +1,36 @@
-// Bio IK for ROS
-// (c) 2016-2017 Philipp Ruppel
+/*********************************************************************
+ * Software License Agreement (BSD License)
+ *
+ *  Copyright (c) 2016-2017, Philipp Sebastian Ruppel
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials provided
+ *     with the distribution.
+ *   * Neither the name of Willow Garage nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ *********************************************************************/
 
 #include "ik_base.h"
 
@@ -100,7 +131,7 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
         GoalInfo goal_info;
 
         goal_info.goal = goal;
-        
+
         goal->describe(goal_info.goal_context);
 
         for(auto& link_name : goal_info.goal_context.goal_link_names_)
@@ -117,32 +148,32 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
 
         goal_info.weight = goal_info.goal_context.goal_weight_;
         goal_info.weight_sq = goal_info.weight * goal_info.weight;
-        
+
         goal_info.goal_type = GoalType::Unknown;
-        
+
         goal_info.frame = Frame::identity();
         goal_info.tip_index = 0;
         if(goal_info.goal_context.goal_link_indices_.size()) goal_info.tip_index = goal_info.goal_context.goal_link_indices_[0];
-        
+
         if(auto* g = dynamic_cast<const PositionGoal*>(goal_info.goal))
         {
             goal_info.goal_type = GoalType::Position;
             goal_info.frame.pos = g->getPosition();
         }
-        
+
         if(auto* g = dynamic_cast<const OrientationGoal*>(goal_info.goal))
         {
             goal_info.goal_type = GoalType::Orientation;
             goal_info.frame.rot = g->getOrientation();
         }
-        
+
         if(auto* g = dynamic_cast<const PoseGoal*>(goal_info.goal))
         {
             goal_info.goal_type = GoalType::Pose;
             goal_info.frame.pos = g->getPosition();
             goal_info.frame.rot = g->getOrientation();
         }
-        
+
         goal_info.goal_context.joint_model_group_ = joint_model_group;
         goal_info.goal_context.initial_guess_ = initial_guess;
 
@@ -151,9 +182,9 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
         else
             goals.push_back(goal_info);
 
-        //if(goal_info.variable_indices.size() > temp_variables.size()) temp_variables.resize(goal_info.variable_indices.size());
+        // if(goal_info.variable_indices.size() > temp_variables.size()) temp_variables.resize(goal_info.variable_indices.size());
 
-        //if(goal_info.link_indices.size() > temp_frames.size()) temp_frames.resize(goal_info.link_indices.size());
+        // if(goal_info.link_indices.size() > temp_frames.size()) temp_frames.resize(goal_info.link_indices.size());
     }
 
     // update active variables from active subtree
@@ -191,13 +222,13 @@ void Problem::initialize(MoveItRobotModelConstPtr robot_model, const moveit::cor
                 minimal_displacement_factors[i] = 1.0 / active_variables.size();
         }
     }
-    
+
     initialize2();
 }
 
 void Problem::initialize2()
 {
-    for(auto* gg : { &goals, &secondary_goals })
+    for(auto* gg : {&goals, &secondary_goals})
     {
         for(auto& g : *gg)
         {

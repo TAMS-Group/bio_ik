@@ -1,17 +1,45 @@
-// Bio IK for ROS
-// (c) 2016-2017 Philipp Ruppel
+/*********************************************************************
+ * Software License Agreement (BSD License)
+ *
+ *  Copyright (c) 2016-2017, Philipp Sebastian Ruppel
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials provided
+ *     with the distribution.
+ *   * Neither the name of Willow Garage nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ *********************************************************************/
 
 #include "ik_base.h"
 
 namespace bio_ik
 {
 
-
-
 // pseudoinverse jacobian solver
 // (mainly for testing RobotFK_Jacobian::computeJacobian)
-template<class BASE>
-struct IKJacobianBase : BASE
+template <class BASE> struct IKJacobianBase : BASE
 {
     using BASE::modelInfo;
     using BASE::model;
@@ -26,7 +54,8 @@ struct IKJacobianBase : BASE
     Eigen::MatrixXd jacobian;
     std::vector<Frame> tip_frames_temp;
 
-    IKJacobianBase(const IKParams& p) : BASE(p)
+    IKJacobianBase(const IKParams& p)
+        : BASE(p)
     {
     }
 
@@ -86,7 +115,7 @@ struct IKJacobianBase : BASE
 
         // get pseudoinverse and multiply
         joint_diffs = jacobian.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(tip_diffs);
-        //joint_diffs = (jacobian.transpose() * jacobian).ldlt().solve(jacobian.transpose() * tip_diffs);
+        // joint_diffs = (jacobian.transpose() * jacobian).ldlt().solve(jacobian.transpose() * tip_diffs);
 
         // apply joint deltas and clip
         {
@@ -103,19 +132,14 @@ struct IKJacobianBase : BASE
     }
 };
 
-
-
-
-
-
 // simple gradient descent
-template<int if_stuck, size_t threads>
-struct IKGradientDescent : IKBase
+template <int if_stuck, size_t threads> struct IKGradientDescent : IKBase
 {
     std::vector<double> solution, best_solution, gradient, temp;
     bool reset;
 
-    IKGradientDescent(const IKParams& p) : IKBase(p)
+    IKGradientDescent(const IKParams& p)
+        : IKBase(p)
     {
     }
 
@@ -130,10 +154,7 @@ struct IKGradientDescent : IKBase
         reset = false;
     }
 
-    const std::vector<double>& getSolution() const
-    {
-        return best_solution;
-    }
+    const std::vector<double>& getSolution() const { return best_solution; }
 
     void step()
     {
@@ -173,15 +194,17 @@ struct IKGradientDescent : IKBase
         // initialize line search
         temp = solution;
 
-        for(auto ivar : problem.active_variables) temp[ivar] = solution[ivar] - gradient[ivar];
+        for(auto ivar : problem.active_variables)
+            temp[ivar] = solution[ivar] - gradient[ivar];
         double p1 = computeFitness(temp);
 
-        //for(auto ivar : problem.active_variables) temp[ivar] = solution[ivar];
-        //double p2 = computeFitness(temp);
+        // for(auto ivar : problem.active_variables) temp[ivar] = solution[ivar];
+        // double p2 = computeFitness(temp);
 
-        for(auto ivar : problem.active_variables) temp[ivar] = solution[ivar] + gradient[ivar];
+        for(auto ivar : problem.active_variables)
+            temp[ivar] = solution[ivar] + gradient[ivar];
         double p3 = computeFitness(temp);
-        
+
         double p2 = (p1 + p3) * 0.5;
 
         // linear step size estimation
@@ -197,7 +220,9 @@ struct IKGradientDescent : IKBase
         {
             // always accept solution and continue
             solution = temp;
-        } else {
+        }
+        else
+        {
             // has solution improved?
             if(computeFitness(temp) < computeFitness(solution))
             {
@@ -215,8 +240,7 @@ struct IKGradientDescent : IKBase
         }
 
         // update best solution
-        if(computeFitness(solution) < computeFitness(best_solution))
-            best_solution = solution;
+        if(computeFitness(solution) < computeFitness(best_solution)) best_solution = solution;
     }
 
     size_t concurrency() const { return threads; }
@@ -237,17 +261,13 @@ static IKFactory::Class<IKGradientDescent<'c', 2>> gd_2_c("gd_c_2");
 static IKFactory::Class<IKGradientDescent<'c', 4>> gd_4_c("gd_c_4");
 static IKFactory::Class<IKGradientDescent<'c', 8>> gd_8_c("gd_c_8");
 
-
-
-
-
 // pseudoinverse jacobian only
-template<size_t threads>
-struct IKJacobian : IKJacobianBase<IKBase>
+template <size_t threads> struct IKJacobian : IKJacobianBase<IKBase>
 {
     using IKBase::initialize;
     std::vector<double> solution;
-    IKJacobian(const IKParams& p) : IKJacobianBase<IKBase>(p)
+    IKJacobian(const IKParams& p)
+        : IKJacobianBase<IKBase>(p)
     {
     }
     void initialize(const Problem& problem)
@@ -258,23 +278,12 @@ struct IKJacobian : IKJacobianBase<IKBase>
             for(auto& vi : problem.active_variables)
                 solution[vi] = random(modelInfo.getMin(vi), modelInfo.getMax(vi));
     }
-    const std::vector<double>& getSolution() const
-    {
-        return solution;
-    }
-    void step()
-    {
-        optimizeJacobian(solution);
-    }
+    const std::vector<double>& getSolution() const { return solution; }
+    void step() { optimizeJacobian(solution); }
     size_t concurrency() const { return threads; }
 };
 static IKFactory::Class<IKJacobian<1>> jac("jac");
 static IKFactory::Class<IKJacobian<2>> jac_2("jac_2");
 static IKFactory::Class<IKJacobian<4>> jac_4("jac_4");
 static IKFactory::Class<IKJacobian<8>> jac_8("jac_8");
-
-
-
-
-
 }

@@ -1,5 +1,36 @@
-// Bio IK for ROS
-// (c) 2016-2017 Philipp Ruppel
+/*********************************************************************
+ * Software License Agreement (BSD License)
+ *
+ *  Copyright (c) 2016-2017, Philipp Sebastian Ruppel
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials provided
+ *     with the distribution.
+ *   * Neither the name of Willow Garage nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ *********************************************************************/
 
 #pragma once
 
@@ -80,14 +111,11 @@ public:
     }
     inline const tf::Quaternion& getOrientation() const { return orientation_; }
     inline void setOrientation(const tf::Quaternion& orientation) { orientation_ = orientation.normalized(); }
-    virtual double evaluate(const GoalContext& context) const 
-    { 
-        //return getOrientation().distance2(context.getLinkFrame().getOrientation());
-        //return (getOrientation() - getOrientation().nearest(context.getLinkFrame().getOrientation())).length2(); 
-        return fmin( 
-            (getOrientation() - context.getLinkFrame().getOrientation()).length2(),
-            (getOrientation() + context.getLinkFrame().getOrientation()).length2()
-        );
+    virtual double evaluate(const GoalContext& context) const
+    {
+        // return getOrientation().distance2(context.getLinkFrame().getOrientation());
+        // return (getOrientation() - getOrientation().nearest(context.getLinkFrame().getOrientation())).length2();
+        return fmin((getOrientation() - context.getLinkFrame().getOrientation()).length2(), (getOrientation() + context.getLinkFrame().getOrientation()).length2());
         /*return
             (getOrientation() - context.getLinkFrame().getOrientation()).length2() *
             (getOrientation() + context.getLinkFrame().getOrientation()).length2() * 0.5;*/
@@ -120,36 +148,32 @@ public:
     {
         double e = 0.0;
         e += context.getLinkFrame().getPosition().distance2(getPosition());
-        
-        /*e += 
+
+        /*e +=
             (getOrientation() - context.getLinkFrame().getOrientation()).length2() *
-            (getOrientation() + context.getLinkFrame().getOrientation()).length2() * 
+            (getOrientation() + context.getLinkFrame().getOrientation()).length2() *
             (rotation_scale_ * rotation_scale_) * 0.5;*/
-            
+
         /*double a = getOrientation().angleShortestPath(context.getLinkFrame().getOrientation());
         e += a * a;
         return e;*/
-        
+
         /*e += 1 - getOrientation().dot(context.getLinkFrame().getOrientation());
         return e;*/
-        
+
         /*double l = getOrientation().length2() * context.getLinkFrame().getOrientation().length2();
         //double x = _mm_rsqrt_ss(_mm_set_ss((float)l))[0];
         double x = 1.0 / l;
         e += (1 - getOrientation().dot(context.getLinkFrame().getOrientation()) * x) * (rotation_scale_ * rotation_scale_);
         return e;*/
 
-            
-        e += fmin( 
-            (getOrientation() - context.getLinkFrame().getOrientation()).length2(),
-            (getOrientation() + context.getLinkFrame().getOrientation()).length2()
-        ) * (rotation_scale_ * rotation_scale_);
-        
-        //e += (1.0 - getOrientation().dot(context.getLinkFrame().getOrientation())) * (rotation_scale_ * rotation_scale_);
-        
-        //e += (getOrientation() - context.getLinkFrame().getOrientation()).length2() * (rotation_scale_ * rotation_scale_);
-        //ROS_ERROR("r %f", (getOrientation() - context.getLinkFrame().getOrientation()).length2());
-        //e += (getOrientation() - getOrientation().nearest(context.getLinkFrame().getOrientation())).length2() * (rotation_scale_ * rotation_scale_);
+        e += fmin((getOrientation() - context.getLinkFrame().getOrientation()).length2(), (getOrientation() + context.getLinkFrame().getOrientation()).length2()) * (rotation_scale_ * rotation_scale_);
+
+        // e += (1.0 - getOrientation().dot(context.getLinkFrame().getOrientation())) * (rotation_scale_ * rotation_scale_);
+
+        // e += (getOrientation() - context.getLinkFrame().getOrientation()).length2() * (rotation_scale_ * rotation_scale_);
+        // ROS_ERROR("r %f", (getOrientation() - context.getLinkFrame().getOrientation()).length2());
+        // e += (getOrientation() - getOrientation().nearest(context.getLinkFrame().getOrientation())).length2() * (rotation_scale_ * rotation_scale_);
         return e;
     }
 };
@@ -181,9 +205,9 @@ public:
         tf::Vector3 axis;
         quat_mul_vec(fb.getOrientation(), axis_, axis);
         return (target_ - fb.getPosition()).normalized().distance2(axis.normalized());
-        //return (target_ - axis * axis.dot(target_ - fb.getPosition())).distance2(fb.getPosition());
+        // return (target_ - axis * axis.dot(target_ - fb.getPosition())).distance2(fb.getPosition());
     }
-}; 
+};
 
 class MaxDistanceGoal : public LinkGoalBase
 {
@@ -301,7 +325,7 @@ class TouchGoal : public LinkGoalBase
     };
     mutable CollisionModel* collision_model;
     mutable const moveit::core::LinkModel* link_model;
-    
+
 public:
     TouchGoal()
         : position(0, 0, 0)

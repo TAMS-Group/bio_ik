@@ -1,4 +1,4 @@
 <library path="lib/libbio_ik_kinematics_plugin">
-  <class name="bio_ik_kinematics_plugin/BioIKKinematicsPlugin" type="bio_ik_kinematics_plugin::BioIKKinematicsPlugin" base_class_type="kinematics::KinematicsBase">
-  </class>
+    <class name="bio_ik_kinematics_plugin/BioIKKinematicsPlugin" type="bio_ik_kinematics_plugin::BioIKKinematicsPlugin" base_class_type="kinematics::KinematicsBase">
+    </class>
 </library>

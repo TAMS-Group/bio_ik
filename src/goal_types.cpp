@@ -1,23 +1,52 @@
-// Bio IK for ROS
-// (c) 2016-2017 Philipp Ruppel
+/*********************************************************************
+ * Software License Agreement (BSD License)
+ *
+ *  Copyright (c) 2016-2017, Philipp Sebastian Ruppel
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials provided
+ *     with the distribution.
+ *   * Neither the name of Willow Garage nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ *********************************************************************/
 
 #include <bio_ik/goal_types.h>
 
 #include <geometric_shapes/bodies.h>
 #include <geometric_shapes/shapes.h>
 
-
-namespace bio_ik  
+namespace bio_ik
 {
-    
+
 void TouchGoal::describe(GoalContext& context) const
 {
     LinkGoalBase::describe(context);
     auto* robot_model = &context.getRobotModel();
     {
         static std::map<const moveit::core::RobotModel*, CollisionModel*> collision_cache;
-        if(collision_cache.find(robot_model) == collision_cache.end())
-            collision_cache[&context.getRobotModel()] = new CollisionModel();
+        if(collision_cache.find(robot_model) == collision_cache.end()) collision_cache[&context.getRobotModel()] = new CollisionModel();
         collision_model = collision_cache[robot_model];
         collision_model->collision_links.resize(robot_model->getLinkModelCount());
     }
@@ -78,10 +107,10 @@ void TouchGoal::describe(GoalContext& context) const
                 s.plane_normals = convex.plane_normals;
                 s.plane_dis = convex.plane_dis;
 
-                //auto* fcl = new fcl::Convex(s.plane_normals.data(), s.plane_dis.data(), s.plane_normals.size(), s.points.data(), s.points.size(), s.polygons.data());
+                // auto* fcl = new fcl::Convex(s.plane_normals.data(), s.plane_dis.data(), s.plane_normals.size(), s.points.data(), s.points.size(), s.polygons.data());
 
                 // workaround for fcl::Convex initialization bug
-                auto* fcl = (fcl::Convex*) ::operator new(sizeof(fcl::Convex));
+                auto* fcl = (fcl::Convex*)::operator new(sizeof(fcl::Convex));
                 fcl->num_points = s.points.size();
                 fcl = new(fcl) fcl::Convex(s.plane_normals.data(), s.plane_dis.data(), s.plane_normals.size(), s.points.data(), s.points.size(), s.polygons.data());
 
@@ -173,7 +202,7 @@ double TouchGoal::evaluate(const GoalContext& context) const
                 last_collision_vertex = vertex_index;
             }
             d -= normal.dot(position - fb.pos);
-            //ROS_INFO("touch goal");
+            // ROS_INFO("touch goal");
             if(d < dmin) dmin = d;
         }
         else
@@ -192,7 +221,6 @@ double TouchGoal::evaluate(const GoalContext& context) const
     }
     return dmin * dmin;
 }
-
 
 void BalanceGoal::describe(GoalContext& context) const
 {
@@ -236,6 +264,4 @@ double BalanceGoal::evaluate(const GoalContext& context) const
     center -= axis_ * axis_.dot(center);
     return center.length2();
 }
-
-
 }
