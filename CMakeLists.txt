@@ -1,8 +1,7 @@
 project(bio_ik_kinematics_plugin)
 
-set(ROS_BUILD_TYPE Release)
-
 if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+  message("${PROJECT_NAME}: You did not request a specific build type: Choosing 'Release' for maximum performance")
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
