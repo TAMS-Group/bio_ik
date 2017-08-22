@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 2.8.12)
 project(bio_ik_kinematics_plugin)
 
 if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
@@ -37,45 +38,53 @@ catkin_package(
         OpenMP
 )
 
+add_compile_options(-frecord-gcc-switches)
+
+add_compile_options(-std=c++11)
+add_compile_options(${OpenMP_FLAGS})
+
+add_compile_options($<$<CONFIG:Release>:-O3>)
+add_compile_options($<$<CONFIG:Release>:-ftree-vectorize>)
+add_compile_options($<$<CONFIG:Release>:-ffast-math>)
+
+# You can provide CppOptLib in a folder parallel to this one,
+# to use it for gradient-based optimization.
+# However, the gradient-based optimization implemented within this package
+# was evaluated to be faster. So you probably don't want this anyway...
+#add_definitions(-DENABLE_CPP_OPTLIB)
+
 include_directories(
     include
     ${catkin_INCLUDE_DIRS}
 )
- 
-FILE(GLOB bio_ik_header_files include/bio_ik/*.h)
-message(STATUS "HEADERS ${bio_ik_header_files}")
 
-FILE(GLOB bio_ik_source_files src/*.cpp)
-message(STATUS "SOURCES ${bio_ik_source_files}")
+set(bio_ik_SOURCES
+    src/kinematics_plugin.cpp
+    src/goal_types.cpp
+    src/problem.cpp
 
-add_library(bio_ik_kinematics_plugin ${bio_ik_source_files} ${bio_ik_header_files})
+    src/ik_test.cpp
+    src/ik_gradient.cpp
+    src/ik_evolution_1.cpp
+    src/ik_evolution_2.cpp
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_FLAGS}")
- 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+#    src/ik_neural.cpp
+#    src/ik_cppoptlib.cpp
+)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftree-vectorize -ffast-math")
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frecord-gcc-switches") 
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_CPP_OPTLIB") 
-
-message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}")
+add_library(${PROJECT_NAME} ${bio_ik_SOURCES})
 
 set_target_properties(${MOVEIT_LIB_NAME} PROPERTIES VERSION ${${PROJECT_NAME}_VERSION})
 
-add_dependencies(bio_ik_kinematics_plugin ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-target_link_libraries(bio_ik_kinematics_plugin
+target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${OpenMP_LIBS}
   gcc_s
   gcc
-  fann
+
+#  fann
 )
 
 if(CATKIN_ENABLE_TESTING)
@@ -85,6 +94,6 @@ endif()
 
 install(DIRECTORY include/ DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION})
 
-install(TARGETS bio_ik_kinematics_plugin LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
 install(FILES bio_ik_kinematics_description.xml DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
