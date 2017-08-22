@@ -8,14 +8,12 @@ endif()
 find_package(catkin REQUIRED COMPONENTS
   moveit_core
   moveit_ros_planning
-  actionlib
-  roscpp
   pluginlib
-  std_srvs
+  roscpp
   tf
   tf_conversions
 )
- 
+
 find_package(OpenMP REQUIRED)
 if(OPENMP_FOUND)
     message(STATUS "OPENMP FOUND")
@@ -26,10 +24,17 @@ else()
 endif()
 
 catkin_package(
-    DEPENDS OpenMP
-    CATKIN_DEPENDS moveit_core moveit_ros_planning actionlib roscpp pluginlib tf tf_conversions
     INCLUDE_DIRS include
-    LIBRARIES bio_ik_kinematics_plugin
+    LIBRARIES ${PROJECT_NAME}
+    CATKIN_DEPENDS
+        moveit_core
+        moveit_ros_planning
+        pluginlib
+        roscpp
+        tf
+        tf_conversions
+    DEPENDS
+        OpenMP
 )
 
 include_directories(
