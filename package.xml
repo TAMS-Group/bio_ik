@@ -4,8 +4,13 @@
     <name>bio_ik_kinematics_plugin</name>
     <version>1.0.0</version>
     <description>BioIK for ROS</description>
-    <maintainer email="0ruppel@informatik.uni-hamburg.de">Philipp Sebastian Ruppel</maintainer>
     <license>BSD</license>
+
+    <author email="0ruppel@informatik.uni-hamburg.de">Philipp Sebastian Ruppel</author>
+
+    <maintainer email="0ruppel@informatik.uni-hamburg.de">Philipp Sebastian Ruppel</maintainer>
+    <maintainer email="me@v4hn.de">Michael Goerner</maintainer>
+
 
     <buildtool_depend>catkin</buildtool_depend>
     
