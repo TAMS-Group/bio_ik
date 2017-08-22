@@ -41,6 +41,8 @@
 #include <moveit/robot_model/joint_model_group.h>
 #include <moveit/robot_model/robot_model.h>
 
+#include <ros/node_handle.h>
+
 namespace bio_ik
 {
 

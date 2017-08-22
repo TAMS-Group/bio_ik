@@ -41,6 +41,8 @@
 #include "utils.h"
 #include <bio_ik/robot_info.h>
 
+#include <random>
+
 namespace bio_ik
 {
 
