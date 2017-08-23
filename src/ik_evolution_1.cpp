@@ -56,7 +56,7 @@ struct IKEvolution1 : IKBase
 
     public:
         HeuristicErrorTree() {}
-        HeuristicErrorTree(MoveItRobotModelConstPtr robot_model, const std::vector<std::string>& tip_names)
+        HeuristicErrorTree(moveit::core::RobotModelConstPtr robot_model, const std::vector<std::string>& tip_names)
         {
             tip_count = tip_names.size();
             variable_count = robot_model->getVariableCount();

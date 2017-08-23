@@ -100,7 +100,7 @@ namespace bio_ik_kinematics_plugin
 struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 {
     std::vector<std::string> joint_names, link_names;
-    MoveItRobotModelConstPtr robot_model;
+    moveit::core::RobotModelConstPtr robot_model;
     const moveit::core::JointModelGroup* joint_model_group;
     mutable std::unique_ptr<IKParallel> ik;
     mutable std::vector<double> state, temp;
@@ -535,13 +535,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         }
     }
 
-    // MoveIt version compatability
-    // API changed from "const bool" to "bool"
-    // Automatically select correct return type
-    typedef decltype(((kinematics::KinematicsBase*)0)->supportsGroup(0)) supportsGroup_Result;
-
-    // virtual const bool supportsGroup(const moveit::core::JointModelGroup* jmg, std::string* error_text_out = NULL) const
-    virtual supportsGroup_Result supportsGroup(const moveit::core::JointModelGroup* jmg, std::string* error_text_out = 0) const
+    virtual bool supportsGroup(const moveit::core::JointModelGroup* jmg, std::string* error_text_out = 0) const
     {
         LOG_FNC();
         // LOG_VAR(jmg->getName());

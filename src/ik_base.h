@@ -48,7 +48,7 @@ namespace bio_ik
 
 struct IKParams
 {
-    MoveItRobotModelConstPtr robot_model;
+    moveit::core::RobotModelConstPtr robot_model;
     const moveit::core::JointModelGroup* joint_model_group;
     ros::NodeHandle node_handle;
 };

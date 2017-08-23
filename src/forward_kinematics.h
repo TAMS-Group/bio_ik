@@ -65,7 +65,7 @@ private:
 
 protected:
     std::vector<Vector3> joint_axis_list;
-    MoveItRobotModelConstPtr robot_model;
+    moveit::core::RobotModelConstPtr robot_model;
     std::vector<double> variables;
 
 public:
@@ -183,7 +183,7 @@ protected:
     }
 
 public:
-    RobotJointEvaluator(MoveItRobotModelConstPtr model)
+    RobotJointEvaluator(moveit::core::RobotModelConstPtr model)
         : robot_model(model)
     {
         joint_cache_variables.clear();
@@ -240,7 +240,7 @@ protected:
     }
 
 public:
-    RobotFK_Fast_Base(MoveItRobotModelConstPtr model)
+    RobotFK_Fast_Base(moveit::core::RobotModelConstPtr model)
         : RobotJointEvaluator(model)
     {
     }
@@ -513,7 +513,7 @@ protected:
     }
 
 public:
-    RobotFK_Fast(MoveItRobotModelConstPtr model)
+    RobotFK_Fast(moveit::core::RobotModelConstPtr model)
         : RobotFK_Fast_Base(model)
         , use_incremental(false)
     {
@@ -552,7 +552,7 @@ protected:
     std::vector<int> tip_dependencies;
 
 public:
-    RobotFK_Jacobian(MoveItRobotModelConstPtr model)
+    RobotFK_Jacobian(moveit::core::RobotModelConstPtr model)
         : RobotFK_Fast(model)
     {
     }
@@ -730,7 +730,7 @@ struct RobotFK : public RobotFK_Jacobian
     std::vector<size_t> mutation_variable_indices;
     std::vector<double> mutation_initial_variable_positions;
     std::vector<double> mutation_temp;
-    RobotFK(MoveItRobotModelConstPtr model)
+    RobotFK(moveit::core::RobotModelConstPtr model)
         : RobotFK_Jacobian(model)
     {
     }
@@ -787,7 +787,7 @@ class RobotFK_Mutator : public RobotFK_Jacobian
     aligned_vector<Frame> tip_frames_aligned;
 
 public:
-    RobotFK_Mutator(MoveItRobotModelConstPtr model)
+    RobotFK_Mutator(moveit::core::RobotModelConstPtr model)
         : RobotFK_Jacobian(model)
     {
     }
@@ -1253,7 +1253,7 @@ class RobotFK_Mutator_2 : public RobotFK_Mutator
     std::vector<std::vector<size_t>> variable_to_approximator_index_map;
 
 public:
-    RobotFK_Mutator_2(MoveItRobotModelConstPtr model)
+    RobotFK_Mutator_2(moveit::core::RobotModelConstPtr model)
         : RobotFK_Mutator(model)
     {
     }
@@ -1460,14 +1460,14 @@ typedef RobotFK_Mutator RobotFK;
 // for comparison
 class RobotFK_MoveIt
 {
-    MoveItRobotModelConstPtr robot_model;
+    moveit::core::RobotModelConstPtr robot_model;
     moveit::core::RobotState robot_state;
     std::vector<Frame> tipFrames;
     std::vector<const moveit::core::LinkModel*> tipLinks;
     std::vector<double> jj;
 
 public:
-    RobotFK_MoveIt(MoveItRobotModelConstPtr model)
+    RobotFK_MoveIt(moveit::core::RobotModelConstPtr model)
         : robot_model(model)
         , robot_state(model)
     {

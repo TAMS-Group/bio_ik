@@ -43,12 +43,6 @@
 namespace bio_ik
 {
 
-// Compatability
-// MoveIt API changed from boost::shared_ptr to std::shared_ptr
-// Built-in RobotModelConstPtr is only available in recent versions
-// Define compatible RobotModel pointer
-typedef std::decay<decltype(((moveit::core::RobotState*)0)->getRobotModel())>::type MoveItRobotModelConstPtr;
-
 class RobotInfo
 {
     struct VariableInfo
@@ -62,7 +56,7 @@ class RobotInfo
     std::vector<VariableInfo> variables;
     std::vector<size_t> activeVariables;
     std::vector<moveit::core::JointModel::JointType> variable_joint_types;
-    MoveItRobotModelConstPtr robot_model;
+    moveit::core::RobotModelConstPtr robot_model;
 
     __attribute__((always_inline)) static inline double clamp2(double v, double lo, double hi)
     {
@@ -73,7 +67,7 @@ class RobotInfo
 
 public:
     RobotInfo() {}
-    RobotInfo(MoveItRobotModelConstPtr model)
+    RobotInfo(moveit::core::RobotModelConstPtr model)
         : robot_model(model)
     {
         for(auto& name : model->getVariableNames())
