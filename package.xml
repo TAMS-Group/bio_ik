@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
 
-    <name>bio_ik_kinematics_plugin</name>
+    <name>bio_ik</name>
     <version>1.0.0</version>
     <description>BioIK for ROS</description>
     <license>BSD</license>

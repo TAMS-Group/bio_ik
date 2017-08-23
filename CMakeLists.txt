@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.12)
-project(bio_ik_kinematics_plugin)
+project(bio_ik)
 
 if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
   message("${PROJECT_NAME}: You did not request a specific build type: Choosing 'Release' for maximum performance")
@@ -92,7 +92,7 @@ if(CATKIN_ENABLE_TESTING)
     target_link_libraries(utest ${PROJECT_NAME})
 endif()
 
-install(DIRECTORY include/ DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION})
+install(DIRECTORY include/${PROJECT_NAME}/ DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
