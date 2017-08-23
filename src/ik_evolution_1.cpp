@@ -37,8 +37,6 @@
 namespace bio_ik
 {
 
-#if 1
-
 struct IKEvolution1 : IKBase
 {
     struct Individual
@@ -561,5 +559,4 @@ struct IKEvolution1 : IKBase
 
 static IKFactory::Class<IKEvolution1> cIKEvolution1("bio1");
 
-#endif
 }

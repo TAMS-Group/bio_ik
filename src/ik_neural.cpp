@@ -32,8 +32,6 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-#if 1
-
 #include "ik_base.h"
 
 #include <fann.h>
@@ -690,5 +688,3 @@ struct IKNeural2 : IKBase
 
 static IKFactory::Class<IKNeural2> neural2("neural2");
 }
-
-#endif
