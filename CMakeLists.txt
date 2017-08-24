@@ -17,9 +17,9 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
-message(STATUS "OPENMP FOUND")
-    add_compile_options(${OpenMP_CXX_FLAGS})
-    set(OpenMP_LIBS ${OpenMP_CXX_LIBRARIES})
+  message(STATUS "OPENMP FOUND")
+  add_compile_options(${OpenMP_CXX_FLAGS})
+  set(OpenMP_LIBS ${OpenMP_CXX_LIBRARIES})
 else()
     message(WARNING "OPENMP NOT FOUND. You will suffer performance loss.")
     set(OpenMP_LIBS)
@@ -56,9 +56,9 @@ include_directories(
     ${catkin_INCLUDE_DIRS}
 )
 
-set(bio_ik_SOURCES
-    src/kinematics_plugin.cpp
+set(SOURCES
     src/goal_types.cpp
+    src/kinematics_plugin.cpp
     src/problem.cpp
 
     src/ik_test.cpp
@@ -70,7 +70,7 @@ set(bio_ik_SOURCES
 #    src/ik_cppoptlib.cpp
 )
 
-add_library(${PROJECT_NAME} ${bio_ik_SOURCES})
+add_library(${PROJECT_NAME} ${SOURCES})
 
 set_target_properties(${MOVEIT_LIB_NAME} PROPERTIES VERSION ${${PROJECT_NAME}_VERSION})
 
