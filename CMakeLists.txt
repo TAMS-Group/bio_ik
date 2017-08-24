@@ -15,13 +15,14 @@ find_package(catkin REQUIRED COMPONENTS
   tf_conversions
 )
 
-find_package(OpenMP REQUIRED)
-if(OPENMP_FOUND)
-    message(STATUS "OPENMP FOUND")
-    set(OpenMP_FLAGS ${OpenMP_CXX_FLAGS})
-    set(OpenMP_LIBS gomp)
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+message(STATUS "OPENMP FOUND")
+    add_compile_options(${OpenMP_CXX_FLAGS})
+    set(OpenMP_LIBS ${OpenMP_CXX_LIBRARIES})
 else()
-    message(STATUS "OPENMP NOT FOUND")
+    message(WARNING "OPENMP NOT FOUND. You will suffer performance loss.")
+    set(OpenMP_LIBS)
 endif()
 
 catkin_package(
@@ -34,14 +35,11 @@ catkin_package(
         roscpp
         tf
         tf_conversions
-    DEPENDS
-        OpenMP
 )
 
 add_compile_options(-frecord-gcc-switches)
 
 add_compile_options(-std=c++11)
-add_compile_options(${OpenMP_FLAGS})
 
 add_compile_options($<$<CONFIG:Release>:-O3>)
 add_compile_options($<$<CONFIG:Release>:-ftree-vectorize>)
