@@ -16,10 +16,16 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(OpenMP)
-if(OpenMP_CXX_FOUND)
+# the specific flag is not yet present in cmake 2.8.12
+if(OpenMP_CXX_FOUND OR OPENMP_FOUND)
   message(STATUS "OPENMP FOUND")
   add_compile_options(${OpenMP_CXX_FLAGS})
-  set(OpenMP_LIBS ${OpenMP_CXX_LIBRARIES})
+  if(NOT OpenMP_CXX_LIBRARIES)
+    # cmake 2.8.12 does not yet specify the library - assume we might need libgomp
+    set(OpenMP_LIBS gomp)
+  else()
+    set(OpenMP_LIBS ${OpenMP_CXX_LIBRARIES})
+  endif()
 else()
     message(WARNING "OPENMP NOT FOUND. You will suffer performance loss.")
     set(OpenMP_LIBS)
