@@ -37,6 +37,8 @@
 #include <geometric_shapes/bodies.h>
 #include <geometric_shapes/shapes.h>
 
+#include <mutex>
+
 namespace bio_ik
 {
 
