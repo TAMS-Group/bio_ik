@@ -32,13 +32,11 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-#ifdef ENABLE_CPP_OPTLIB
-
 #include "ik_base.h"
 
-#include "../../CppNumericalSolvers/include/cppoptlib/boundedproblem.h"
-#include "../../CppNumericalSolvers/include/cppoptlib/meta.h"
-#include "../../CppNumericalSolvers/include/cppoptlib/problem.h"
+#include "cppoptlib/boundedproblem.h"
+#include "cppoptlib/meta.h"
+#include "cppoptlib/problem.h"
 
 namespace bio_ik
 {
@@ -231,31 +229,29 @@ static std::string mkoptname(std::string name, int reset, int threads)
     IKCPPOPTX(n, t, 1, 2)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          \
     IKCPPOPTX(n, t, 1, 4)
 
-#include "../../CppNumericalSolvers/include/cppoptlib/solver/bfgssolver.h"
+#include "cppoptlib/solver/bfgssolver.h"
 IKCPPOPT("bfgs", BfgsSolver);
 
-//#include "../../CppNumericalSolvers/include/cppoptlib/solver/cmaesbsolver.h"
+//#include "cppoptlib/solver/cmaesbsolver.h"
 // IKCPPOPT("cmaesb", CMAesBSolver);
 
-//#include "../../CppNumericalSolvers/include/cppoptlib/solver/cmaessolver.h"
+//#include "cppoptlib/solver/cmaessolver.h"
 // IKCPPOPT("cmaes", CMAesSolver);
 
-#include "../../CppNumericalSolvers/include/cppoptlib/solver/conjugatedgradientdescentsolver.h"
+#include "cppoptlib/solver/conjugatedgradientdescentsolver.h"
 IKCPPOPT("cgd", ConjugatedGradientDescentSolver);
 
-#include "../../CppNumericalSolvers/include/cppoptlib/solver/gradientdescentsolver.h"
+#include "cppoptlib/solver/gradientdescentsolver.h"
 IKCPPOPT("gd", GradientDescentSolver);
 
-#include "../../CppNumericalSolvers/include/cppoptlib/solver/lbfgsbsolver.h"
+#include "cppoptlib/solver/lbfgsbsolver.h"
 IKCPPOPT("lbfgsb", LbfgsbSolver);
 
-#include "../../CppNumericalSolvers/include/cppoptlib/solver/lbfgssolver.h"
+#include "cppoptlib/solver/lbfgssolver.h"
 IKCPPOPT("lbfgs", LbfgsSolver);
 
-#include "../../CppNumericalSolvers/include/cppoptlib/solver/neldermeadsolver.h"
+#include "cppoptlib/solver/neldermeadsolver.h"
 IKCPPOPT("nm", NelderMeadSolver);
 
-#include "../../CppNumericalSolvers/include/cppoptlib/solver/newtondescentsolver.h"
+#include "cppoptlib/solver/newtondescentsolver.h"
 IKCPPOPT("nd", NewtonDescentSolver);
-
-#endif

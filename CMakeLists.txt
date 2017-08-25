@@ -25,6 +25,35 @@ else()
     set(OpenMP_LIBS)
 endif()
 
+option(USE_FANN "build the neural-network-based IK solver (experimental)" OFF)
+if(USE_FANN)
+    find_library(FANN_LIBRARIES NAMES fann)
+    find_path(FANN_INCLUDE_DIRS NAMES fann.h)
+    if(NOT FANN_INCLUDE_DIRS OR NOT FANN_LIBRARIES)
+        message(FATAL_ERROR "Neural network solver requested, but libfann was not found.")
+    else()
+        message("Found libfann: ${FANN_LIBRARIES} / ${FANN_INCLUDE_DIRS}")
+    endif()
+else()
+    set(FANN_LIBRARIES)
+    set(FANN_INCLUDE_DIRS)
+endif()
+
+option(USE_CPPOPTLIB "Include gradient-based solvers from CppNumericalSolvers (bio_ik also provides its own solver)" OFF)
+if(USE_CPPOPTLIB)
+    find_path(CPPOPTLIB_INCLUDE_DIRS
+        NAMES cppoptlib/solver/bfgssolver.h
+        HINTS ../../CppNumericalSolvers/include)
+    if(NOT CPPOPTLIB_INCLUDE_DIRS)
+        message(FATAL_ERROR "cppoptlib support requested, but the headers could not be found.")
+    else()
+        message("Found cppoptlib: ${CPPOPTLIB_INCLUDE_DIRS}")
+    endif()
+    add_definitions(-DENABLE_CPP_OPTLIB)
+else()
+    set(CPPOPTLIB_INCLUDE_DIRS)
+endif()
+
 catkin_package(
     INCLUDE_DIRS include
     LIBRARIES ${PROJECT_NAME}
@@ -45,14 +74,10 @@ add_compile_options($<$<CONFIG:Release>:-O3>)
 add_compile_options($<$<CONFIG:Release>:-ftree-vectorize>)
 add_compile_options($<$<CONFIG:Release>:-ffast-math>)
 
-# You can provide CppOptLib in a folder parallel to this one,
-# to use it for gradient-based optimization.
-# However, the gradient-based optimization implemented within this package
-# was evaluated to be faster. So you probably don't want this anyway...
-#add_definitions(-DENABLE_CPP_OPTLIB)
-
 include_directories(
     include
+    ${FANN_INCLUDE_DIRS}
+    ${CPPOPTLIB_INCLUDE_DIRS}
     ${catkin_INCLUDE_DIRS}
 )
 
@@ -65,10 +90,15 @@ set(SOURCES
     src/ik_gradient.cpp
     src/ik_evolution_1.cpp
     src/ik_evolution_2.cpp
-
-#    src/ik_neural.cpp
-#    src/ik_cppoptlib.cpp
 )
+
+if(USE_FANN)
+    list(APPEND SOURCES src/ik_neural.cpp)
+endif()
+
+if(USE_CPPOPTLIB)
+    list(APPEND SOURCES src/ik_cppoptlib.cpp)
+endif()
 
 add_library(${PROJECT_NAME} ${SOURCES})
 
@@ -78,11 +108,11 @@ add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
+  ${FANN_LIBRARIES}
   ${OpenMP_LIBS}
+
   -static-libgcc
   -static-libstdc++
-
-#  fann
 )
 
 if(CATKIN_ENABLE_TESTING)

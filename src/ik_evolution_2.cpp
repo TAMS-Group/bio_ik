@@ -35,7 +35,7 @@
 #include "ik_base.h"
 
 #ifdef ENABLE_CPP_OPTLIB
-#include "../../CppNumericalSolvers/include/cppoptlib/solver/lbfgssolver.h"
+#include "cppoptlib/solver/lbfgssolver.h"
 #endif
 
 namespace bio_ik
