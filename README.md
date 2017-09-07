@@ -48,8 +48,10 @@ Once configured, the solver can be called using the standard Moveit API
 or used interactively from rviz using the MotionPlanning GUI plugin.
 
 * Make sure that you have a URDF (or xacro) model for your robot.
-* Run the moveit setup assistant to create the Moveit configuration files.
-  `rosrun moveit_setup_assistant moveit_setup_assistant`
+* Run the moveit setup assistant to create the Moveit configuration files:
+  ```
+    rosrun moveit_setup_assistant moveit_setup_assistant
+  ```
   The setup assistant automatically searches for all available IK solver plugins
   in your workspace. 
   Therefore, you can just select select bio-ik as the IK solver 
@@ -101,7 +103,6 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
 * You are now ready to use bio-ik from your C/C++ and Python programs,
   using the standard Moveit API. 
   A typical application could use the `move_group` node:
-
   ```
     robot_model_loader::RobotModelLoader robot_model_loader(robot, false);
     robot_model_loader.loadKinematicsSolvers(
@@ -154,13 +155,13 @@ No API changes are required in Moveit, but using the IK solver now consists
 passing the weighted goals via the KinematicQueryOptions.
 The predefined goals include:
 
-* `PoseGoal`: a full 6-DOF robot pose
-* `PositionGoal`: a 3-DOF (x,y,z) position
-* `OrientationGoal`: a 3-DOF orientation, encoded as a quaternion (qx,qy,qz,qw)
-* `LookAtGoal`: a 3-DOF (x,y,z) position intended as a looking direction
+* *PoseGoal*: a full 6-DOF robot pose
+* *PositionGoal*: a 3-DOF (x,y,z) position
+* *OrientationGoal*: a 3-DOF orientation, encoded as a quaternion (qx,qy,qz,qw)
+* *LookAtGoal*: a 3-DOF (x,y,z) position intended as a looking direction
    for a camera or robot head
-* `JointGoal`: a set of joint angles, e.g. to specify a 
-* `FunctionGoal`: an arbitrary function of the robot joint values,
+* *JointGoal*: a set of joint angles, e.g. to specify a 
+* *FunctionGoal*: an arbitrary function of the robot joint values,
    e.g. to model underactuated joints or mimic joints
 * and several more
 
@@ -168,7 +169,6 @@ The predefined goals include:
 
 To solve a motion problem on your robot, the trick now is to construct
 a suitable combination of individual goals. 
-
   ```
     robot_model_loader::RobotModelLoader robot_model_loader(robot, false);
     robot_model_loader.loadKinematicsSolvers(
