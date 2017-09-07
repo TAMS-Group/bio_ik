@@ -57,7 +57,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
   file with your favorite text editor. 
   For example, a configuration for the PR2 robot might look like this:
 
-`
+
     # example kinematics.yaml for the PR2 robot
     right_arm:
       # kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
@@ -76,7 +76,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
       kinematics_solver_search_resolution: 0.005
       kinematics_solver_timeout: 0.02
       kinematics_solver_attempts: 1
-`
+
 
 * For a first test, run the Moveit-created demo. Once rviz is running,
   enable the motion planning plugin, then select one of the end effectors
