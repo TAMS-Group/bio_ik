@@ -10,8 +10,8 @@ but has also been tested on Ubuntu Linux 14.04 LTS with ROS Indigo.
 Newer versions of ROS should work, but may need some adaptation.
 See below for version specific instructions.
 
-* Download the `bio_ik` package and unpack into your catkin workspace
-* Run `catkin_make` to compile your workspace
+* Download the `bio_ik` package and unpack into your catkin workspace.
+* Run `catkin_make` to compile your workspace:
   ```
   roscd
   cd src
@@ -19,7 +19,8 @@ See below for version specific instructions.
   roscd
   catkin_make
   ```
-* Configure Moveit to use bio-ik as the kinematics solver
+
+* Configure Moveit to use bio-ik as the kinematics solver.
 * Use Moveit to plan and execute motions or use your own code
   together with `move_group` node to move your robot.
 
