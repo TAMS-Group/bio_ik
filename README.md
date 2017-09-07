@@ -176,6 +176,7 @@ a suitable combination of individual goals.
 
 ![Yaktocat ](https://octodex.github.com/images/yaktocat.png)
 ![PR2 turning a valve](https://gogs.crossmodal-learning.org/TAMS/bio_ik/doc/pr2_vt_0.png)
+![PR2 turning a valve](doc/pr2_vt_0.png)
 
 In the following example, we want to grasp and then _slowly turn 
 a valve wheel_ with the left and right gripers of the PR2 robot:
