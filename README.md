@@ -16,22 +16,26 @@ See below for version specific instructions.
   roscd
   cd src
   git clone https://gogs.crossmodal-learning.org/TAMS/bio_ik.git
+  roscd
   catkin_make
   ```
-    
 * Configure Moveit to use bio-ik as the kinematics solver
-* Use Moveit or your own programs to move your robot.
+* Use Moveit to plan and execute motions or use your own code
+  together with `move_group` node to move your robot.
+
 
 ## Basic Usage
 
-For best compatibility with existing code, the bio-ik algorithm
-is encapsulated as a kinematics plugin for Moveit
-and can be used as a direct replacement of the default Orocos/KDL-based IK solver.
-That is, given the name of an end-effector and a 6-DOF target pose,
-bio-ik will search a valid robot joints configuration that reaches the given target.
+For ease of use and compatibility with existing code, 
+the bio-ik algorithm is encapsulated as a Moveit kinematics plugin.
+Therefore, bio-ik can be used as a direct replacement of
+the default Orocos/KDL-based IK solver.
+Given the name of an end-effector and a 6-DOF target pose,
+bio-ik will search a valid robot joint configuration that reaches the given target.
 
-In our tests (see below), bio-ik regularly outperformed the Orocos solver
-both in terms of success rate and solution time.
+In our tests (see below), both in terms of success rate and solution time,
+bio-ik regularly outperformed the Orocos [1] solver
+and is competitive with trac-ik [2].
 The bio-ik algorithm can also be used for high-DOF system like robot snakes,
 and it will automatically converge to the best approximate solutions
 for low-DOF arms where some target poses are not reachable exactly.
@@ -45,7 +49,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
 * Make sure that you have a URDF (or xacro) model for your robot.
 * Run the moveit setup assistant to create the Moveit configuration files.
   `rosrun moveit_setup_assistant moveit_setup_assistant`
-  The setup assistant automatically finds all available IK solver plugins
+  The setup assistant automatically searches for all available IK solver plugins
   in your workspace. 
   Therefore, you can just select select bio-ik as the IK solver 
   from the drop-down list for every end effector and then configure 
@@ -58,24 +62,24 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
   file with your favorite text editor. 
   For example, a configuration for the PR2 robot might look like this:
   ```
-    # example kinematics.yaml for the PR2 robot
-    right_arm:
-      # kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
-      # kinematics_solver_attempts: 1
-      kinematics_solver: bio_ik_kinematics_plugin/BioIKKinematicsPlugin
-      kinematics_solver_search_resolution: 0.005
-      kinematics_solver_timeout: 0.005
-      kinematics_solver_attempts: 1
-    left_arm:
-      kinematics_solver: bio_ik_kinematics_plugin/BioIKKinematicsPlugin
-      kinematics_solver_search_resolution: 0.005
-      kinematics_solver_timeout: 0.005
-      kinematics_solver_attempts: 1
-    all:
-      kinematics_solver: bio_ik_kinematics_plugin/BioIKKinematicsPlugin
-      kinematics_solver_search_resolution: 0.005
-      kinematics_solver_timeout: 0.02
-      kinematics_solver_attempts: 1
+  # example kinematics.yaml for the PR2 robot
+  right_arm:
+    # kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
+    # kinematics_solver_attempts: 1
+    kinematics_solver: bio_ik_kinematics_plugin/BioIKKinematicsPlugin
+    kinematics_solver_search_resolution: 0.005
+    kinematics_solver_timeout: 0.005
+    kinematics_solver_attempts: 1
+  left_arm:
+    kinematics_solver: bio_ik_kinematics_plugin/BioIKKinematicsPlugin
+    kinematics_solver_search_resolution: 0.005
+    kinematics_solver_timeout: 0.005
+    kinematics_solver_attempts: 1
+  all:
+    kinematics_solver: bio_ik_kinematics_plugin/BioIKKinematicsPlugin
+    kinematics_solver_search_resolution: 0.005
+    kinematics_solver_timeout: 0.02
+    kinematics_solver_attempts: 1
   ```
 
 
@@ -208,30 +212,28 @@ setup.
     
     `roslaunch kinect2_bridge kinect2_bridge.launch _reg_method:=opencl`
 
-  * Please make sure that OpenCL or CUDA support is compiled,
-    as reg_method:=cpu results in very poor performance.
-
-* Cameras
-  * Note that the gscam webcam driver is not included in the
-    Ubuntu packages for ROS Indigo and up. Please check out
-    the gscam repository from github into your catkin workspace
-    and recompile:
-    `https://github.com/ros-drivers/gscam.git`
-  * Single-camera and stereo calibration should be performed
-    using the standard `camera_calibration` package and tools.
-    Note that stereo calibration may need the `--approximate=0.1'
-    command line option, as multiple cameras driven by `gscam`
-    are not perfectly synchronized.
-  * Consult Eugen for precise calibration of the Phasespace X2
-    system and his three-camera stereo-camera system.
-
-* Leapmotion
-  * coming soon.
-
-
 
 ## Usage and Howtos
 
 See the README.md in the individual catkin packages for detals
 about installation, calibration, and starting the individual
 applications and demos.
+
+
+
+
+## References
+
+[1] Orocos KDL
+[2] Trac-IK
+[3] Sebastian Starke, Norman Hendrich, Jianwei Zhang,  
+    *A Memetic Evolutionary Algorithm for Real-Time Articulated Kinematic Motion*, 
+    IEEE Intl. Congress on Evolutionary Computation (CEC-2017), p.2437-2479, June 4-8, 2017, 
+    San Sebastian, Spain. 
+    DOI:[ 10.1109/CEC.2017.7969605](http://doi.org/10.1109/CEC.2017.7969605)
+[4] Sebastian Starke, Norman Hendrich, Dennis Krupke, Jianwei Zhang,  
+    *Multi-Objective Evolutionary Optimisation for Inverse Kinematics 
+     on Highly Articulated and Humanoid Robots*, 
+    IEEE Intl. Conference on Intelligent Robots and Systems (IROS-2017), September 24-28, 2017, Vancouver, Canada 
+
+
