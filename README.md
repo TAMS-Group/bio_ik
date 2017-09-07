@@ -216,10 +216,10 @@ All of this is specified easily:
     torso_goal->link_name = "torso_lift_link";
     torso_goal->weight = 1;
     torso_goal->position = tf::Vector3( -0.05, 0, 1.0 );
-    ik_options.goals.emplace_back(torso_goal);*/
+    ik_options.goals.emplace_back(torso_goal);
   ```
 
-For the actual turning motion, we calculate the required gripper
+For the actual turning motion, we calculate a set of required gripper
 poses in a loop:
   ```
     for(int i = 0; ; i++) {
@@ -261,10 +261,11 @@ poses in a loop:
 
         ... // actually move the robot
     }
-
   ```
 
-
+When you execute the code, the PR2 will reach for the valve wheel
+and turn it. Every once in a while it can't reach the valve with
+its current arm configuration and will regrasp the wheel.
 
 
 ## How it works
