@@ -169,35 +169,103 @@ The predefined goals include:
 
 To solve a motion problem on your robot, the trick now is to construct
 a suitable combination of individual goals. 
+
+In the following example, we want to grasp and then _slowly turn 
+a valve wheel_ with the left and right gripers of the PR2 robot:
+
   ```
-    robot_model_loader::RobotModelLoader robot_model_loader(robot, false);
-    robot_model_loader.loadKinematicsSolvers(
-        kinematics_plugin_loader::KinematicsPluginLoaderPtr(
-          new kinematics_plugin_loader::KinematicsPluginLoader(solver, timeout, attempts)));
+    bio_ik::BioIKKinematicsQueryOptions ik_options;
+    ik_options.replace = true;
+    ik_options.return_approximate_solution = true;
 
-    auto robot_model = robot_model_loader.getModel();
-    auto joint_model_group = robot_model->getJointModelGroup(group);
-    auto tip_names = joint_model_group->getSolverInstance()->getTipFrames();
-
-    kinematics::KinematicsQueryOptions opts;
-    opts.return_approximate_solution = true; // optional
-
-    robot_state::RobotState robot_state_fk(robot_model);
-    robot_state::RobotState robot_state_ik(robot_model);
-
-    bool ok = robot_state_ik.setFromIK(
-                joint_model_group, // joints to be used for IK
-                tip_transforms,    // multiple end-effector goal poses
-                tip_names,         // names of the end-effector links
-                attempts, timeout, // solver attempts and timeout
-                moveit::core::GroupStateValidityCallbackFn(), 
-                opts               // bio-ik cost function
-              );
+    auto* ll_goal = new bio_ik::PoseGoal();
+    auto* lr_goal = new bio_ik::PoseGoal();
+    auto* rl_goal = new bio_ik::PoseGoal();
+    auto* rr_goal = new bio_ik::PoseGoal();
+    ll_goal->setLinkName("l_gripper_l_finger_tip_link");
+    lr_goal->setLinkName("l_gripper_r_finger_tip_link");
+    rl_goal->setLinkName("r_gripper_l_finger_tip_link");
+    rr_goal->setLinkName("r_gripper_r_finger_tip_link");
+    ik_options.goals.emplace_back(ll_goal);
+    ik_options.goals.emplace_back(lr_goal);
+    ik_options.goals.emplace_back(rl_goal);
+    ik_options.goals.emplace_back(rr_goal);
   ```
 
+We also set a couple of secondary goals. 
+First, we want that the head of the PR2 looks at the center of the valve.
+Second, we want to avoid joint-limits on all joints, if possible.
+Third, we want that IK solutions are as close as possible to the previous
+joint configuration, meaning small and efficient motions. This is handled
+by adding the MinimalDisplacementGoal.
+Fourth, we want to avoid torso lift motions, which are very slow on the PR2.
+All of this is specified easily:
+
+ ```
+    auto* lookat_goal = new bio_ik::LookAtGoal();
+    lookat_goal->setLinkName("sensor_mount_link");
+    ik_options.goals.emplace_back(lookat_goal);
+
+    auto* avoid_joint_limits_goal = new bio_ik::AvoidJointLimitsGoal();
+    ik_options.goals.emplace_back(avoid_joint_limits_goal);
+
+    auto* minimal_displacement_goal = new bio_ik::MinimalDisplacementGoal();
+    ik_options.goals.emplace_back(minimal_displacement_goal);
+
+    auto* torso_goal = new bio_ik::PositionGoal();
+    torso_goal->link_name = "torso_lift_link";
+    torso_goal->weight = 1;
+    torso_goal->position = tf::Vector3( -0.05, 0, 1.0 );
+    ik_options.goals.emplace_back(torso_goal);*/
+  ```
+
+For the actual turning motion, we calculate the required gripper
+poses in a loop:
+  ```
+    for(int i = 0; ; i++) {
+        tf::Vector3 center(0.7, 0, 1);
+
+        double t = i * 0.1;
+        double r = 0.1;
+        double a = sin(t) * 1;
+        double dx = fmin(0.0, cos(t) * -0.1);
+        double dy = cos(a) * r;
+        double dz = sin(a) * r;
+
+        tf::Vector3 dl(dx, +dy, +dz);
+        tf::Vector3 dr(dx, -dy, -dz);
+        tf::Vector3 dg = tf::Vector3(0, cos(a), sin(a)) * (0.025 + fmin(0.025, fmax(0.0, cos(t) * 0.1)));
+
+        ll_goal->setPosition(center + dl + dg);
+        lr_goal->setPosition(center + dl - dg);
+        rl_goal->setPosition(center + dr + dg);
+        rr_goal->setPosition(center + dr - dg);
+
+        double ro = 0;
+        ll_goal->setOrientation(tf::Quaternion(tf::Vector3(1, 0, 0), a + ro));
+        lr_goal->setOrientation(tf::Quaternion(tf::Vector3(1, 0, 0), a + ro));
+        rl_goal->setOrientation(tf::Quaternion(tf::Vector3(1, 0, 0), a + ro));
+        rr_goal->setOrientation(tf::Quaternion(tf::Vector3(1, 0, 0), a + ro));
+
+        lookat_goal->setAxis(tf::Vector3(1, 0, 0));
+        lookat_goal->setTarget(rr_goal->getPosition());
+
+        robot_state.setFromIK(
+                      joint_model_group,           // active PR2 joints
+                      EigenSTL::vector_Affine3d(), // no explicit poses here
+                      std::vector<std::string>(),  // no end effector links here
+                      0, 0.0,                      // take values from YAML file
+                      moveit::core::GroupStateValidityCallbackFn(), 
+                      ik_options       // gripper goals and secondary goals
+                    );
+
+        ... // actually move the robot
+    }
+
+  ```
 
 
-blblblbl
+
 
 ## How it works
 
