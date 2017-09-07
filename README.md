@@ -276,9 +276,9 @@ its current arm configuration and will regrasp the wheel.
 
 The bio-ik solver is based on a memetic algorithm that combines 
 traditional gradient-based search with a hybrid genetic
-and particle-swarm optimization.
-See [3] for the basic idea and the details of the evolutionary operators 
-and [4] for the description of the algorithm applied to many IK and manipulation tasks.
+and particle-swarm optimization [3].
+See [4] for the basic idea and the details of the evolutionary operators 
+and [5] for the description of the algorithm applied to many IK and manipulation tasks.
 
 Internally, vectors of all robot joint values are used to encode
 different intermediate solutions (the *genotype* of the genetic algorithm).
@@ -343,13 +343,19 @@ but are packaged separately.
     An open-source library for improved solving of generic inverse kinematics*,
     Proceedings of the IEEE RAS Humanoids Conference, Seoul, Korea, November 2015.
 
- 3. Sebastian Starke, Norman Hendrich, Jianwei Zhang,  *A Memetic 
+ 3. Philipp Ruppel, Prformance optimization and implementation 
+    of evolutionary inverse kinematics in ROS*,
+    MSc thesis, University of Hamburg, 2017
+    [PDF][https://tams.informatik.uni-hamburg.de/publications/2017/MSc_Philipp_Ruppel.pdf)
+
+
+ 4. Sebastian Starke, Norman Hendrich, Jianwei Zhang,  *A Memetic 
     Evolutionary Algorithm for Real-Time Articulated Kinematic Motion*, 
     IEEE Intl. Congress on Evolutionary Computation (CEC-2017), p.2437-2479, June 4-8, 2017, 
     San Sebastian, Spain. 
     DOI: [10.1109/CEC.2017.7969605](http://doi.org/10.1109/CEC.2017.7969605)
 
- 4. Sebastian Starke, Norman Hendrich, Dennis Krupke, Jianwei Zhang, *Multi-Objective 
+ 5. Sebastian Starke, Norman Hendrich, Dennis Krupke, Jianwei Zhang, *Multi-Objective 
     Evolutionary Optimisation for Inverse Kinematics 
     on Highly Articulated and Humanoid Robots*, 
     IEEE Intl. Conference on Intelligent Robots and Systems (IROS-2017), 
