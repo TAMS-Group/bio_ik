@@ -81,23 +81,31 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
       kinematics_solver_search_resolution: 0.005
       kinematics_solver_timeout: 0.02
       kinematics_solver_attempts: 1
+
+    # optional bio-ik configuration parameters
+    #  center_joints_weight: 1
+    #  minimal_displacement_weight: 1
+    #  avoid_joint_limits_weight: 1
   ```
 
 
-* For a first test, run the Moveit-created demo. Once rviz is running,
+* For a first test, run the Moveit-created demo launch. Once rviz is running,
   enable the motion planning plugin, then select one of the end effectors
   of you robot. Rviz should show an 6-D (position and orientation)
   interactive marker for the selected end-effector(s).
   Move the interactive marker and watch bio-ik calculating poses for your robot.
-  
+  ```
     roslaunch pr2_bioik_moveit demo.launch
+  ```
 
 * You are now ready to use bio-ik from your C/C++ and Python programs,
-  using the standard Moveit! API. 
+  using the standard Moveit API. 
   A typical application could use the `move_group` node:
 
+  ```
     blablubb
 
+  ```
 
 ## Advanced Usage
 
@@ -139,6 +147,32 @@ The predefined goals include:
 
 To solve a motion problem on your robot, the trick now is to construct
 a suitable combination of individual goals. 
+    ```
+    ...
+    robot_model_loader::RobotModelLoader robot_model_loader(robot, false);
+    robot_model_loader.loadKinematicsSolvers(
+        kinematics_plugin_loader::KinematicsPluginLoaderPtr(
+          new kinematics_plugin_loader::KinematicsPluginLoader(solver, timeout, attempts)));
+
+    auto robot_model = robot_model_loader.getModel();
+    auto joint_model_group = robot_model->getJointModelGroup(group);
+    auto tip_names = joint_model_group->getSolverInstance()->getTipFrames();
+
+    kinematics::KinematicsQueryOptions opts;
+    opts.return_approximate_solution = true; // optional
+
+    robot_state::RobotState robot_state_fk(robot_model);
+    robot_state::RobotState robot_state_ik(robot_model);
+
+    bool ok = robot_state_ik.setFromIK(
+                joint_model_group, // joints to be used for IK
+                tip_transforms,    // multiple end-effector goal poses
+                tip_names,         // names of the end-effector links
+                attempts, timeout, // solver attempts and timeout
+                moveit::core::GroupStateValidityCallbackFn(), 
+                opts               // bio-ik cost function
+              );
+    ```
 
 
 
