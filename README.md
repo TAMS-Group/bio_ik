@@ -135,7 +135,7 @@ For many robot applications, it is essential to specify more than just
 a single end-effector pose. Typical examples include
 
 * two-arm manipulation tasks on two-arm robots (e.g. Baxter)
-* multi end-effector tasks with shared kinematic links, in particular
+* multi end-effector tasks with shared kinematic links
 * grasping and manipulation tasks with multi-finger hands
 * full-body motion on humanoid robots
 * reaching tasks with additional constraints (e.g. shoulder position)
@@ -231,8 +231,33 @@ resulting in good search-space exploration.
 
 To be written.
 
-
 ## Running the Self-Tests
+
+We have tested bio-ik on many different robot arms,
+both using the tranditional single end-effector API
+and the advanced multi end-effector API based on the KinematicsQueryOptions.
+
+One simple selftest consists of generating random valid robot configurations, 
+running forward kinematics to calculate the resulting end-effector pose,
+and the querying the IK plugin to find a suitable robot joint configuration.
+Success is then checked by running forrward kinematics again and checking
+that the end-effector pose for the generated IK solution matches the target pose.
+This approach can be run easily for thousands or millions of random poses,
+samples the full workspace of the robot,
+and allows to quickly generate success-rate and solution-time estimates
+for the selected IK solver.
+
+Of course, running the tests requires installing the corresponding robot
+models and adds a lot of dependencies. 
+Therefore, those tests are not included in the standard bio-ik package,
+but are packaged separately.
+
+  ```
+  roslaunch ik_test env_pr2.launch
+  roslaunch ik_test test_fk_ik.launch
+  ... // wait for test completion and results summary
+  ```
+
 
 
 
@@ -251,9 +276,9 @@ To be written.
     San Sebastian, Spain. 
     DOI: [10.1109/CEC.2017.7969605](http://doi.org/10.1109/CEC.2017.7969605)
 
- 4. Sebastian Starke, Norman Hendrich, Dennis Krupke, Jianwei Zhang,  
-    *Multi-Objective Evolutionary Optimisation for Inverse Kinematics 
-     on Highly Articulated and Humanoid Robots*, 
+ 4. Sebastian Starke, Norman Hendrich, Dennis Krupke, Jianwei Zhang, *Multi-Objective 
+    Evolutionary Optimisation for Inverse Kinematics 
+    on Highly Articulated and Humanoid Robots*, 
     IEEE Intl. Conference on Intelligent Robots and Systems (IROS-2017), 
     September 24-28, 2017, Vancouver, Canada 
 
