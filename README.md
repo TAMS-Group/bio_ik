@@ -103,8 +103,29 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
   A typical application could use the `move_group` node:
 
   ```
-    blablubb
+    robot_model_loader::RobotModelLoader robot_model_loader(robot, false);
+    robot_model_loader.loadKinematicsSolvers(
+        kinematics_plugin_loader::KinematicsPluginLoaderPtr(
+          new kinematics_plugin_loader::KinematicsPluginLoader(solver, timeout, attempts)));
 
+    auto robot_model = robot_model_loader.getModel();
+    auto joint_model_group = robot_model->getJointModelGroup(group);
+    auto tip_names = joint_model_group->getSolverInstance()->getTipFrames();
+
+    kinematics::KinematicsQueryOptions opts;
+    opts.return_approximate_solution = true; // optional
+
+    robot_state::RobotState robot_state_fk(robot_model);
+    robot_state::RobotState robot_state_ik(robot_model);
+
+    bool ok = robot_state_ik.setFromIK(
+                joint_model_group, // joints to be used for IK
+                tip_transforms,    // multiple end-effector goal poses
+                tip_names,         // names of the end-effector links
+                attempts, timeout, // solver attempts and timeout
+                moveit::core::GroupStateValidityCallbackFn(), 
+                opts               // bio-ik cost function
+              );
   ```
 
 ## Advanced Usage
@@ -147,8 +168,8 @@ The predefined goals include:
 
 To solve a motion problem on your robot, the trick now is to construct
 a suitable combination of individual goals. 
-    ```
-    ...
+
+  ```
     robot_model_loader::RobotModelLoader robot_model_loader(robot, false);
     robot_model_loader.loadKinematicsSolvers(
         kinematics_plugin_loader::KinematicsPluginLoaderPtr(
@@ -172,7 +193,7 @@ a suitable combination of individual goals.
                 moveit::core::GroupStateValidityCallbackFn(), 
                 opts               // bio-ik cost function
               );
-    ```
+  ```
 
 
 
@@ -183,19 +204,20 @@ blblblbl
 The bio-ik solver is based on a memetic algorithm that combines 
 traditional gradient-based search with a hybrid genetic
 and particle-swarm optimization.
-See (Starke,Hendrich,Zhang CEC-2017) for the basic idea and the details
-of the evolutionary operators and (Starke,Hendrich,Krupke,Zhang IROS-2017)
-for the description of the algorithm applied to many IK and manipulation tasks.
+See [3] for the basic idea and the details of the evolutionary operators 
+and [4] for the description of the algorithm applied to many IK and manipulation tasks.
 
 Internally, vectors of all robot joint values are used to encode
 different intermediate solutions (the *genotype* of the genetic algorithm).
 During the optimization, joint values are always checked against the
 active lower and upper joint limits, so that only valid robot configurations
 are generated.
+
 To calculate the fitness of individuals, the cumulative error over all
-given individual goals is calculated. An individual with no error encodes
-a solution for the IK problem, while individuals with small error give
-approximate solutions.
+given individual goals is calculated. 
+Any individual with zero error is an exact solution for the IK problem, 
+while individuals with small error correspond to approximate solutions.
+
 Individuals are sorted by their fitness, and gradient-based optimization
 is tried on the best few configuration, resulting in fast convergence 
 and good performance for many problems. 
@@ -207,68 +229,32 @@ resulting in good search-space exploration.
 
 ## Example Performance data
 
+To be written.
+
 
 ## Running the Self-Tests
-
-
-A repository for ROS catkin packages related to the TAMS robot demonstrators 
-in CML subprojects A4, B5, and Z3.
-Most of the software is specific to the robots and sensors available 
-at our TAMS lab, in particular the reording and human-robot interaction 
-setup. 
-
-
-  * Warning: 
-     1. Finger initialization usually succeeds, but thumb controller
-       initialization fails often (perhaps 30% of the time), 
-       resulting in CAN bus data corruption and random hand configurations.
-     2. If this happens, close the air-supply immediately,
-     3. Cick `stop_controllers` quickly,
-     4. Close the air-supply value and click `empty_hand` several times,
-     5. Move the fingers (especially the thumb) back to a partly flexed
-       position,
-     6. Click `stop_robot`, then try to repeat the full start sequence.
-  * Shutting down the hand:
-     1. Stop the `hand_server`, 
-     2. Click `stop_controllers`. 
-     3. Close the air-supply valve, 
-     4. Click  `empty_hand` several times until all muscles are empty.
-     5. Click `stop_robot`
-     6. Shut-down the control PC and power-off the hand.
-
-* Kinect v2
-  * Download, compile, and install `freenect2` for Ubuntu 14.04
-  * Download, compile, and install `iai_kinect`
-    Note that building will fail if OpenCV3 is installed
-    due to problems in the iai_kinect stack (actually, compiling
-    succeeds but the resulting nodes segfault on initialization,
-    as they are partly linked against opencv2 and partly against
-    opencv3. If necessary, de-install ros-indigo-opencv3.)
-    
-    `roslaunch kinect2_bridge kinect2_bridge.launch _reg_method:=opencl`
-
-
-## Usage and Howtos
-
-See the README.md in the individual catkin packages for detals
-about installation, calibration, and starting the individual
-applications and demos.
 
 
 
 
 ## References
 
-[1] Orocos KDL
-[2] Trac-IK
-[3] Sebastian Starke, Norman Hendrich, Jianwei Zhang,  
-    *A Memetic Evolutionary Algorithm for Real-Time Articulated Kinematic Motion*, 
+ 1. Orocos Kinematics and Dynamics, http://www.orocos.org
+ 
+ 2. P. Beeson and B. Ames, *TRAC-IK: 
+    An open-source library for improved solving of generic inverse kinematics*,
+    Proceedings of the IEEE RAS Humanoids Conference, Seoul, Korea, November 2015.
+
+ 3. Sebastian Starke, Norman Hendrich, Jianwei Zhang,  *A Memetic 
+    Evolutionary Algorithm for Real-Time Articulated Kinematic Motion*, 
     IEEE Intl. Congress on Evolutionary Computation (CEC-2017), p.2437-2479, June 4-8, 2017, 
     San Sebastian, Spain. 
-    DOI:[ 10.1109/CEC.2017.7969605](http://doi.org/10.1109/CEC.2017.7969605)
-[4] Sebastian Starke, Norman Hendrich, Dennis Krupke, Jianwei Zhang,  
+    DOI: [10.1109/CEC.2017.7969605](http://doi.org/10.1109/CEC.2017.7969605)
+
+ 4. Sebastian Starke, Norman Hendrich, Dennis Krupke, Jianwei Zhang,  
     *Multi-Objective Evolutionary Optimisation for Inverse Kinematics 
      on Highly Articulated and Humanoid Robots*, 
-    IEEE Intl. Conference on Intelligent Robots and Systems (IROS-2017), September 24-28, 2017, Vancouver, Canada 
+    IEEE Intl. Conference on Intelligent Robots and Systems (IROS-2017), 
+    September 24-28, 2017, Vancouver, Canada 
 
 
