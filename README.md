@@ -20,7 +20,7 @@ See below for version specific instructions.
     catkin_make
   ```
 
-* Configure Moveit to use bio-ik as the kinematics solver.
+* Configure Moveit to use bio-ik as the kinematics solver (see next section).
 * Use Moveit to plan and execute motions or use your own code
   together with `move_group` node to move your robot.
 
@@ -119,13 +119,17 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
     robot_state::RobotState robot_state_fk(robot_model);
     robot_state::RobotState robot_state_ik(robot_model);
 
+    // traditional "basic" bio-ik usage. The end-effector goal poses
+    // and end-effector link names are passed into the setFromIK()
+    // call. The KinematicsQueryOptions are empty.
+    // 
     bool ok = robot_state_ik.setFromIK(
                 joint_model_group, // joints to be used for IK
                 tip_transforms,    // multiple end-effector goal poses
                 tip_names,         // names of the end-effector links
                 attempts, timeout, // solver attempts and timeout
                 moveit::core::GroupStateValidityCallbackFn(), 
-                opts               // bio-ik cost function
+                opts               // mostly empty
               );
   ```
 
@@ -346,7 +350,7 @@ but are packaged separately.
  3. Philipp Ruppel, Prformance optimization and implementation 
     of evolutionary inverse kinematics in ROS*,
     MSc thesis, University of Hamburg, 2017
-    [PDF][https://tams.informatik.uni-hamburg.de/publications/2017/MSc_Philipp_Ruppel.pdf)
+    [PDF](https://tams.informatik.uni-hamburg.de/publications/2017/MSc_Philipp_Ruppel.pdf)
 
 
  4. Sebastian Starke, Norman Hendrich, Jianwei Zhang,  *A Memetic 
