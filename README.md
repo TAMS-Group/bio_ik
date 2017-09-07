@@ -250,16 +250,20 @@ poses in a loop:
         lookat_goal->setAxis(tf::Vector3(1, 0, 0));
         lookat_goal->setTarget(rr_goal->getPosition());
 
+        // "advanced" bio-ik usage. The call parameters for the end-effector
+        // poses and end-effector link names are left empty; instead the
+        // requested goals and weights are passed via the ik_options object.
+        // 
         robot_state.setFromIK(
                       joint_model_group,           // active PR2 joints
                       EigenSTL::vector_Affine3d(), // no explicit poses here
                       std::vector<std::string>(),  // no end effector links here
                       0, 0.0,                      // take values from YAML file
                       moveit::core::GroupStateValidityCallbackFn(), 
-                      ik_options       // gripper goals and secondary goals
+                      ik_options       // four gripper goals and secondary goals
                     );
 
-        ... // actually move the robot
+        ... // check solution validity and actually move the robot
     }
   ```
 
