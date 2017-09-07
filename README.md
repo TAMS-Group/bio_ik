@@ -12,11 +12,12 @@ See below for version specific instructions.
 
 * Download the `bio_ik` package and unpack into your catkin workspace
 * Run `catkin_make` to compile your workspace
-
-    roscd
-    cd src
-    git clone https://gogs.crossmodal-learning.org/TAMS/bio_ik.git
-    catkin_make
+  ```
+  roscd
+  cd src
+  git clone https://gogs.crossmodal-learning.org/TAMS/bio_ik.git
+  catkin_make
+  ```
     
 * Configure Moveit to use bio-ik as the kinematics solver
 * Use Moveit or your own programs to move your robot.
@@ -56,8 +57,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
   Of course, you can also edit the `config/kinematics.yaml` configuration
   file with your favorite text editor. 
   For example, a configuration for the PR2 robot might look like this:
-
-
+  ```
     # example kinematics.yaml for the PR2 robot
     right_arm:
       # kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
@@ -76,6 +76,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
       kinematics_solver_search_resolution: 0.005
       kinematics_solver_timeout: 0.02
       kinematics_solver_attempts: 1
+  ```
 
 
 * For a first test, run the Moveit-created demo. Once rviz is running,
