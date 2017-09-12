@@ -104,6 +104,7 @@ const BioIKKinematicsQueryOptions* toBioIKKinematicsQueryOptions(const void* ptr
 
 }
 
+
 // BioIK Kinematics Plugin
 
 namespace bio_ik_kinematics_plugin
