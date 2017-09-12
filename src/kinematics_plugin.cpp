@@ -60,6 +60,7 @@
 #include <random>
 #include <tuple>
 #include <type_traits>
+#include <mutex>
 
 #include <bio_ik/goal_types.h>
 
@@ -70,18 +71,28 @@ using namespace bio_ik;
 namespace bio_ik
 {
 
-std::unordered_set<const void*> idBioIKKinematicsQueryOptions;
+std::mutex bioIKKinematicsQueryOptionsMutex;
+std::unordered_set<const void*> bioIKKinematicsQueryOptionsList;
 
 BioIKKinematicsQueryOptions::BioIKKinematicsQueryOptions()
     : replace(false)
     , solution_fitness(0)
 {
-    idBioIKKinematicsQueryOptions.insert(this);
+    std::lock_guard<std::mutex> lock(bioIKKinematicsQueryOptionsMutex);
+    bioIKKinematicsQueryOptionsList.insert(this);
 }
 
-BioIKKinematicsQueryOptions::~BioIKKinematicsQueryOptions() { idBioIKKinematicsQueryOptions.erase(this); }
+BioIKKinematicsQueryOptions::~BioIKKinematicsQueryOptions()
+{
+    std::lock_guard<std::mutex> lock(bioIKKinematicsQueryOptionsMutex);
+    bioIKKinematicsQueryOptionsList.erase(this);
+}
 
-bool isBioIKKinematicsQueryOptions(const void* ptr) { return idBioIKKinematicsQueryOptions.find(ptr) != idBioIKKinematicsQueryOptions.end(); }
+bool isBioIKKinematicsQueryOptions(const void* ptr)
+{
+    std::lock_guard<std::mutex> lock(bioIKKinematicsQueryOptionsMutex);
+    return bioIKKinematicsQueryOptionsList.find(ptr) != bioIKKinematicsQueryOptionsList.end();
+}
 
 const BioIKKinematicsQueryOptions* toBioIKKinematicsQueryOptions(const void* ptr)
 {
@@ -90,6 +101,7 @@ const BioIKKinematicsQueryOptions* toBioIKKinematicsQueryOptions(const void* ptr
     else
         return 0;
 }
+
 }
 
 // BioIK Kinematics Plugin
