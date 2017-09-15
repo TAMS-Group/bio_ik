@@ -23,6 +23,9 @@ See below for version specific instructions.
 * Configure Moveit to use bio-ik as the kinematics solver (see next section).
 * Use Moveit to plan and execute motions or use your own code
   together with `move_group` node to move your robot.
+* As usual, the public API is specified in the public header files for the `bio_ik` package,
+  located in the `include/bio_ik` subdirectory; 
+  the sources including a few private header files are in the `src` subdirectory.
 
 
 ## Basic Usage
@@ -51,6 +54,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
 * Run the moveit setup assistant to create the Moveit configuration files:
   ```
     rosrun moveit_setup_assistant moveit_setup_assistant
+
   ```
   The setup assistant automatically searches for all available IK solver plugins
   in your workspace. 
@@ -69,17 +73,17 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
     right_arm:
       # kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
       # kinematics_solver_attempts: 1
-      kinematics_solver: bio_ik_kinematics_plugin/BioIKKinematicsPlugin
+      kinematics_solver: bio_ik/BioIKKinematicsPlugin
       kinematics_solver_search_resolution: 0.005
       kinematics_solver_timeout: 0.005
       kinematics_solver_attempts: 1
     left_arm:
-      kinematics_solver: bio_ik_kinematics_plugin/BioIKKinematicsPlugin
+      kinematics_solver: bio_ik/BioIKKinematicsPlugin
       kinematics_solver_search_resolution: 0.005
       kinematics_solver_timeout: 0.005
       kinematics_solver_attempts: 1
     all:
-      kinematics_solver: bio_ik_kinematics_plugin/BioIKKinematicsPlugin
+      kinematics_solver: bio_ik/BioIKKinematicsPlugin
       kinematics_solver_search_resolution: 0.005
       kinematics_solver_timeout: 0.02
       kinematics_solver_attempts: 1
@@ -96,8 +100,13 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
   of you robot. Rviz should show an 6-D (position and orientation)
   interactive marker for the selected end-effector(s).
   Move the interactive marker and watch bio-ik calculating poses for your robot.
+
+  If you also installed the bio-ik demo (see below), you should be able
+  to run one of the predefined demos:
   ```
     roslaunch pr2_bioik_moveit demo.launch
+    roslaunch pr2_bioik_moveit valve.launch
+    roslaunch pr2_bioik_moveit dance.launch
   ```
 
 * You are now ready to use bio-ik from your C/C++ and Python programs,
@@ -331,9 +340,27 @@ models and adds a lot of dependencies.
 Therefore, those tests are not included in the standard bio-ik package,
 but are packaged separately.
 
+For convenience, we provide the `pr2_bioik_moveit` package,
+which also includes a few bio-ik demos for the PR2 service robot.
+These are kinematics only demos; but of course you can also try
+running the demos on the real robot (if you have one) or the Gazebo
+simulator (if you installed Gazebo).
+
+Simply clone the PR2 description package (inside `pr2_common`)
+and the `pr2_bioik_moveit` package into your catkin workspace:
   ```
-  roslaunch ik_test env_pr2.launch
-  roslaunch ik_test test_fk_ik.launch
+    roscd
+    cd src
+    git clone https://github.com/PR2/pr2_common.git
+    git clone https://gogs.crossmodal-learning.org/TAMS/pr2_bioik_moveit.git
+    catkin_make
+  ```
+
+For the FK-IK-FK performance test, please run
+
+  ```
+  roslaunch pr2_bioik_moveit env_pr2.launch
+  roslaunch pr2_bioik_moveit test_fk_ik.launch
   ... // wait for test completion and results summary
   ```
 
