@@ -1,7 +1,5 @@
 # bio-ik
 
-Intro
-
 ## Installation and Setup
 
 You will need ROS version Indigo or newer (wiki.ros.org).
@@ -15,7 +13,7 @@ See below for version specific instructions.
   ```
     roscd
     cd src
-    git clone https://gogs.crossmodal-learning.org/TAMS/bio_ik.git
+    git clone https://github.com/TAMS/bio_ik.git
     roscd
     catkin_make
   ```
@@ -52,11 +50,12 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
 
 * Make sure that you have a URDF (or xacro) model for your robot.
 * Run the moveit setup assistant to create the Moveit configuration files:
-  ```
-    rosrun moveit_setup_assistant moveit_setup_assistant
 
   ```
-  The setup assistant automatically searches for all available IK solver plugins
+  rosrun moveit_setup_assistant moveit_setup_assistant
+
+  ```
+*  The setup assistant automatically searches for all available IK solver plugins
   in your workspace. 
   Therefore, you can just select select bio-ik as the IK solver 
   from the drop-down list for every end effector and then configure 
@@ -68,6 +67,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
   Of course, you can also edit the `config/kinematics.yaml` configuration
   file with your favorite text editor. 
   For example, a configuration for the PR2 robot might look like this:
+
   ```
     # example kinematics.yaml for the PR2 robot
     right_arm:
@@ -110,13 +110,10 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
   ```
 
 * You are now ready to use bio-ik from your C/C++ and Python programs,
-  using the standard Moveit API. 
-  A typical application could use the `move_group` node:
+  using the standard Moveit API.
+  To explicitly request an IK solution in C++:
   ```
-    robot_model_loader::RobotModelLoader robot_model_loader(robot, false);
-    robot_model_loader.loadKinematicsSolvers(
-        kinematics_plugin_loader::KinematicsPluginLoaderPtr(
-          new kinematics_plugin_loader::KinematicsPluginLoader(solver, timeout, attempts)));
+    robot_model_loader::RobotModelLoader robot_model_loader(robot);
 
     auto robot_model = robot_model_loader.getModel();
     auto joint_model_group = robot_model->getJointModelGroup(group);
@@ -125,7 +122,6 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
     kinematics::KinematicsQueryOptions opts;
     opts.return_approximate_solution = true; // optional
 
-    robot_state::RobotState robot_state_fk(robot_model);
     robot_state::RobotState robot_state_ik(robot_model);
 
     // traditional "basic" bio-ik usage. The end-effector goal poses
@@ -137,7 +133,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
                 tip_transforms,    // multiple end-effector goal poses
                 tip_names,         // names of the end-effector links
                 attempts, timeout, // solver attempts and timeout
-                moveit::core::GroupStateValidityCallbackFn(), 
+                moveit::core::GroupStateValidityCallbackFn(),
                 opts               // mostly empty
               );
   ```
@@ -352,7 +348,7 @@ and the `pr2_bioik_moveit` package into your catkin workspace:
     roscd
     cd src
     git clone https://github.com/PR2/pr2_common.git
-    git clone https://gogs.crossmodal-learning.org/TAMS/pr2_bioik_moveit.git
+    git clone https://github.com/TAMS/pr2_bioik_moveit.git
     catkin_make
   ```
 
