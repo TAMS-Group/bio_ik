@@ -224,9 +224,9 @@ All of this is specified easily:
     ik_options.goals.emplace_back(minimal_displacement_goal);
 
     auto* torso_goal = new bio_ik::PositionGoal();
-    torso_goal->link_name = "torso_lift_link";
-    torso_goal->weight = 1;
-    torso_goal->position = tf::Vector3( -0.05, 0, 1.0 );
+    torso_goal->setLinkName("torso_lift_link");
+    torso_goal->setWeight(1);
+    torso_goal->setPosition(tf::Vector3( -0.05, 0, 1.0 ));
     ik_options.goals.emplace_back(torso_goal);
   ```
 
