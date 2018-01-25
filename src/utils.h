@@ -66,6 +66,12 @@ struct IKParams
     moveit::core::RobotModelConstPtr robot_model;
     const moveit::core::JointModelGroup* joint_model_group;
     ros::NodeHandle node_handle;
+
+    //Problem parameters
+    double dpos;
+    double drot;
+    double dtwist;
+
 };
 
 #define ENABLE_LOG

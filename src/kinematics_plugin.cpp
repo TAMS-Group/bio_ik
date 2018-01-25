@@ -202,6 +202,11 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         ikparams.node_handle = node_handle;
         ikparams.joint_model_group = joint_model_group;
 
+        // initialize parameters for Problem
+        lookupParam("dpos", ikparams.dpos, DBL_MAX);
+        lookupParam("drot", ikparams.drot, DBL_MAX);
+        lookupParam("dtwist", ikparams.dtwist, 1e-5);
+
         temp_state.reset(new moveit::core::RobotState(robot_model));
 
         ik.reset(new IKParallel(ikparams));
@@ -438,7 +443,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
             {
                 BLOCKPROFILER("problem init");
-                problem.initialize(ikparams.robot_model, ikparams.joint_model_group, ikparams.node_handle, all_goals, bio_ik_options);
+                problem.initialize(ikparams.robot_model, ikparams.joint_model_group, ikparams, all_goals, bio_ik_options);
                 // problem.setGoals(default_goals, ikparams);
             }
         }

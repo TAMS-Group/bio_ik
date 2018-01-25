@@ -59,7 +59,7 @@ private:
     std::vector<double> joint_transmission_goal_temp, joint_transmission_goal_temp2;
     moveit::core::RobotModelConstPtr robot_model;
     const moveit::core::JointModelGroup* joint_model_group;
-    ros::NodeHandle node_handle;
+    IKParams params;
     RobotInfo modelInfo;
     double dpos, drot, dtwist;
     struct CollisionShape
@@ -133,7 +133,7 @@ public:
     std::vector<GoalInfo> goals;
     std::vector<GoalInfo> secondary_goals;
     Problem();
-    void initialize(moveit::core::RobotModelConstPtr robot_model, const moveit::core::JointModelGroup* joint_model_group, ros::NodeHandle node_handle, const std::vector<const Goal*>& goals2, const BioIKKinematicsQueryOptions* options);
+    void initialize(moveit::core::RobotModelConstPtr robot_model, const moveit::core::JointModelGroup* joint_model_group, const IKParams& params, const std::vector<const Goal*>& goals2, const BioIKKinematicsQueryOptions* options);
     void initialize2();
     double computeGoalFitness(GoalInfo& goal, const Frame* tip_frames, const double* active_variable_positions);
     double computeGoalFitness(std::vector<GoalInfo>& goals, const Frame* tip_frames, const double* active_variable_positions);
