@@ -187,11 +187,6 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         // for(auto& n : joint_names) LOG("joint", n);
         // for(auto& n : link_names) LOG("link", n);
 
-        ros::NodeHandle node_handle("~");
-        std::string rdesc;
-        node_handle.searchParam(robot_description_, rdesc);
-        node_handle = ros::NodeHandle(rdesc + "_kinematics/" + group_name_);
-
         // bool enable_profiler;
         lookupParam("profiler", enable_profiler, false);
         // if(enable_profiler) Profiler::start();
