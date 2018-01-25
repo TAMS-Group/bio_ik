@@ -199,7 +199,6 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         robot_info = RobotInfo(robot_model);
 
         ikparams.robot_model = robot_model;
-        ikparams.node_handle = node_handle;
         ikparams.joint_model_group = joint_model_group;
 
         // initialize parameters for IKParallel
