@@ -46,13 +46,6 @@
 namespace bio_ik
 {
 
-struct IKParams
-{
-    moveit::core::RobotModelConstPtr robot_model;
-    const moveit::core::JointModelGroup* joint_model_group;
-    ros::NodeHandle node_handle;
-};
-
 struct Random
 {
     // std::mt19937 rng;
