@@ -193,7 +193,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         node_handle = ros::NodeHandle(rdesc + "_kinematics/" + group_name_);
 
         // bool enable_profiler;
-        node_handle.param("profiler", enable_profiler, false);
+        lookupParam("profiler", enable_profiler, false);
         // if(enable_profiler) Profiler::start();
 
         robot_info = RobotInfo(robot_model);
@@ -238,10 +238,10 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
                 double rotation_scale = 0.5;
 
-                node_handle.param("rotation_scale", rotation_scale, rotation_scale);
+                lookupParam("rotation_scale", rotation_scale, rotation_scale);
 
                 bool position_only_ik = false;
-                node_handle.param("position_only_ik", position_only_ik, position_only_ik);
+                lookupParam("position_only_ik", position_only_ik, position_only_ik);
                 if(position_only_ik) rotation_scale = 0;
 
                 goal->setRotationScale(rotation_scale);
@@ -251,7 +251,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
             {
                 double weight = 0;
-                node_handle.param("center_joints_weight", weight, weight);
+                lookupParam("center_joints_weight", weight, weight);
                 if(weight > 0.0)
                 {
                     auto* avoid_joint_limits_goal = new bio_ik::CenterJointsGoal();
@@ -262,7 +262,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
             {
                 double weight = 0;
-                node_handle.param("avoid_joint_limits_weight", weight, weight);
+                lookupParam("avoid_joint_limits_weight", weight, weight);
                 if(weight > 0.0)
                 {
                     auto* avoid_joint_limits_goal = new bio_ik::AvoidJointLimitsGoal();
@@ -273,7 +273,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
             {
                 double weight = 0;
-                node_handle.param("minimal_displacement_weight", weight, weight);
+                lookupParam("minimal_displacement_weight", weight, weight);
                 if(weight > 0.0)
                 {
                     auto* minimal_displacement_goal = new bio_ik::MinimalDisplacementGoal();
