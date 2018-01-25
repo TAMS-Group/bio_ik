@@ -232,7 +232,6 @@ void Problem::initialize2()
     {
         for(auto& g : *gg)
         {
-            g.goal_context.node_handle_ = node_handle;
             g.goal_context.problem_active_variables_ = active_variables;
             g.goal_context.problem_tip_link_indices_ = tip_link_indices;
             g.goal_context.velocity_weights_ = minimal_displacement_factors;
