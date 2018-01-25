@@ -207,6 +207,13 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         lookupParam("drot", ikparams.drot, DBL_MAX);
         lookupParam("dtwist", ikparams.dtwist, 1e-5);
 
+        // initialize parameters for ik_evolution_1
+        lookupParam("no_wipeout", ikparams.opt_no_wipeout, false);
+        lookupParam("population_size", ikparams.population_size, 8);
+        lookupParam("elite_count", ikparams.elite_count, 4);
+        lookupParam("linear_fitness", ikparams.linear_fitness, false);
+
+
         temp_state.reset(new moveit::core::RobotState(robot_model));
 
         ik.reset(new IKParallel(ikparams));

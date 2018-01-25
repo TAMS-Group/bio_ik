@@ -72,6 +72,11 @@ struct IKParams
     double drot;
     double dtwist;
 
+    // ik_evolution_1 parameters
+    bool opt_no_wipeout;
+    int population_size;
+    int elite_count;
+    bool linear_fitness;
 };
 
 #define ENABLE_LOG
