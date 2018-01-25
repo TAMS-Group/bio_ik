@@ -67,6 +67,11 @@ struct IKParams
     const moveit::core::JointModelGroup* joint_model_group;
     ros::NodeHandle node_handle;
 
+    // IKParallel parameters
+    std::string solver_class_name;
+    bool enable_counter;
+    int thread_count;
+
     //Problem parameters
     double dpos;
     double drot;

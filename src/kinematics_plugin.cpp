@@ -202,6 +202,11 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         ikparams.node_handle = node_handle;
         ikparams.joint_model_group = joint_model_group;
 
+        // initialize parameters for IKParallel
+        lookupParam("mode", ikparams.solver_class_name, std::string("bio2_memetic"));
+        lookupParam("counter", ikparams.enable_counter, false);
+        lookupParam("threads", ikparams.thread_count, 0);
+
         // initialize parameters for Problem
         lookupParam("dpos", ikparams.dpos, DBL_MAX);
         lookupParam("drot", ikparams.drot, DBL_MAX);

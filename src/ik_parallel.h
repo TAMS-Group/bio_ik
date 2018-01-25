@@ -111,20 +111,16 @@ struct IKParallel
         : params(params)
     {
         // solver class name
-        std::string name;
-        // params.node_handle.param("mode", name, std::string("bio1"));
-        // params.node_handle.param("mode", name, std::string("bio2_memetic_l"));
-        // params.node_handle.param("mode", name, std::string("bio2"));
-        params.node_handle.param("mode", name, std::string("bio2_memetic"));
-        // params.node_handle.param("mode", name, std::string("bio3_memetic"));
-        // params.node_handle.param("mode", name, std::string("neural"));
+        std::string name = params.solver_class_name;
 
-        params.node_handle.param("counter", enable_counter, false);
+        enable_counter = params.enable_counter;
 
         // create solvers
         solvers.emplace_back(IKFactory::create(name, params));
         thread_count = solvers.front()->concurrency();
-        params.node_handle.param("threads", thread_count, thread_count);
+        if(params.thread_count) {
+            thread_count = params.thread_count;
+        }
         while(solvers.size() < thread_count)
             solvers.emplace_back(IKFactory::clone(solvers.front().get()));
         for(size_t i = 0; i < thread_count; i++)
