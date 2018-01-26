@@ -61,6 +61,28 @@
 namespace bio_ik
 {
 
+struct IKParams
+{
+    moveit::core::RobotModelConstPtr robot_model;
+    const moveit::core::JointModelGroup* joint_model_group;
+
+    // IKParallel parameters
+    std::string solver_class_name;
+    bool enable_counter;
+    int thread_count;
+
+    //Problem parameters
+    double dpos;
+    double drot;
+    double dtwist;
+
+    // ik_evolution_1 parameters
+    bool opt_no_wipeout;
+    int population_size;
+    int elite_count;
+    bool linear_fitness;
+};
+
 #define ENABLE_LOG
 
 #define ENABLE_PROFILER

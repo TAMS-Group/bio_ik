@@ -69,7 +69,7 @@ Problem::Problem()
 {
 }
 
-void Problem::initialize(moveit::core::RobotModelConstPtr robot_model, const moveit::core::JointModelGroup* joint_model_group, ros::NodeHandle node_handle, const std::vector<const Goal*>& goals2, const BioIKKinematicsQueryOptions* options)
+void Problem::initialize(moveit::core::RobotModelConstPtr robot_model, const moveit::core::JointModelGroup* joint_model_group, const IKParams& params, const std::vector<const Goal*>& goals2, const BioIKKinematicsQueryOptions* options)
 {
     if(robot_model != this->robot_model)
     {
@@ -80,15 +80,14 @@ void Problem::initialize(moveit::core::RobotModelConstPtr robot_model, const mov
 
     this->robot_model = robot_model;
     this->joint_model_group = joint_model_group;
-    this->node_handle = node_handle;
+    this->params = params;
 
     if(!ros_params_initrd)
     {
         ros_params_initrd = true;
-        auto& n = node_handle;
-        n.param("dpos", dpos, DBL_MAX);
-        n.param("drot", drot, DBL_MAX);
-        n.param("dtwist", dtwist, 1e-5);
+        dpos = params.dpos;
+        drot = params.drot;
+        dtwist = params.dtwist;
         if(dpos < 0.0 || dpos >= FLT_MAX || !std::isfinite(dpos)) dpos = DBL_MAX;
         if(drot < 0.0 || drot >= FLT_MAX || !std::isfinite(drot)) drot = DBL_MAX;
         if(dtwist < 0.0 || dtwist >= FLT_MAX || !std::isfinite(dtwist)) dtwist = DBL_MAX;
@@ -232,7 +231,6 @@ void Problem::initialize2()
     {
         for(auto& g : *gg)
         {
-            g.goal_context.node_handle_ = node_handle;
             g.goal_context.problem_active_variables_ = active_variables;
             g.goal_context.problem_tip_link_indices_ = tip_link_indices;
             g.goal_context.velocity_weights_ = minimal_displacement_factors;

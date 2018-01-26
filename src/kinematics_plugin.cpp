@@ -200,20 +200,31 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         // for(auto& n : joint_names) LOG("joint", n);
         // for(auto& n : link_names) LOG("link", n);
 
-        ros::NodeHandle node_handle("~");
-        std::string rdesc;
-        node_handle.searchParam(robot_description_, rdesc);
-        node_handle = ros::NodeHandle(rdesc + "_kinematics/" + group_name_);
-
         // bool enable_profiler;
-        node_handle.param("profiler", enable_profiler, false);
+        lookupParam("profiler", enable_profiler, false);
         // if(enable_profiler) Profiler::start();
 
         robot_info = RobotInfo(robot_model);
 
         ikparams.robot_model = robot_model;
-        ikparams.node_handle = node_handle;
         ikparams.joint_model_group = joint_model_group;
+
+        // initialize parameters for IKParallel
+        lookupParam("mode", ikparams.solver_class_name, std::string("bio2_memetic"));
+        lookupParam("counter", ikparams.enable_counter, false);
+        lookupParam("threads", ikparams.thread_count, 0);
+
+        // initialize parameters for Problem
+        lookupParam("dpos", ikparams.dpos, DBL_MAX);
+        lookupParam("drot", ikparams.drot, DBL_MAX);
+        lookupParam("dtwist", ikparams.dtwist, 1e-5);
+
+        // initialize parameters for ik_evolution_1
+        lookupParam("no_wipeout", ikparams.opt_no_wipeout, false);
+        lookupParam("population_size", ikparams.population_size, 8);
+        lookupParam("elite_count", ikparams.elite_count, 4);
+        lookupParam("linear_fitness", ikparams.linear_fitness, false);
+
 
         temp_state.reset(new moveit::core::RobotState(robot_model));
 
@@ -235,10 +246,10 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
                 double rotation_scale = 0.5;
 
-                node_handle.param("rotation_scale", rotation_scale, rotation_scale);
+                lookupParam("rotation_scale", rotation_scale, rotation_scale);
 
                 bool position_only_ik = false;
-                node_handle.param("position_only_ik", position_only_ik, position_only_ik);
+                lookupParam("position_only_ik", position_only_ik, position_only_ik);
                 if(position_only_ik) rotation_scale = 0;
 
                 goal->setRotationScale(rotation_scale);
@@ -248,7 +259,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
             {
                 double weight = 0;
-                node_handle.param("center_joints_weight", weight, weight);
+                lookupParam("center_joints_weight", weight, weight);
                 if(weight > 0.0)
                 {
                     auto* avoid_joint_limits_goal = new bio_ik::CenterJointsGoal();
@@ -259,7 +270,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
             {
                 double weight = 0;
-                node_handle.param("avoid_joint_limits_weight", weight, weight);
+                lookupParam("avoid_joint_limits_weight", weight, weight);
                 if(weight > 0.0)
                 {
                     auto* avoid_joint_limits_goal = new bio_ik::AvoidJointLimitsGoal();
@@ -270,7 +281,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
             {
                 double weight = 0;
-                node_handle.param("minimal_displacement_weight", weight, weight);
+                lookupParam("minimal_displacement_weight", weight, weight);
                 if(weight > 0.0)
                 {
                     auto* minimal_displacement_goal = new bio_ik::MinimalDisplacementGoal();
@@ -451,7 +462,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 
             {
                 BLOCKPROFILER("problem init");
-                problem.initialize(ikparams.robot_model, ikparams.joint_model_group, ikparams.node_handle, all_goals, bio_ik_options);
+                problem.initialize(ikparams.robot_model, ikparams.joint_model_group, ikparams, all_goals, bio_ik_options);
                 // problem.setGoals(default_goals, ikparams);
             }
         }

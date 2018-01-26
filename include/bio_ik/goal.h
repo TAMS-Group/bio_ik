@@ -41,8 +41,6 @@
 #include <moveit/robot_model/joint_model_group.h>
 #include <moveit/robot_model/robot_model.h>
 
-#include <ros/node_handle.h>
-
 namespace bio_ik
 {
 
@@ -59,7 +57,6 @@ protected:
     std::vector<std::string> goal_link_names_, goal_variable_names_;
     double goal_weight_;
     const moveit::core::JointModelGroup* joint_model_group_;
-    ros::NodeHandle node_handle_;
     std::vector<size_t> problem_active_variables_;
     std::vector<size_t> problem_tip_link_indices_;
     std::vector<double> initial_guess_;
@@ -93,7 +90,6 @@ public:
     void setWeight(double weight) { goal_weight_ = weight; }
     const moveit::core::JointModelGroup& getJointModelGroup() const { return *joint_model_group_; }
     const moveit::core::RobotModel& getRobotModel() const { return joint_model_group_->getParentModel(); }
-    const ros::NodeHandle& getNodeHandle() const { return node_handle_; }
     std::vector<double>& getTempVector() const { return temp_vector_; }
     friend class Problem;
 };
