@@ -110,6 +110,14 @@ const BioIKKinematicsQueryOptions* toBioIKKinematicsQueryOptions(const void* ptr
 namespace bio_ik_kinematics_plugin
 {
 
+// Fallback for older MoveIt versions which don't support lookupParam yet
+template <class T>
+static void lookupParam(const std::string& param, T& val, const T& default_val)
+{
+    ros::NodeHandle nodeHandle("~");
+    val = nodeHandle.param(param, default_val);
+}
+
 struct BioIKKinematicsPlugin : kinematics::KinematicsBase
 {
     std::vector<std::string> joint_names, link_names;
