@@ -136,6 +136,7 @@ public:
     PoseGoal(const std::string& link_name, const tf::Vector3& position, const tf::Quaternion& orientation, double weight = 1.0)
         : LinkGoalBase(link_name, weight)
         , frame_(position, orientation.normalized())
+        , rotation_scale_(0.5)
     {
     }
     inline const tf::Vector3& getPosition() const { return frame_.getPosition(); }
