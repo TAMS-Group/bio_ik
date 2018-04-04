@@ -40,6 +40,8 @@
 #include <kdl/treefksolverpos_recursive.hpp>
 #include <kdl_parser/kdl_parser.hpp>
 
+#if defined(__x86_64__) || defined(__i386__)
+
 #include <emmintrin.h>
 #include <immintrin.h>
 #include <x86intrin.h>
@@ -50,7 +52,11 @@
 #define FUNCTION_MULTIVERSIONING 0
 #endif
 
-//#define FUNCTION_MULTIVERSIONING 0
+#else
+
+#define FUNCTION_MULTIVERSIONING 0
+
+#endif
 
 namespace bio_ik
 {
