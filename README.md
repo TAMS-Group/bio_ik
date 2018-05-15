@@ -13,7 +13,7 @@ See below for version specific instructions.
   ```
     roscd
     cd src
-    git clone https://github.com/TAMS/bio_ik.git
+    git clone https://github.com/TAMS-Group/bio_ik.git
     roscd
     catkin_make
   ```
