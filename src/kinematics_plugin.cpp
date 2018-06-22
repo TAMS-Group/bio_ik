@@ -322,29 +322,60 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase
         return true;
     }
 
-    // TODO: implement ?
     virtual bool searchPositionIK(const geometry_msgs::Pose& ik_pose, const std::vector<double>& ik_seed_state, double timeout, std::vector<double>& solution, moveit_msgs::MoveItErrorCodes& error_code, const kinematics::KinematicsQueryOptions& options = kinematics::KinematicsQueryOptions()) const
     {
         LOG_FNC();
-        return false;
+        return searchPositionIK(
+            std::vector<geometry_msgs::Pose> { ik_pose },
+            ik_seed_state,
+            timeout,
+            std::vector<double>(),
+            solution,
+            IKCallbackFn(),
+            error_code,
+            options);
     }
 
     virtual bool searchPositionIK(const geometry_msgs::Pose& ik_pose, const std::vector<double>& ik_seed_state, double timeout, const std::vector<double>& consistency_limits, std::vector<double>& solution, moveit_msgs::MoveItErrorCodes& error_code, const kinematics::KinematicsQueryOptions& options = kinematics::KinematicsQueryOptions()) const
     {
         LOG_FNC();
-        return false;
+        return searchPositionIK(
+            std::vector<geometry_msgs::Pose> { ik_pose },
+            ik_seed_state,
+            timeout,
+            consistency_limits,
+            solution,
+            IKCallbackFn(),
+            error_code,
+            options);
     }
 
     virtual bool searchPositionIK(const geometry_msgs::Pose& ik_pose, const std::vector<double>& ik_seed_state, double timeout, std::vector<double>& solution, const IKCallbackFn& solution_callback, moveit_msgs::MoveItErrorCodes& error_code, const kinematics::KinematicsQueryOptions& options = kinematics::KinematicsQueryOptions()) const
     {
         LOG_FNC();
-        return false;
+        return searchPositionIK(
+            std::vector<geometry_msgs::Pose> { ik_pose },
+            ik_seed_state,
+            timeout,
+            std::vector<double>(),
+            solution,
+            solution_callback,
+            error_code,
+            options);
     }
 
     virtual bool searchPositionIK(const geometry_msgs::Pose& ik_pose, const std::vector<double>& ik_seed_state, double timeout, const std::vector<double>& consistency_limits, std::vector<double>& solution, const IKCallbackFn& solution_callback, moveit_msgs::MoveItErrorCodes& error_code, const kinematics::KinematicsQueryOptions& options = kinematics::KinematicsQueryOptions()) const
     {
         LOG_FNC();
-        return false;
+        return searchPositionIK(
+            std::vector<geometry_msgs::Pose> { ik_pose },
+            ik_seed_state,
+            timeout,
+            consistency_limits,
+            solution,
+            solution_callback,
+            error_code,
+            options);
     }
 
     /*struct OptMod : kinematics::KinematicsQueryOptions
