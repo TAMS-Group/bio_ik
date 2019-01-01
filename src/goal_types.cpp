@@ -235,7 +235,7 @@ void BalanceGoal::describe(GoalContext& context) const
         if(!link_urdf) continue;
         if(!link_urdf->inertial) continue;
         const auto& center_urdf = link_urdf->inertial->origin.position;
-        tf::Vector3 center(center_urdf.x, center_urdf.y, center_urdf.z);
+        tf2::Vector3 center(center_urdf.x, center_urdf.y, center_urdf.z);
         double mass = link_urdf->inertial->mass;
         if(!(mass > 0)) continue;
         balance_infos.emplace_back();
@@ -252,7 +252,7 @@ void BalanceGoal::describe(GoalContext& context) const
 
 double BalanceGoal::evaluate(const GoalContext& context) const
 {
-    tf::Vector3 center = tf::Vector3(0, 0, 0);
+    tf2::Vector3 center(0, 0, 0);
     for(size_t i = 0; i < balance_infos.size(); i++)
     {
         auto& info = balance_infos[i];

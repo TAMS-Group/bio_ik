@@ -484,22 +484,22 @@ private:
     XmlRpcReader at(int i) { return v[i]; }
     void conv(bool& r) { r = (bool)v; }
     void conv(double& r) { r = (v.getType() == var::TypeInt) ? ((double)(int)v) : ((double)v); }
-    void conv(tf::Vector3& r)
+    void conv(tf2::Vector3& r)
     {
         double x, y, z;
         at(0).conv(x);
         at(1).conv(y);
         at(2).conv(z);
-        r = tf::Vector3(x, y, z);
+        r = tf2::Vector3(x, y, z);
     }
-    void conv(tf::Quaternion& r)
+    void conv(tf2::Quaternion& r)
     {
         double x, y, z, w;
         at(0).conv(x);
         at(1).conv(y);
         at(2).conv(z);
         at(3).conv(w);
-        r = tf::Quaternion(x, y, z, w).normalized();
+        r = tf2::Quaternion(x, y, z, w).normalized();
     }
     void conv(std::string& r) { r = (std::string)v; }
 
