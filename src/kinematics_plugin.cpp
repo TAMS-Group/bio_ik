@@ -153,7 +153,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
     return false;
   }
 
-  std::vector<Eigen::Affine3d> tip_reference_frames;
+  EigenSTL::vector_Isometry3d tip_reference_frames;
 
   mutable std::vector<std::unique_ptr<Goal>> default_goals;
 
@@ -466,7 +466,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
       // transform tips to baseframe
       tipFrames.clear();
       for (size_t i = 0; i < ik_poses.size(); i++) {
-        Eigen::Affine3d p, r;
+        Eigen::Isometry3d p, r;
         tf::poseMsgToEigen(ik_poses[i], p);
         if (context_state) {
           r = context_state->getGlobalLinkTransform(getBaseFrame());

@@ -128,7 +128,7 @@ public:
         default:
         {
             auto* joint_variables = variables + joint_model->getFirstVariableIndex();
-            Eigen::Affine3d joint_transform;
+            Eigen::Isometry3d joint_transform;
             joint_model->computeTransform(joint_variables, joint_transform);
             frame = Frame(joint_transform);
             break;

@@ -68,7 +68,7 @@ struct Frame
         tf::quaternionMsgToTF(msg.orientation, rot);
         pos = tf::Vector3(msg.position.x, msg.position.y, msg.position.z);
     }
-    explicit inline Frame(const Eigen::Affine3d& f)
+    explicit inline Frame(const Eigen::Isometry3d& f)
     {
         pos = tf::Vector3(f.translation().x(), f.translation().y(), f.translation().z());
         Eigen::Quaterniond q(f.rotation());
