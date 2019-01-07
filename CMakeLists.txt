@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   tf
   tf_conversions
+  eigen_conversions
 )
 
 find_package(OpenMP)
