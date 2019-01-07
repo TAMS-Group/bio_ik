@@ -121,11 +121,6 @@ target_link_libraries(${PROJECT_NAME}
   -static-libstdc++
 )
 
-if(CATKIN_ENABLE_TESTING)
-    catkin_add_gtest(utest test/utest.cpp)
-    target_link_libraries(utest ${PROJECT_NAME})
-endif()
-
 install(DIRECTORY include/${PROJECT_NAME}/ DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
