@@ -393,6 +393,25 @@ public:
     }
 };
 
+class RegularizationGoal : public Goal
+{
+public:
+  RegularizationGoal(double weight = 1.0)
+  {
+    weight_ = weight;
+  }
+  virtual double evaluate(const GoalContext &context) const
+  {
+    double sum = 0.0;
+    for (size_t i = 0; i < context.getProblemVariableCount(); i++)
+    {
+      double d = context.getProblemVariablePosition(i) - context.getProblemVariableInitialGuess(i);
+      sum += d * d;
+    }
+    return sum;
+  }
+};
+
 class MinimalDisplacementGoal : public Goal
 {
 public:
