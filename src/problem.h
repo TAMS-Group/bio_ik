@@ -103,9 +103,9 @@ public:
         double rotation_scale;
         double rotation_scale_sq;
         Frame frame;
-        tf::Vector3 target;
-        tf::Vector3 direction;
-        tf::Vector3 axis;
+        tf2::Vector3 target;
+        tf2::Vector3 direction;
+        tf2::Vector3 axis;
         double distance;
         ssize_t active_variable_index;
         double variable_position;
