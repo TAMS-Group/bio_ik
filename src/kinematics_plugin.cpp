@@ -51,7 +51,7 @@
 #include <urdf/model.h>
 #include <urdf_model/model.h>
 
-#include <eigen_conversions/eigen_msg.h>
+#include <tf2_eigen/tf2_eigen.h>
 //#include <moveit/common_planning_interface_objects/common_objects.h>
 #include <moveit/kinematics_base/kinematics_base.h>
 #include <moveit/robot_model/robot_model.h>
@@ -467,7 +467,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
       tipFrames.clear();
       for (size_t i = 0; i < ik_poses.size(); i++) {
         Eigen::Affine3d p, r;
-        tf::poseMsgToEigen(ik_poses[i], p);
+        tf2::fromMsg(ik_poses[i], p);
         if (context_state) {
           r = context_state->getGlobalLinkTransform(getBaseFrame());
         } else {

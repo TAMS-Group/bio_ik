@@ -39,8 +39,6 @@
 #include <string>
 #include <vector>
 
-#include <tf/tf.h>
-
 #include "goal.h"
 #include "goal_types.h"
 

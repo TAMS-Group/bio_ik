@@ -11,9 +11,10 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_ros_planning
   pluginlib
   roscpp
-  tf
-  tf_conversions
-  eigen_conversions
+  tf2
+  tf2_eigen
+  tf2_kdl
+  tf2_geometry_msgs
 )
 
 find_package(OpenMP)
@@ -69,8 +70,9 @@ catkin_package(
         moveit_ros_planning
         pluginlib
         roscpp
-        tf
-        tf_conversions
+        tf2
+        tf2_kdl
+        tf2_geometry_msgs
 )
 
 add_compile_options(-frecord-gcc-switches)

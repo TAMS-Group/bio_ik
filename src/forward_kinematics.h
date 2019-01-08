@@ -1439,9 +1439,9 @@ public:
                 auto& link = link_approximators[tip_links[itip]->getLinkIndex()];
                 tip_mutation.pos = link.position;
 
-                tip_mutation.rot = tf::Quaternion(link.rotation.x() * 0.5, link.rotation.y() * 0.5, link.rotation.z() * 0.5, 1.0) * tip_frame.rot;
+                tip_mutation.rot = tf2::Quaternion(link.rotation.x() * 0.5, link.rotation.y() * 0.5, link.rotation.z() * 0.5, 1.0) * tip_frame.rot;
 
-                /*tip_mutation.rot = tf::Quaternion(
+                /*tip_mutation.rot = tf2::Quaternion(
                     link.rotation.x() * 0.5,
                     link.rotation.y() * 0.5,
                     link.rotation.z() * 0.5,
