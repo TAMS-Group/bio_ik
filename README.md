@@ -22,13 +22,13 @@ See below for version specific instructions.
 * Use Moveit to plan and execute motions or use your own code
   together with `move_group` node to move your robot.
 * As usual, the public API is specified in the public header files for the `bio_ik` package,
-  located in the `include/bio_ik` subdirectory; 
+  located in the `include/bio_ik` subdirectory;
   the sources including a few private header files are in the `src` subdirectory.
 
 
 ## Basic Usage
 
-For ease of use and compatibility with existing code, 
+For ease of use and compatibility with existing code,
 the bio-ik algorithm is encapsulated as a Moveit kinematics plugin.
 Therefore, bio-ik can be used as a direct replacement of
 the default Orocos/KDL-based IK solver.
@@ -42,8 +42,8 @@ The bio-ik algorithm can also be used for high-DOF system like robot snakes,
 and it will automatically converge to the best approximate solutions
 for low-DOF arms where some target poses are not reachable exactly.
 
-While you can write the Moveit configuration files by hand, 
-the easiest way is to run the Moveit setup assistant for your robot, 
+While you can write the Moveit configuration files by hand,
+the easiest way is to run the Moveit setup assistant for your robot,
 and then to select bio-ik as the IK solver when configuring the end effectors.
 Once configured, the solver can be called using the standard Moveit API
 or used interactively from rviz using the MotionPlanning GUI plugin.
@@ -56,16 +56,16 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
 
   ```
 *  The setup assistant automatically searches for all available IK solver plugins
-  in your workspace. 
-  Therefore, you can just select select bio-ik as the IK solver 
-  from the drop-down list for every end effector and then configure 
+  in your workspace.
+  Therefore, you can just select select bio-ik as the IK solver
+  from the drop-down list for every end effector and then configure
   the kinematics parameters, namely the default position accuracy (meters)
   and the timeout (in seconds). For typical 6-DOF or 7-DOF arms,
   an accuracy of 0.001 m (or smaller) and a timeout of 1 msec should be ok.
   More complex robots might need a longer timeout.
 * Generate the moveit configuration files from the setup assistant.
   Of course, you can also edit the `config/kinematics.yaml` configuration
-  file with your favorite text editor. 
+  file with your favorite text editor.
   For example, a configuration for the PR2 robot might look like this:
 
   ```
@@ -127,7 +127,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
     // traditional "basic" bio-ik usage. The end-effector goal poses
     // and end-effector link names are passed into the setFromIK()
     // call. The KinematicsQueryOptions are empty.
-    // 
+    //
     bool ok = robot_state_ik.setFromIK(
                 joint_model_group, // joints to be used for IK
                 tip_transforms,    // multiple end-effector goal poses
@@ -143,6 +143,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
 For many robot applications, it is essential to specify more than just
 a single end-effector pose. Typical examples include
 
+* redundancy resolution (e.g. 7-DOF arm)
 * two-arm manipulation tasks on two-arm robots (e.g. Baxter)
 * multi end-effector tasks with shared kinematic links
 * grasping and manipulation tasks with multi-finger hands
@@ -154,7 +155,7 @@ a single end-effector pose. Typical examples include
 In bio-ik, such tasks are specified as a combination of multiple
 individual *goals*.  
 The algorithm then tries to find a robot configuration
-that fulfills all given goals simultaneously by minimizing 
+that fulfills all given goals simultaneously by minimizing
 a quadratic error function built from the weighted individual goals.
 While the current Moveit API does not support multiple-goals tasks directly,
 it provides the KinematicQueryOptions class.
@@ -169,7 +170,7 @@ The predefined goals include:
 * *OrientationGoal*: a 3-DOF orientation, encoded as a quaternion (qx,qy,qz,qw)
 * *LookAtGoal*: a 3-DOF (x,y,z) position intended as a looking direction
    for a camera or robot head
-* *JointGoal*: a set of joint angles, e.g. to specify a 
+* *JointGoal*: a set of joint angles, e.g. to specify a
 * *FunctionGoal*: an arbitrary function of the robot joint values,
    e.g. to model underactuated joints or mimic joints
 * and several more
@@ -177,11 +178,11 @@ The predefined goals include:
 
 
 To solve a motion problem on your robot, the trick now is to construct
-a suitable combination of individual goals. 
+a suitable combination of individual goals.
 
 ![PR2 turning a valve](doc/pr2_vt_0.png)
 
-In the following example, we want to grasp and then _slowly turn 
+In the following example, we want to grasp and then _slowly turn
 a valve wheel_ with the left and right gripers of the PR2 robot:
 
   ```
@@ -203,7 +204,7 @@ a valve wheel_ with the left and right gripers of the PR2 robot:
     ik_options.goals.emplace_back(rr_goal);
   ```
 
-We also set a couple of secondary goals. 
+We also set a couple of secondary goals.
 First, we want that the head of the PR2 looks at the center of the valve.
 Second, we want to avoid joint-limits on all joints, if possible.
 Third, we want that IK solutions are as close as possible to the previous
@@ -264,13 +265,13 @@ poses in a loop:
         // "advanced" bio-ik usage. The call parameters for the end-effector
         // poses and end-effector link names are left empty; instead the
         // requested goals and weights are passed via the ik_options object.
-        // 
+        //
         robot_state.setFromIK(
                       joint_model_group,           // active PR2 joints
                       EigenSTL::vector_Affine3d(), // no explicit poses here
                       std::vector<std::string>(),  // no end effector links here
                       0, 0.0,                      // take values from YAML file
-                      moveit::core::GroupStateValidityCallbackFn(), 
+                      moveit::core::GroupStateValidityCallbackFn(),
                       ik_options       // four gripper goals and secondary goals
                     );
 
@@ -283,12 +284,91 @@ and turn it. Every once in a while it can't reach the valve with
 its current arm configuration and will regrasp the wheel.
 
 
+
+
+
+## Local vs. Global Optimization, Redundancy Resolution, Cartesian Jogging
+BioIK has been developed to efficiently find good solutions for non-convex inverse kinematics problems with multiple goals and local minima.
+However, for some applications, this can lead to unintuitive results.
+If there are multiple possible solutions to a given IK problem, and if the user has not explicitly specified which one to choose, a result may be selected randomly from the set of all valid solutions.
+When incrementally tracking a cartesian path, this can result in unwanted jumps, shaking, etc.
+To incrementally generate a smooth trajectory using BioIK, the desired behaviour should be specified explicitly, which can be done in two ways.
+
+#### Disabling Global Optimization
+BioIK offers a number of different solvers, including global optimizers and local optimizers.
+By default, BioIK uses a memetic global optimizer (`bio2_memetic`).
+A different solver class can be selected by setting the `mode` parameter in the `kinematics.yaml` file of your MoveIt robot configuration.
+
+Example:
+```
+all:
+  kinematics_solver: bio_ik/BioIKKinematicsPlugin
+  kinematics_solver_search_resolution: 0.005
+  kinematics_solver_timeout: 0.02
+  kinematics_solver_attempts: 1
+  mode: gd_c
+```
+
+Currently available local optimizers:
+```
+gd, gd_2, gd_4, gd_8
+gd_r, gd_r_2, gd_r_4, gd_r_8
+gd_c, gd_c_2, gd_c_4, gd_c_8
+jac, jac_2, jac_4, jac_8
+```
+
+Naming convention: `<solver type>_[<variant>_]<number of threads>`
+
+Notes:
+- The `gd_*` solvers support arbitrary goal types.
+- The `jac_*` solvers only support pose goals but might in theory be more stable in some cases.
+- Relative performance depends on the application (it's probably best if you try it yourself for your particular robot and problem types).
+- During our tests, the `gd_c` variants usually outperformed the other local solvers.
+- For incremental tracking, a single-threaded variant without restarts is probably best suited (`gd_c`, `gd`, or `jac`).
+- You can also create different MoveIt move groups with different solver types. If you now want to plan a cartesian trajectory from end effector pose A to end effector pose B, you can use a move group with a global optimizer to find a matching initial pose for end effector pose A and a different move group with a local optimizer for incrementally generating a smooth cartesian trajectory from A to B.
+
+#### Regularization
+
+You can force a global optimizer to return a local minimum through regularization. 
+
+* For the specific case of incremental robot motions (aka *jogging*),
+  the simplest solution is to specify both a *PoseGoal* and the
+  special *RegularizationGoal*, which tries to keep the joint-space
+  IK solution as close as possible to the given robot seed configuration.
+  Typically you would use a high weight for the *PoseGoal* and a
+  smaller weight to the regularizer.
+
+* You can also add a *MinimalDisplacementGoal* instead of the
+  *RegularizationGoal*. Both goals try to keep the IK solution close
+  to the current/seed robot state, but differ slightly in the handling
+  of fast and slow robot joints (e.g. the PR2 has fast arm joints
+  and a rather slow torso lift joint).
+  You might want to play with both goals to see which one better
+  matches your needs.
+
+* Some industrial robot controllers on 7-DOF arms behave as if working
+  on a 6-DOF arm with one extra joint. Typically, the value of the extra
+  joint can be specified, and an IK solution is then searched for the
+  remaining six joints.
+  This behaviour can be achieved in bio-ik by combining a *PoseGoal*
+  for the end-effector with a *JointPositionGoal* for one (any one)
+  of the robot joints.
+
+* Another useful trick is trying to keep the robot joints centered,
+  as this will allow robot (joint) motions in both directions.
+  Just combine the *PoseGoal* with a *CenterJointsGoal*, and optionally
+  also a *RegularizationGaol*.
+
+* You can also combine regularization with a local `gd_*` solver.
+
+
+
 ## How it works
 
-The bio-ik solver is based on a memetic algorithm that combines 
+The bio-ik solver is based on a memetic algorithm that combines
 traditional gradient-based search with a hybrid genetic
 and particle-swarm optimization [3].
-See [4] for the basic idea and the details of the evolutionary operators 
+See [4] for the basic idea and the details of the evolutionary operators
 and [5] for the description of the algorithm applied to many IK and manipulation tasks.
 
 Internally, vectors of all robot joint values are used to encode
@@ -298,22 +378,19 @@ active lower and upper joint limits, so that only valid robot configurations
 are generated.
 
 To calculate the fitness of individuals, the cumulative error over all
-given individual goals is calculated. 
-Any individual with zero error is an exact solution for the IK problem, 
+given individual goals is calculated.
+Any individual with zero error is an exact solution for the IK problem,
 while individuals with small error correspond to approximate solutions.
 
 Individuals are sorted by their fitness, and gradient-based optimization
-is tried on the best few configuration, resulting in fast convergence 
-and good performance for many problems. 
+is tried on the best few configuration, resulting in fast convergence
+and good performance for many problems.
 If no solution is found from the gradient-based optimization,
 new individuals are created by a set of mutation and recombination operators,
 resulting in good search-space exploration.
 
 
 
-## Example Performance data
-
-To be written.
 
 ## Running the Self-Tests
 
@@ -321,7 +398,7 @@ We have tested bio-ik on many different robot arms,
 both using the tranditional single end-effector API
 and the advanced multi end-effector API based on the KinematicsQueryOptions.
 
-One simple selftest consists of generating random valid robot configurations, 
+One simple selftest consists of generating random valid robot configurations,
 running forward kinematics to calculate the resulting end-effector pose,
 and the querying the IK plugin to find a suitable robot joint configuration.
 Success is then checked by running forrward kinematics again and checking
@@ -332,7 +409,7 @@ and allows to quickly generate success-rate and solution-time estimates
 for the selected IK solver.
 
 Of course, running the tests requires installing the corresponding robot
-models and adds a lot of dependencies. 
+models and adds a lot of dependencies.
 Therefore, those tests are not included in the standard bio-ik package,
 but are packaged separately.
 
@@ -367,27 +444,25 @@ For the FK-IK-FK performance test, please run
 ## References
 
  1. Orocos Kinematics and Dynamics, http://www.orocos.org
- 
- 2. P. Beeson and B. Ames, *TRAC-IK: 
+
+ 2. P. Beeson and B. Ames, *TRAC-IK:
     An open-source library for improved solving of generic inverse kinematics*,
     Proceedings of the IEEE RAS Humanoids Conference, Seoul, Korea, November 2015.
 
- 3. Philipp Ruppel, Prformance optimization and implementation 
+ 3. Philipp Ruppel, Prformance optimization and implementation
     of evolutionary inverse kinematics in ROS*,
     MSc thesis, University of Hamburg, 2017
     [PDF](https://tams.informatik.uni-hamburg.de/publications/2017/MSc_Philipp_Ruppel.pdf)
 
 
- 4. Sebastian Starke, Norman Hendrich, Jianwei Zhang,  *A Memetic 
-    Evolutionary Algorithm for Real-Time Articulated Kinematic Motion*, 
-    IEEE Intl. Congress on Evolutionary Computation (CEC-2017), p.2437-2479, June 4-8, 2017, 
-    San Sebastian, Spain. 
+ 4. Sebastian Starke, Norman Hendrich, Jianwei Zhang,  *A Memetic
+    Evolutionary Algorithm for Real-Time Articulated Kinematic Motion*,
+    IEEE Intl. Congress on Evolutionary Computation (CEC-2017), p.2437-2479, June 4-8, 2017,
+    San Sebastian, Spain.
     DOI: [10.1109/CEC.2017.7969605](http://doi.org/10.1109/CEC.2017.7969605)
 
- 5. Sebastian Starke, Norman Hendrich, Dennis Krupke, Jianwei Zhang, *Multi-Objective 
-    Evolutionary Optimisation for Inverse Kinematics 
-    on Highly Articulated and Humanoid Robots*, 
-    IEEE Intl. Conference on Intelligent Robots and Systems (IROS-2017), 
-    September 24-28, 2017, Vancouver, Canada 
-
-
+ 5. Sebastian Starke, Norman Hendrich, Dennis Krupke, Jianwei Zhang, *Multi-Objective
+    Evolutionary Optimisation for Inverse Kinematics
+    on Highly Articulated and Humanoid Robots*,
+    IEEE Intl. Conference on Intelligent Robots and Systems (IROS-2017),
+    September 24-28, 2017, Vancouver, Canada
