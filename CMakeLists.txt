@@ -11,8 +11,10 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_ros_planning
   pluginlib
   roscpp
-  tf
-  tf_conversions
+  tf2
+  tf2_eigen
+  tf2_kdl
+  tf2_geometry_msgs
 )
 
 find_package(OpenMP)
@@ -68,8 +70,9 @@ catkin_package(
         moveit_ros_planning
         pluginlib
         roscpp
-        tf
-        tf_conversions
+        tf2
+        tf2_kdl
+        tf2_geometry_msgs
 )
 
 add_compile_options(-frecord-gcc-switches)
@@ -120,11 +123,6 @@ target_link_libraries(${PROJECT_NAME}
   -static-libgcc
   -static-libstdc++
 )
-
-if(CATKIN_ENABLE_TESTING)
-    catkin_add_gtest(utest test/utest.cpp)
-    target_link_libraries(utest ${PROJECT_NAME})
-endif()
 
 install(DIRECTORY include/${PROJECT_NAME}/ DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
 

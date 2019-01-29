@@ -20,9 +20,9 @@ template<class RNG>
 Frame random_frame(RNG& rng)
 {
     std::uniform_real_distribution<double> dist(-1, 1);
-    tf::Quaternion q(dist(rng), dist(rng), dist(rng), dist(rng));
+    tf2::Quaternion q(dist(rng), dist(rng), dist(rng), dist(rng));
     q.normalize();
-    tf::Vector3 v(dist(rng), dist(rng), dist(rng));
+    tf2::Vector3 v(dist(rng), dist(rng), dist(rng));
     return Frame(v, q);
 }
 

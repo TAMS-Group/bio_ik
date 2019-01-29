@@ -555,7 +555,7 @@ struct IKNeural2 : IKBase
 
                 auto rot = frames[itip].rot;
                 rot = rot * rot;
-                // rot = tf::Quaternion(0, 0, 0, 1);
+                // rot = tf2::Quaternion(0, 0, 0, 1);
                 inputs.push_back(rot.x());
                 inputs.push_back(rot.y());
                 inputs.push_back(rot.z());
@@ -662,7 +662,7 @@ struct IKNeural2 : IKBase
 
             auto rot = frames[itip].rot;
             rot = rot * rot;
-            // rot = tf::Quaternion(0, 0, 0, 1);
+            // rot = tf2::Quaternion(0, 0, 0, 1);
             inputs.push_back(rot.x());
             inputs.push_back(rot.y());
             inputs.push_back(rot.z());
