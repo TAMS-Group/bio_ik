@@ -7,6 +7,7 @@ if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 find_package(catkin REQUIRED COMPONENTS
+  eigen_conversions
   moveit_core
   moveit_ros_planning
   pluginlib
@@ -66,6 +67,7 @@ catkin_package(
     INCLUDE_DIRS include
     LIBRARIES ${PROJECT_NAME}
     CATKIN_DEPENDS
+        eigen_conversions
         moveit_core
         moveit_ros_planning
         pluginlib
