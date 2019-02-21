@@ -444,10 +444,11 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
 
     // get variable default positions / context state
     state.resize(robot_model->getVariableCount());
-    robot_model->getVariableDefaultPositions(state);
     if (context_state)
       for (size_t i = 0; i < robot_model->getVariableCount(); i++)
         state[i] = context_state->getVariablePositions()[i];
+    else
+      robot_model->getVariableDefaultPositions(state);
 
     // overwrite used variables with seed state
     solution = ik_seed_state;
