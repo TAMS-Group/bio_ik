@@ -77,7 +77,9 @@ catkin_package(
         tf2_geometry_msgs
 )
 
-add_compile_options(-frecord-gcc-switches)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  add_compile_options(-frecord-gcc-switches)
+endif()
 
 add_compile_options(-std=c++11)
 
