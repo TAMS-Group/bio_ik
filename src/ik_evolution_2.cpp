@@ -279,8 +279,8 @@ template <int memetic> struct IKEvolution2 : IKBase
             auto __attribute__((aligned(32)))* __restrict__ child_genes = child.genes.data();
             auto __attribute__((aligned(32)))* __restrict__ child_gradients = child.gradients.data();
 
-#pragma unroll
 #pragma omp simd aligned(genes_span : 32), aligned(genes_min : 32), aligned(genes_max : 32), aligned(parent_genes : 32), aligned(parent_gradients : 32), aligned(parent2_genes : 32), aligned(parent2_gradients : 32), aligned(child_genes : 32), aligned(child_gradients : 32) aligned(rr : 32)
+#pragma unroll
             for(size_t gene_index = 0; gene_index < gene_count; gene_index++)
             {
                 // double mutation_rate = (1 << fast_random_index(16)) * (1.0 / (1 << 23));
