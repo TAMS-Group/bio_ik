@@ -74,8 +74,10 @@ void Problem::initialize(moveit::core::RobotModelConstPtr robot_model, const mov
     if(robot_model != this->robot_model)
     {
         modelInfo = RobotInfo(robot_model);
+#if (MOVEIT_FCL_VERSION < FCL_VERSION_CHECK(0, 6, 0))
         collision_links.clear();
         collision_links.resize(robot_model->getLinkModelCount());
+#endif
     }
 
     this->robot_model = robot_model;

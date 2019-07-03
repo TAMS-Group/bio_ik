@@ -297,6 +297,7 @@ public:
     }
 };
 
+#if (MOVEIT_FCL_VERSION < FCL_VERSION_CHECK(0, 6, 0))
 class TouchGoal : public LinkGoalBase
 {
     tf2::Vector3 position;
@@ -343,6 +344,7 @@ public:
     virtual void describe(GoalContext& context) const;
     virtual double evaluate(const GoalContext& context) const;
 };
+#endif
 
 class AvoidJointLimitsGoal : public Goal
 {

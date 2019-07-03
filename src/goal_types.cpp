@@ -42,6 +42,7 @@
 namespace bio_ik
 {
 
+#if (MOVEIT_FCL_VERSION < FCL_VERSION_CHECK(0, 6, 0))
 void TouchGoal::describe(GoalContext& context) const
 {
     LinkGoalBase::describe(context);
@@ -223,6 +224,7 @@ double TouchGoal::evaluate(const GoalContext& context) const
     }
     return dmin * dmin;
 }
+#endif
 
 void BalanceGoal::describe(GoalContext& context) const
 {
