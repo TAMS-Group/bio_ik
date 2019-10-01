@@ -51,8 +51,8 @@
 #include <urdf/model.h>
 #include <urdf_model/model.h>
 
-#include <tf2_eigen/tf2_eigen.h>
 #include <eigen_conversions/eigen_msg.h>
+#include <tf2_eigen/tf2_eigen.h>
 //#include <moveit/common_planning_interface_objects/common_objects.h>
 #include <moveit/kinematics_base/kinematics_base.h>
 #include <moveit/robot_model/robot_model.h>
@@ -188,7 +188,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
     // moveit::planning_interface::getSharedRobotModel(robot_description);
   }
 
-  bool load(std::string robot_description, std::string group_name) {
+  bool load(const moveit::core::RobotModelConstPtr &model,
+            std::string robot_description, std::string group_name) {
     LOG_FNC();
 
     // LOG_VAR(robot_description);
@@ -208,7 +209,11 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
 
     robot_model.reset(new robot_model::RobotModel(urdf_model, srdf));*/
 
-    robot_model = loadRobotModel(robot_description);
+    if (model) {
+      this->robot_model = model;
+    } else {
+      this->robot_model = loadRobotModel(robot_description);
+    }
 
     joint_model_group = robot_model->getJointModelGroup(group_name);
     if (!joint_model_group) {
@@ -349,7 +354,21 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
     LOG_FNC();
     setValues(robot_description, group_name, base_frame, tip_frames,
               search_discretization);
-    load(robot_description, group_name);
+    load(moveit::core::RobotModelConstPtr(), robot_description, group_name);
+    return true;
+  }
+
+  virtual bool initialize(const moveit::core::RobotModel &robot_model,
+                          const std::string &group_name,
+                          const std::string &base_frame,
+                          const std::vector<std::string> &tip_frames,
+                          double search_discretization) {
+    LOG_FNC();
+    setValues("", group_name, base_frame, tip_frames, search_discretization);
+    load(moveit::core::RobotModelConstPtr(
+             (moveit::core::RobotModel *)&robot_model,
+             [](const moveit::core::RobotModel *robot_model) {}),
+         "", group_name);
     return true;
   }
 
