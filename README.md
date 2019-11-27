@@ -425,7 +425,7 @@ and the `pr2_bioik_moveit` package into your catkin workspace:
     roscd
     cd src
     git clone https://github.com/PR2/pr2_common.git
-    git clone https://github.com/TAMS/pr2_bioik_moveit.git
+    git clone https://github.com/TAMS-Group/bioik_pr2.git
     catkin_make
   ```
 
