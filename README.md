@@ -387,7 +387,7 @@ new individuals are created by a set of mutation and recombination operators,
 resulting in good search-space exploration.
 
 See [3] and [4] for more details. See [5] and [6] for an in-depth explanation of an 
-earlier and simpler implementation of an evolutionary approach to animating video game characters.
+earlier evolutionary algorithm for animating video game characters.
 
 ## Running the Self-Tests
 
