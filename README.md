@@ -283,7 +283,7 @@ When you execute the code, the PR2 will reach for the valve wheel
 and turn it. Every once in a while it can't reach the valve with
 its current arm configuration and will regrasp the wheel.
 
-See [3], [4], [7] and [8] for more examples. 
+See [3] and [4] for more examples. 
 
 
 
@@ -465,8 +465,4 @@ For the FK-IK-FK performance test, please run
     IEEE Intl. Conference on Intelligent Robots and Systems (IROS-2017),
     September 24-28, 2017, Vancouver, Canada
    
- 7. Philipp Ruppel, Norman Hendrich, Jianwei Zhang, *Compliant Whole-Body Robot Control with Kinematic and Dynamic Constraints*, Workshop on Cognitive Whole-Body Control for Compliant Robot Manipulation, ICRA 2018, Brisbane, Australia.
-   
- 8. Philipp Ruppel, Norman Hendrich, Jianwei Zhang, *Simultaneous Online Optimization of Kinematic and Dynamic Constraints for Stable Robot Walking*, Workshop on Dynamic Legged Locomotion in Realistic Terrain, ICRA 2018, Brisbane, Australia.
-    
 
