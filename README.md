@@ -366,10 +366,7 @@ You can force a global optimizer to return a local minimum through regularizatio
 ## How it works
 
 The bio-ik solver is based on a memetic algorithm that combines
-traditional gradient-based search with a hybrid genetic
-and particle-swarm optimization [3].
-See [4] for the basic idea and the details of the evolutionary operators
-and [5] for the description of the algorithm applied to many IK and manipulation tasks.
+gradient-based optimization with genetic and particle swarm optimization.
 
 Internally, vectors of all robot joint values are used to encode
 different intermediate solutions (the *genotype* of the genetic algorithm).
@@ -389,7 +386,8 @@ If no solution is found from the gradient-based optimization,
 new individuals are created by a set of mutation and recombination operators,
 resulting in good search-space exploration.
 
-
+See [3] and [4] for more details. See [5] and [6] for an in-depth explanation of an 
+earlier and simpler implementation of an evolutionary approach for animating video game characters.
 
 
 ## Running the Self-Tests
@@ -449,19 +447,20 @@ For the FK-IK-FK performance test, please run
     An open-source library for improved solving of generic inverse kinematics*,
     Proceedings of the IEEE RAS Humanoids Conference, Seoul, Korea, November 2015.
 
- 3. Philipp Ruppel, Prformance optimization and implementation
+ 3. Philipp Ruppel, Norman Hendrich, Sebastian Starke, Jianwei Zhang, *Cost Functions to Specify Full-Body Motion and Multi-Goal Manipulation Tasks*, IEEE International Conference on Robotics and Automation, (ICRA-2018), Brisbane, Australia. DOI: [10.1109/ICRA.2018.8460799](http://doi.org/10.1109/ICRA.2018.8460799)
+
+ 4. Philipp Ruppel, *Performance optimization and implementation
     of evolutionary inverse kinematics in ROS*,
     MSc thesis, University of Hamburg, 2017
     [PDF](https://tams.informatik.uni-hamburg.de/publications/2017/MSc_Philipp_Ruppel.pdf)
 
-
- 4. Sebastian Starke, Norman Hendrich, Jianwei Zhang,  *A Memetic
+ 5. Sebastian Starke, Norman Hendrich, Jianwei Zhang,  *A Memetic
     Evolutionary Algorithm for Real-Time Articulated Kinematic Motion*,
     IEEE Intl. Congress on Evolutionary Computation (CEC-2017), p.2437-2479, June 4-8, 2017,
     San Sebastian, Spain.
     DOI: [10.1109/CEC.2017.7969605](http://doi.org/10.1109/CEC.2017.7969605)
 
- 5. Sebastian Starke, Norman Hendrich, Dennis Krupke, Jianwei Zhang, *Multi-Objective
+ 6. Sebastian Starke, Norman Hendrich, Dennis Krupke, Jianwei Zhang, *Multi-Objective
     Evolutionary Optimisation for Inverse Kinematics
     on Highly Articulated and Humanoid Robots*,
     IEEE Intl. Conference on Intelligent Robots and Systems (IROS-2017),
