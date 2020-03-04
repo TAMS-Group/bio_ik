@@ -83,9 +83,11 @@ struct IKParams
     bool linear_fitness;
 };
 
-#define ENABLE_LOG
+// Uncomment to enable logging
+//#define ENABLE_LOG
 
-#define ENABLE_PROFILER
+// Uncomment to enable profiling
+//#define ENABLE_PROFILER
 
 // logging
 
