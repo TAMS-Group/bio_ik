@@ -1,5 +1,17 @@
 # bio-ik
 
+## Disclaimer
+
+This repository provides a BSD-licensed standalone implementation
+of a variety of optimization methods to efficiently solve generalized inverse kinematics problems.
+
+The whole module was implemented by Philipp Ruppel as part of his Master Thesis.
+
+For a C++-based reimplementation of the original "BioIK" algorithm,
+as originally sold in the Unity store, you can use the non-default mode `bio1`.
+The default mode `bio2_memetic` shares no code with this implementation, was shown to outperform it
+in terms of success rate, precision and efficiency, and is actually usable for precise robotic applications [4].
+
 ## Installation and Setup
 
 You will need ROS version Indigo or newer (wiki.ros.org).
