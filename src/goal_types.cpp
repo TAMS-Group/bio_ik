@@ -97,7 +97,7 @@ void TouchGoal::describe(GoalContext& context) const
                             polygons.push_back(triangles[triangle_index * 3 + 1]);
                             polygons.push_back(triangles[triangle_index * 3 + 2]);
                         }
-                        // By default, planes are in the correct order
+                        // planes are given in the same order as the triangles, though redundant ones will appear only once.
                         for(const auto& plane : getPlanes())
                         {
                             // planes stored as Eigen::Vector4d(nx, ny, nz, d)
