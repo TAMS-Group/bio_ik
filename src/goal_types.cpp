@@ -80,25 +80,27 @@ void TouchGoal::describe(GoalContext& context) const
                     void init(const shapes::Shape* shape)
                     {
                         type_ = shapes::MESH;
-                        scaled_vertices_ = 0;
+                        scaled_vertices_ = nullptr;
                         {
                             static std::mutex mutex;
                             std::lock_guard<std::mutex> lock(mutex);
                             setDimensions(shape);
                         }
-                        for(auto& v : mesh_data_->vertices_)
+                        for(const auto& v : getVertices())
                             points.emplace_back(v.x(), v.y(), v.z());
-                        for(size_t triangle_index = 0; triangle_index < mesh_data_->triangles_.size() / 3; triangle_index++)
+
+                        const auto& triangles = getTriangles();
+                        for(size_t triangle_index = 0; triangle_index < triangles.size() / 3; triangle_index++)
                         {
                             polygons.push_back(3);
-                            polygons.push_back(mesh_data_->triangles_[triangle_index * 3 + 0]);
-                            polygons.push_back(mesh_data_->triangles_[triangle_index * 3 + 1]);
-                            polygons.push_back(mesh_data_->triangles_[triangle_index * 3 + 2]);
+                            polygons.push_back(triangles[triangle_index * 3 + 0]);
+                            polygons.push_back(triangles[triangle_index * 3 + 1]);
+                            polygons.push_back(triangles[triangle_index * 3 + 2]);
                         }
-                        for(size_t triangle_index = 0; triangle_index < mesh_data_->triangles_.size() / 3; triangle_index++)
+                        // By default, planes are in the correct order
+                        for(const auto& plane : getPlanes())
                         {
-                            auto plane_index = mesh_data_->plane_for_triangle_[triangle_index];
-                            auto plane = mesh_data_->planes_[plane_index];
+                            // planes stored as Eigen::Vector4d(nx, ny, nz, d)
                             plane_normals.emplace_back(plane.x(), plane.y(), plane.z());
                             plane_dis.push_back(plane.w());
                         }
