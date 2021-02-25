@@ -56,7 +56,7 @@ class RobotInfo
     std::vector<VariableInfo> variables;
     std::vector<size_t> activeVariables;
     std::vector<moveit::core::JointModel::JointType> variable_joint_types;
-    std::vector<bool> continuous_joints;
+    std::vector<bool> has_bounds;
     moveit::core::RobotModelConstPtr robot_model;
 
     __attribute__((always_inline)) static inline double clamp2(double v, double lo, double hi)
@@ -98,7 +98,7 @@ public:
             info.max_velocity_rcp = info.max_velocity > 0.0 ? 1.0 / info.max_velocity : 0.0;
 
             variables.push_back(info);
-            continuous_joints.push_back(!bounded);
+            has_bounds.push_back(!bounded);
         }
 
         for(size_t ivar = 0; ivar < model->getVariableCount(); ivar++)
@@ -122,7 +122,7 @@ public:
 
     inline bool isRevolute(size_t variable_index) const { return variable_joint_types[variable_index] == moveit::core::JointModel::REVOLUTE; }
     inline bool isPrismatic(size_t variable_index) const { return variable_joint_types[variable_index] == moveit::core::JointModel::PRISMATIC; }
-    inline bool isContinuous(size_t variable_index) const { return continuous_joints[variable_index]; }
+    inline bool hasBounds(size_t variable_index) const { return has_bounds[variable_index]; }
     inline double getMaxVelocity(size_t i) const { return variables[i].max_velocity; }
     inline double getMaxVelocityRcp(size_t i) const { return variables[i].max_velocity_rcp; }
 };
