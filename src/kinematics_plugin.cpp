@@ -583,8 +583,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
       if (robot_info.isRevolute(ivar) &&
           robot_model->getMimicJointModels().empty()) {
         auto r = problem.initial_guess[ivar];
-        auto lo = robot_info.getMin(ivar);
-        auto hi = robot_info.getMax(ivar);
+        auto lo = robot_info.getClipMin(ivar);
+        auto hi = robot_info.getClipMax(ivar);
 
         // move close to initial guess
         if (r < v - M_PI || r > v + M_PI) {
@@ -610,10 +610,14 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
           v = hi;
       }
       state[ivar] = v;
-    }
 
-    // wrap angles
-    robot_model->enforcePositionBounds(state.data());
+      // wrap angles that are not continuous
+      if(!robot_info.isContinuous(ivar))
+      {
+        auto* joint_model = robot_model->getJointOfVariable(ivar);
+        joint_model->enforcePositionBounds(state.data() + ivar, joint_model->getVariableBounds());
+      }
+    }
 
     // map result to jointgroup variables
     {
