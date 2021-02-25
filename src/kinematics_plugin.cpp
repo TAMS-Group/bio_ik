@@ -611,8 +611,8 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
       }
       state[ivar] = v;
 
-      // wrap angles that are not continuous
-      if(!robot_info.hasBounds(ivar))
+      // wrap angles that are bounded
+      if(robot_info.hasBounds(ivar))
       {
         auto* joint_model = robot_model->getJointOfVariable(ivar);
         joint_model->enforcePositionBounds(state.data() + ivar, joint_model->getVariableBounds());

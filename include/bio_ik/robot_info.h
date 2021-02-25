@@ -98,7 +98,7 @@ public:
             info.max_velocity_rcp = info.max_velocity > 0.0 ? 1.0 / info.max_velocity : 0.0;
 
             variables.push_back(info);
-            has_bounds.push_back(!bounded);
+            has_bounds.push_back(bounded);
         }
 
         for(size_t ivar = 0; ivar < model->getVariableCount(); ivar++)
