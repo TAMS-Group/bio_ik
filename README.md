@@ -477,4 +477,8 @@ For the FK-IK-FK performance test, please run
     IEEE Intl. Conference on Intelligent Robots and Systems (IROS-2017),
     September 24-28, 2017, Vancouver, Canada
    
- 7. https://tams-group.github.io/bio_ik/
+## Links
+
+- https://tams-group.github.io/bio_ik/
+- https://github.com/TAMS-Group/bio_ik
+- http://doi.org/10.1109/ICRA.2018.8460799
