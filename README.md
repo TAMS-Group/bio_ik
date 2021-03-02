@@ -479,6 +479,7 @@ For the FK-IK-FK performance test, please run
    
 ## Links
 
+- http://doi.org/10.1109/ICRA.2018.8460799
 - https://tams-group.github.io/bio_ik/
 - https://github.com/TAMS-Group/bio_ik
-- http://doi.org/10.1109/ICRA.2018.8460799
+
