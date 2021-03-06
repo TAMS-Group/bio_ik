@@ -1,6 +1,0 @@
-<map id="bio_ik::RobotFK_Fast_Base" name="bio_ik::RobotFK_Fast_Base">
-<area shape="rect" id="node3" href="$classbio__ik_1_1RobotFK__Fast.html" title="bio_ik::RobotFK_Fast" alt="" coords="24,155,173,181"/>
-<area shape="rect" id="node2" href="$classbio__ik_1_1RobotJointEvaluator.html" title="bio_ik::RobotJointEvaluator" alt="" coords="7,5,190,32"/>
-<area shape="rect" id="node4" href="$classbio__ik_1_1RobotFK__Jacobian.html" title="bio_ik::RobotFK_Jacobian" alt="" coords="11,229,186,256"/>
-<area shape="rect" id="node5" href="$classbio__ik_1_1RobotFK__Mutator.html" title="bio_ik::RobotFK_Mutator" alt="" coords="15,304,182,331"/>
-</map>
