@@ -300,9 +300,9 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
         double weight = 0;
         lookupParam("center_joints_weight", weight, weight);
         if (weight > 0.0) {
-          auto *avoid_joint_limits_goal = new bio_ik::CenterJointsGoal();
-          avoid_joint_limits_goal->setWeight(weight);
-          default_goals.emplace_back(avoid_joint_limits_goal);
+          auto *center_joints_goal = new bio_ik::CenterJointsGoal();
+          center_joints_goal->setWeight(weight);
+          default_goals.emplace_back(center_joints_goal);
         }
       }
 
