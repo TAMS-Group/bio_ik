@@ -282,6 +282,7 @@ public:
         }
 
         active_variables.clear();
+        variable_to_link_map.clear();
         for(auto* link_model : link_schedule)
         {
             auto link_index = link_model->getLinkIndex();
