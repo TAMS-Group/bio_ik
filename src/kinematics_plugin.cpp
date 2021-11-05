@@ -253,6 +253,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
                 std::string("bio2_memetic"));
     lookupParam("counter", ikparams.enable_counter, false);
     lookupParam("threads", ikparams.thread_count, 0);
+    lookupParam("random_seed", ikparams.random_seed, static_cast<int>(std::random_device()()));
 
     // initialize parameters for Problem
     lookupParam("dpos", ikparams.dpos, DBL_MAX);

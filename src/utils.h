@@ -70,6 +70,7 @@ struct IKParams
     std::string solver_class_name;
     bool enable_counter;
     int thread_count;
+    int random_seed;
 
     //Problem parameters
     double dpos;
