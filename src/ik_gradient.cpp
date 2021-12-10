@@ -211,6 +211,10 @@ template <int if_stuck, size_t threads> struct IKGradientDescent : IKBase
         double cost_diff = (p3 - p1) * 0.5;
         double joint_diff = p2 / cost_diff;
 
+        // in case cost_diff is 0
+        if(!std::isfinite(joint_diff))
+            joint_diff = 0.0;
+
         // apply optimization step
         // (move along gradient direction by estimated step size)
         for(auto ivar : problem.active_variables)
