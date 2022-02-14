@@ -81,8 +81,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options(-frecord-gcc-switches)
 endif()
 
-add_compile_options(-std=c++11)
-
 add_compile_options($<$<CONFIG:Release>:-O3>)
 add_compile_options($<$<CONFIG:Release>:-ftree-vectorize>)
 add_compile_options($<$<CONFIG:Release>:-ffast-math>)
