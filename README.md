@@ -14,21 +14,9 @@ in terms of success rate, precision and efficiency, and is actually usable for p
 
 ## Installation and Setup
 
-You will need ROS version Indigo or newer (wiki.ros.org).
-The software was developed on Ubuntu Linux 16.04 LTS with ROS Kinetic,
-but has also been tested on Ubuntu Linux 14.04 LTS with ROS Indigo.
-Newer versions of ROS should work, but may need some adaptation.
-See below for version specific instructions.
+You will need ROS version Galactic or newer.
 
-* Download the `bio_ik` package and unpack into your catkin workspace.
-* Run `catkin_make` to compile your workspace:
-  ```
-    roscd
-    cd src
-    git clone https://github.com/TAMS-Group/bio_ik.git
-    roscd
-    catkin_make
-  ```
+* Download the `bio_ik` package - `ros2` branch and unpack into your colcon workspace, build as usual.
 
 * Configure Moveit to use bio-ik as the kinematics solver (see next section).
 * Use Moveit to plan and execute motions or use your own code
