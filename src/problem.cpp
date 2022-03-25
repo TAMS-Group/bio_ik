@@ -32,7 +32,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-#include "ik_base.h"
+#include "bio_ik/ik_base.h"
 
 #include <geometric_shapes/bodies.h>
 #include <geometric_shapes/shapes.h>

@@ -36,8 +36,10 @@
 
 #include <gtest/gtest.h>
 
-#include "../src/utils.h"
-#include "../src/frame.h"
+#include "../include/bio_ik/utils.h"
+#include "../include/bio_ik/frame.h"
+
+#include <random>
 
 using namespace bio_ik;
 

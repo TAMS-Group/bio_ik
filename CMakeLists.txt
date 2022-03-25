@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.10.2)
 project(bio_ik)
 
 if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
@@ -6,17 +6,22 @@ if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-find_package(catkin REQUIRED COMPONENTS
-  eigen_conversions
-  moveit_core
-  moveit_ros_planning
-  pluginlib
-  roscpp
-  tf2
-  tf2_eigen
-  tf2_kdl
-  tf2_geometry_msgs
-)
+# Common cmake code applied to all moveit packages
+find_package(moveit_common REQUIRED)
+moveit_package()
+
+find_package(ament_cmake REQUIRED)
+# find_package(eigen_conversions REQUIRED)
+find_package(moveit_core REQUIRED)
+find_package(moveit_ros_planning REQUIRED)
+find_package(pluginlib REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_eigen REQUIRED)
+find_package(tf2_kdl REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+
+set(MOVEIT_LIB_NAME moveit_bio_ik_kinematics_plugin)
 
 find_package(OpenMP)
 # the specific flag is not yet present in cmake 2.8.12
@@ -63,19 +68,13 @@ else()
     set(CPPOPTLIB_INCLUDE_DIRS)
 endif()
 
-catkin_package(
-    INCLUDE_DIRS include
-    LIBRARIES ${PROJECT_NAME}
-    CATKIN_DEPENDS
-        eigen_conversions
-        moveit_core
-        moveit_ros_planning
-        pluginlib
-        roscpp
-        tf2
-        tf2_kdl
-        tf2_geometry_msgs
+set(THIS_PACKAGE_INCLUDE_DIRS
+    bio_ik/include
 )
+
+pluginlib_export_plugin_description_file(moveit_core bio_ik_kinematics_plugin_description.xml)
+
+include_directories(${THIS_PACKAGE_INCLUDE_DIRS})
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options(-frecord-gcc-switches)
@@ -85,40 +84,34 @@ add_compile_options($<$<CONFIG:Release>:-O3>)
 add_compile_options($<$<CONFIG:Release>:-ftree-vectorize>)
 add_compile_options($<$<CONFIG:Release>:-ffast-math>)
 
-include_directories(
-    include
-    ${FANN_INCLUDE_DIRS}
-    ${CPPOPTLIB_INCLUDE_DIRS}
-    ${catkin_INCLUDE_DIRS}
-)
+include_directories(include)
 
-set(SOURCES
+add_library(${MOVEIT_LIB_NAME} SHARED
     src/goal_types.cpp
     src/kinematics_plugin.cpp
     src/problem.cpp
-
-    src/ik_test.cpp
-    src/ik_gradient.cpp
     src/ik_evolution_1.cpp
     src/ik_evolution_2.cpp
 )
 
+target_include_directories(${MOVEIT_LIB_NAME} PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<INSTALL_INTERFACE:include>"
+)
+
 if(USE_FANN)
-    list(APPEND SOURCES src/ik_neural.cpp)
+    list(APPEND THIS_PACKAGE_SOURCE_FILES src/ik_neural.cpp)
 endif()
 
 if(USE_CPPOPTLIB)
-    list(APPEND SOURCES src/ik_cppoptlib.cpp)
+    list(APPEND THIS_PACKAGE_SOURCE_FILES src/ik_cppoptlib.cpp)
 endif()
-
-add_library(${PROJECT_NAME} ${SOURCES})
 
 set_target_properties(${MOVEIT_LIB_NAME} PROPERTIES VERSION ${${PROJECT_NAME}_VERSION})
 
-add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES}
+target_link_libraries(${MOVEIT_LIB_NAME}
   ${FANN_LIBRARIES}
   ${OpenMP_LIBS}
 
@@ -126,8 +119,44 @@ target_link_libraries(${PROJECT_NAME}
   -static-libstdc++
 )
 
-install(DIRECTORY include/${PROJECT_NAME}/ DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
+ament_target_dependencies(${MOVEIT_LIB_NAME}
+    # eigen_conversions
+    moveit_core
+    moveit_ros_planning
+    pluginlib
+    rclcpp
+    tf2
+    tf2_kdl
+    tf2_geometry_msgs
+    EIGEN3
+)
 
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+target_compile_definitions(${MOVEIT_LIB_NAME} PRIVATE "MOVEIT_TRAC_IK_KINEMATICS_PLUGIN_BUILDING_DLL")
 
-install(FILES bio_ik_kinematics_description.xml DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+# # prevent pluginlib from using boost
+# target_compile_definitions(${MOVEIT_LIB_NAME} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
+# # Causes the visibility macros to use dllexport rather than dllimport,
+# # which is appropriate when building the dll but not consuming it.
+# target_compile_definitions(${MOVEIT_LIB_NAME} PRIVATE "MOVEIT_BIO_IK_KINEMATICS_PLUGIN_BUILDING_DLL")
+
+ament_export_targets(${MOVEIT_LIB_NAME} HAS_LIBRARY_TARGET)
+
+install(
+    DIRECTORY include/${PROJECT_NAME}/
+    DESTINATION include/${PROJECT_NAME}
+)
+
+install(
+  TARGETS ${MOVEIT_LIB_NAME}
+  EXPORT ${MOVEIT_LIB_NAME}
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
+)
+
+ament_export_include_directories(include)
+ament_export_libraries(${MOVEIT_LIB_NAME})
+ament_export_targets(${MOVEIT_LIB_NAME})
+ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS})
+ament_package()

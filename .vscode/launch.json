@@ -1,0 +1,42 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "C++ Debugger",
+            "request": "attach",
+            "type": "cppdbg",
+            "miDebuggerServerAddress": "localhost:3000",
+            "cwd": "/",
+            // "target": "ros2 launch roboct_moveit_commander commander_run_debug.launch.py",
+            "program": "${workspaceFolder}/../../build/roboct_moveit_commander/roboct_moveit_commander",
+            "preLaunchTask": "Launch Debug",
+            "problemMatcher": [
+                {
+                  "pattern": [
+                    {
+                      "regexp": ".",
+                      "file": 1,
+                      "location": 2,
+                      "message": 3
+                    }
+                  ],
+                  "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".",
+                    "endsPattern": ".",
+                  }
+                }
+              ]
+        }
+    ]
+}

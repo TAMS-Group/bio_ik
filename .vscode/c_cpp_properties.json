@@ -1,0 +1,30 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "browse": {
+                "databaseFilename": "",
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "/opt/ros/galactic/include/**",
+                "~/moveit2_ws/src/**",
+                "~/moveit2_ws/install/**",
+                "~/moveit2_ws/src/moveit2/**",
+                "~/moveit2_ws/src/srdfdom/**",
+                "~/moveit2_ws/install/moveit_msgs/include/**",
+                "~/ros2_pkgs/src/**",
+                "/usr/include/**",
+                "~/roboct_ws/src/**",
+                "~/roboct_ws/src/roboct_moveit_commander/**",
+                "~/roboct_ws/install/roboct_interfaces/include/**",
+                "${workspaceFolder}/include/**"
+            ],
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "c11",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}
