@@ -1,4 +1,4 @@
-# bio-ik
+# bio_ik
 
 ## Disclaimer
 
@@ -30,7 +30,7 @@ See below for version specific instructions.
     catkin_make
   ```
 
-* Configure Moveit to use bio-ik as the kinematics solver (see next section).
+* Configure Moveit to use bio_ik as the kinematics solver (see next section).
 * Use Moveit to plan and execute motions or use your own code
   together with `move_group` node to move your robot.
 * As usual, the public API is specified in the public header files for the `bio_ik` package,
@@ -41,22 +41,22 @@ See below for version specific instructions.
 ## Basic Usage
 
 For ease of use and compatibility with existing code,
-the bio-ik algorithm is encapsulated as a Moveit kinematics plugin.
-Therefore, bio-ik can be used as a direct replacement of
+the bio_ik algorithm is encapsulated as a Moveit kinematics plugin.
+Therefore, bio_ik can be used as a direct replacement of
 the default Orocos/KDL-based IK solver.
 Given the name of an end-effector and a 6-DOF target pose,
-bio-ik will search a valid robot joint configuration that reaches the given target.
+bio_ik will search a valid robot joint configuration that reaches the given target.
 
 In our tests (see below), both in terms of success rate and solution time,
-bio-ik regularly outperformed the Orocos [1] solver
+bio_ik regularly outperformed the Orocos [1] solver
 and is competitive with trac-ik [2].
-The bio-ik algorithm can also be used for high-DOF system like robot snakes,
+The bio_ik algorithm can also be used for high-DOF system like robot snakes,
 and it will automatically converge to the best approximate solutions
 for low-DOF arms where some target poses are not reachable exactly.
 
 While you can write the Moveit configuration files by hand,
 the easiest way is to run the Moveit setup assistant for your robot,
-and then to select bio-ik as the IK solver when configuring the end effectors.
+and then to select bio_ik as the IK solver when configuring the end effectors.
 Once configured, the solver can be called using the standard Moveit API
 or used interactively from rviz using the MotionPlanning GUI plugin.
 
@@ -69,7 +69,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
   ```
 *  The setup assistant automatically searches for all available IK solver plugins
   in your workspace.
-  Therefore, you can just select select bio-ik as the IK solver
+  Therefore, you can just select select bio_ik as the IK solver
   from the drop-down list for every end effector and then configure
   the kinematics parameters, namely the default position accuracy (meters)
   and the timeout (in seconds). For typical 6-DOF or 7-DOF arms,
@@ -100,7 +100,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
       kinematics_solver_timeout: 0.02
       kinematics_solver_attempts: 1
 
-    # optional bio-ik configuration parameters
+    # optional bio_ik configuration parameters
     #  center_joints_weight: 1
     #  minimal_displacement_weight: 1
     #  avoid_joint_limits_weight: 1
@@ -111,9 +111,9 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
   enable the motion planning plugin, then select one of the end effectors
   of you robot. Rviz should show an 6-D (position and orientation)
   interactive marker for the selected end-effector(s).
-  Move the interactive marker and watch bio-ik calculating poses for your robot.
+  Move the interactive marker and watch bio_ik calculating poses for your robot.
 
-  If you also installed the bio-ik demo (see below), you should be able
+  If you also installed the bio_ik demo (see below), you should be able
   to run one of the predefined demos:
   ```
     roslaunch pr2_bioik_moveit demo.launch
@@ -121,7 +121,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
     roslaunch pr2_bioik_moveit dance.launch
   ```
 
-* You are now ready to use bio-ik from your C/C++ and Python programs,
+* You are now ready to use bio_ik from your C/C++ and Python programs,
   using the standard Moveit API.
   To explicitly request an IK solution in C++:
   ```
@@ -136,7 +136,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
 
     robot_state::RobotState robot_state_ik(robot_model);
 
-    // traditional "basic" bio-ik usage. The end-effector goal poses
+    // traditional "basic" bio_ik usage. The end-effector goal poses
     // and end-effector link names are passed into the setFromIK()
     // call. The KinematicsQueryOptions are empty.
     //
@@ -164,14 +164,14 @@ a single end-effector pose. Typical examples include
 * incremental tool motions without robot arm configuration changes
 * and many more
 
-In bio-ik, such tasks are specified as a combination of multiple
+In bio_ik, such tasks are specified as a combination of multiple
 individual *goals*.  
 The algorithm then tries to find a robot configuration
 that fulfills all given goals simultaneously by minimizing
 a quadratic error function built from the weighted individual goals.
 While the current Moveit API does not support multiple-goals tasks directly,
 it provides the KinematicQueryOptions class.
-Therefore, bio-ik simply provides a set of predefined motion goals,
+Therefore, bio_ik simply provides a set of predefined motion goals,
 and a combination of the user-specified goals is passed via Moveit to the IK solver.
 No API changes are required in Moveit, but using the IK solver now consists
 passing the weighted goals via the KinematicQueryOptions.
@@ -274,7 +274,7 @@ poses in a loop:
         lookat_goal->setAxis(tf::Vector3(1, 0, 0));
         lookat_goal->setTarget(rr_goal->getPosition());
 
-        // "advanced" bio-ik usage. The call parameters for the end-effector
+        // "advanced" bio_ik usage. The call parameters for the end-effector
         // poses and end-effector link names are left empty; instead the
         // requested goals and weights are passed via the ik_options object.
         //
@@ -362,7 +362,7 @@ You can force a global optimizer to return a local minimum through regularizatio
   on a 6-DOF arm with one extra joint. Typically, the value of the extra
   joint can be specified, and an IK solution is then searched for the
   remaining six joints.
-  This behaviour can be achieved in bio-ik by combining a *PoseGoal*
+  This behaviour can be achieved in bio_ik by combining a *PoseGoal*
   for the end-effector with a *JointPositionGoal* for one (any one)
   of the robot joints.
 
@@ -377,7 +377,7 @@ You can force a global optimizer to return a local minimum through regularizatio
 
 ## How it works
 
-The bio-ik solver is based on a memetic algorithm that combines
+The bio_ik solver is based on a memetic algorithm that combines
 gradient-based optimization with genetic and particle swarm optimization.
 
 Internally, vectors of all robot joint values are used to encode
@@ -403,7 +403,7 @@ earlier evolutionary algorithm for animating video game characters.
 
 ## Running the Self-Tests
 
-We have tested bio-ik on many different robot arms,
+We have tested bio_ik on many different robot arms,
 both using the tranditional single end-effector API
 and the advanced multi end-effector API based on the KinematicsQueryOptions.
 
@@ -419,11 +419,11 @@ for the selected IK solver.
 
 Of course, running the tests requires installing the corresponding robot
 models and adds a lot of dependencies.
-Therefore, those tests are not included in the standard bio-ik package,
+Therefore, those tests are not included in the standard bio_ik package,
 but are packaged separately.
 
 For convenience, we provide the `pr2_bioik_moveit` package,
-which also includes a few bio-ik demos for the PR2 service robot.
+which also includes a few bio_ik demos for the PR2 service robot.
 These are kinematics only demos; but of course you can also try
 running the demos on the real robot (if you have one) or the Gazebo
 simulator (if you installed Gazebo).
