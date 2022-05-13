@@ -128,7 +128,7 @@ public:
         Frame frame;
         GoalContext goal_context;
     };
-    double timeout;
+    std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>> timeout;
     std::vector<double> initial_guess;
     std::vector<size_t> active_variables;
     std::vector<size_t> tip_link_indices;

@@ -14,20 +14,18 @@ in terms of success rate, precision and efficiency, and is actually usable for p
 
 ## Installation and Setup
 
-You will need ROS version Indigo or newer (wiki.ros.org).
-The software was developed on Ubuntu Linux 16.04 LTS with ROS Kinetic,
-but has also been tested on Ubuntu Linux 14.04 LTS with ROS Indigo.
-Newer versions of ROS should work, but may need some adaptation.
+You will need ROS 2 version Galactic or newer: [https://docs.ros.org/en/galactic/Installation.html](https://docs.ros.org/en/galactic/Installation.html).
+This version of the software was developed on Ubuntu Linux 20.04 LTS with ROS 2 Galactic.
+Newer versions of ROS 2 should work, but may need some adaptation.
 See below for version specific instructions.
 
-* Download the `bio_ik` package and unpack into your catkin workspace.
-* Run `catkin_make` to compile your workspace:
+* Download the `bio_ik` package and unpack into your colcon workspace.
+* Run `colcon build --mixin release` to compile your workspace:
   ```
-    roscd
-    cd src
-    git clone https://github.com/TAMS-Group/bio_ik.git
-    roscd
-    catkin_make
+    cd <PATH TO WORKSPACE>/src
+    git clone -b ros2 https://github.com/TAMS-Group/bio_ik.git
+    cd ..
+    colcon build --mixin release
   ```
 
 * Configure Moveit to use bio_ik as the kinematics solver (see next section).
@@ -107,24 +105,51 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
   ```
 
 
-* For a first test, run the Moveit-created demo launch. Once rviz is running,
-  enable the motion planning plugin, then select one of the end effectors
-  of you robot. Rviz should show an 6-D (position and orientation)
-  interactive marker for the selected end-effector(s).
-  Move the interactive marker and watch bio_ik calculating poses for your robot.
+* For a first test, follow the [Quickstart in Rviz](https://moveit.picknik.ai/galactic/doc/tutorials/quickstart_in_rviz/quickstart_in_rviz_tutorial.html)
+  MoveIt2 tutorial. Before building your workspace, be sure to replace the kinematics solver for the Panda robot in
+  `<colcon workspace>/src/moveit_resources/panda_moveit_config/config/kinematics.yaml` as shown below:
 
-  If you also installed the bio_ik demo (see below), you should be able
-  to run one of the predefined demos:
+
+  ```yaml
+  panda_arm:
+    kinematics_solver: bio_ik/BioIKKinematicsPlugin
+    kinematics_solver_search_resolution: 0.005
+    kinematics_solver_timeout: 0.005
+    kinematics_solver_attempts: 1
   ```
-    roslaunch pr2_bioik_moveit demo.launch
-    roslaunch pr2_bioik_moveit valve.launch
-    roslaunch pr2_bioik_moveit dance.launch
+
+  To use a solver class besides the default `bio2_memetic`, the ROS param `robot_description_kinematics.panda_arm.mode` must be set to one
+  of the options [below](#disabling-global-optimization) (e.g. 'gd_c'). For a different robot, replace `panda_arm` in the parameter with your robot's group name.
+  To make this change for the Quickstart in Rviz tutorial, edit the rviz node within `<colcon workspace>/src/moveit2_tutorials/doc/tutorials/quickstart_in_rviz/launch/demo.launch.py` as such:
+
+  ```python
+  rviz_node_tutorial = Node(
+    package="rviz2",
+    executable="rviz2",
+    name="rviz2",
+    output="log",
+    arguments=["-d", rviz_empty_config],
+    parameters=[
+        robot_description,
+        robot_description_semantic,
+        ompl_planning_pipeline_config,
+        kinematics_yaml,
+        {"robot_description_kinematics.panda_arm.mode": "gd_c"} # use gd_c solver instead of default "bio2_memetic"
+    ],
+    condition=IfCondition(tutorial_mode),
+  )
   ```
+
+  Once you make this change, remember to rebuild your workspace.
+
+  After enabling the Motion Planning Plugin in Rviz, check the "Approx IK Solutions" box before attempting to move the arm.
+
 
 * You are now ready to use bio_ik from your C/C++ and Python programs,
   using the standard Moveit API.
   To explicitly request an IK solution in C++:
-  ```
+
+  ```c++
     robot_model_loader::RobotModelLoader robot_model_loader(robot);
 
     auto robot_model = robot_model_loader.getModel();
@@ -136,15 +161,16 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
 
     robot_state::RobotState robot_state_ik(robot_model);
 
-    // traditional "basic" bio_ik usage. The end-effector goal poses
-    // and end-effector link names are passed into the setFromIK()
-    // call. The KinematicsQueryOptions are empty.
-    //
+    const geometry_msgs::msg::Pose pose;
+
+    // Several overloads for setFromIK are available
+    // here, we plass the joint model group, desired pose, and a timeout.
+    // We can leave the callback and options empty.
+    // Several desired poses can be passed with a separate overload
     bool ok = robot_state_ik.setFromIK(
                 joint_model_group, // joints to be used for IK
-                tip_transforms,    // multiple end-effector goal poses
-                tip_names,         // names of the end-effector links
-                attempts, timeout, // solver attempts and timeout
+                pose,    // end-effector goal pose
+                timeout, // solver attempts and timeout
                 moveit::core::GroupStateValidityCallbackFn(),
                 opts               // mostly empty
               );
@@ -239,7 +265,7 @@ All of this is specified easily:
     auto* torso_goal = new bio_ik::PositionGoal();
     torso_goal->setLinkName("torso_lift_link");
     torso_goal->setWeight(1);
-    torso_goal->setPosition(tf::Vector3( -0.05, 0, 1.0 ));
+    torso_goal->setPosition(tf2::Vector3( -0.05, 0, 1.0 ));
     ik_options.goals.emplace_back(torso_goal);
   ```
 
@@ -247,7 +273,7 @@ For the actual turning motion, we calculate a set of required gripper
 poses in a loop:
   ```
     for(int i = 0; ; i++) {
-        tf::Vector3 center(0.7, 0, 1);
+        tf2::Vector3 center(0.7, 0, 1);
 
         double t = i * 0.1;
         double r = 0.1;
@@ -256,9 +282,9 @@ poses in a loop:
         double dy = cos(a) * r;
         double dz = sin(a) * r;
 
-        tf::Vector3 dl(dx, +dy, +dz);
-        tf::Vector3 dr(dx, -dy, -dz);
-        tf::Vector3 dg = tf::Vector3(0, cos(a), sin(a)) * (0.025 + fmin(0.025, fmax(0.0, cos(t) * 0.1)));
+        tf2::Vector3 dl(dx, +dy, +dz);
+        tf2::Vector3 dr(dx, -dy, -dz);
+        tf2::Vector3 dg = tf2::Vector3(0, cos(a), sin(a)) * (0.025 + fmin(0.025, fmax(0.0, cos(t) * 0.1)));
 
         ll_goal->setPosition(center + dl + dg);
         lr_goal->setPosition(center + dl - dg);
@@ -266,12 +292,12 @@ poses in a loop:
         rr_goal->setPosition(center + dr - dg);
 
         double ro = 0;
-        ll_goal->setOrientation(tf::Quaternion(tf::Vector3(1, 0, 0), a + ro));
-        lr_goal->setOrientation(tf::Quaternion(tf::Vector3(1, 0, 0), a + ro));
-        rl_goal->setOrientation(tf::Quaternion(tf::Vector3(1, 0, 0), a + ro));
-        rr_goal->setOrientation(tf::Quaternion(tf::Vector3(1, 0, 0), a + ro));
+        ll_goal->setOrientation(tf2::Quaternion(tf2::Vector3(1, 0, 0), a + ro));
+        lr_goal->setOrientation(tf2::Quaternion(tf2::Vector3(1, 0, 0), a + ro));
+        rl_goal->setOrientation(tf2::Quaternion(tf2::Vector3(1, 0, 0), a + ro));
+        rr_goal->setOrientation(tf2::Quaternion(tf2::Vector3(1, 0, 0), a + ro));
 
-        lookat_goal->setAxis(tf::Vector3(1, 0, 0));
+        lookat_goal->setAxis(tf2::Vector3(1, 0, 0));
         lookat_goal->setTarget(rr_goal->getPosition());
 
         // "advanced" bio_ik usage. The call parameters for the end-effector
@@ -279,12 +305,12 @@ poses in a loop:
         // requested goals and weights are passed via the ik_options object.
         //
         robot_state.setFromIK(
-                      joint_model_group,           // active PR2 joints
-                      EigenSTL::vector_Affine3d(), // no explicit poses here
-                      std::vector<std::string>(),  // no end effector links here
-                      0, 0.0,                      // take values from YAML file
+                      joint_model_group,             // active PR2 joints
+                      EigenSTL::vector_Isometry3d(), // no explicit poses here
+                      std::vector<std::string>(),    // no end effector links here
+                      0.0,                           // take value from YAML file
                       moveit::core::GroupStateValidityCallbackFn(),
-                      ik_options       // four gripper goals and secondary goals
+                      ik_options                     // four gripper goals and secondary goals
                     );
 
         ... // check solution validity and actually move the robot
