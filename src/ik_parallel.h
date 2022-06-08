@@ -97,7 +97,7 @@ struct IKParallel
     std::vector<double> solver_fitness;
     int thread_count;
     // std::vector<RobotFK_Fast> fk; // TODO: remove
-    double timeout;
+    std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>> timeout;
     bool success;
     std::atomic<int> finished;
     std::atomic<uint32_t> iteration_count;
@@ -157,7 +157,7 @@ private:
         }
 
         // run solver iterations until solution found or timeout
-        for(size_t iteration = 0; (ros::WallTime::now().toSec() < timeout && finished == 0) || (iteration == 0 && i == 0); iteration++)
+        for(size_t iteration = 0; (std::chrono::system_clock::now() < timeout && finished == 0) || (iteration == 0 && i == 0); iteration++)
         {
             if(finished) break;
 
@@ -165,7 +165,7 @@ private:
             solvers[i]->step();
             iteration_count++;
             for(int it2 = 1; it2 < 4; it2++)
-                if(ros::WallTime::now().toSec() < timeout && finished == 0) solvers[i]->step();
+                if(std::chrono::system_clock::now() < timeout && finished == 0) solvers[i]->step();
 
             if(finished) break;
 
