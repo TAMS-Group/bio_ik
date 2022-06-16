@@ -8,14 +8,22 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_ros REQUIRED)
-find_package(Eigen3 REQUIRED)
-find_package(moveit_core REQUIRED)
-find_package(moveit_ros_planning REQUIRED)
-find_package(pluginlib REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(tf2_eigen REQUIRED)
-find_package(tf2_kdl REQUIRED)
-find_package(tf2_geometry_msgs REQUIRED)
+
+set(THIS_PACKAGE_INCLUDE_DEPENDS
+  Eigen3
+  moveit_core
+  moveit_ros_planning
+  pluginlib
+  rclcpp
+  tf2_eigen
+  tf2_ros
+  tf2_kdl
+  tf2_geometry_msgs
+)
+
+foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
+  find_package(${Dependency} REQUIRED)
+endforeach()
 
 find_package(OpenMP)
 # the specific flag is not yet present in cmake 2.8.12
@@ -103,15 +111,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 ament_target_dependencies(
   ${PROJECT_NAME}
   PUBLIC
-    Eigen3
-    moveit_core
-    moveit_ros_planning
-    pluginlib
-    rclcpp
-    tf2_eigen
-    tf2_ros
-    tf2_kdl
-    tf2_geometry_msgs
+    ${THIS_PACKAGE_INCLUDE_DEPENDS}
 )
 
 target_link_libraries(
@@ -169,6 +169,8 @@ ament_export_libraries(
 ament_export_targets(
   export_${PROJECT_NAME}
 )
+
+ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)

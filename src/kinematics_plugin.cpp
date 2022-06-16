@@ -148,6 +148,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
   EigenSTL::vector_Isometry3d tip_reference_frames;
 
   mutable std::vector<std::unique_ptr<Goal>> default_goals;
+  mutable std::vector<std::unique_ptr<Goal>> moveit_cost_fn_goals;
 
   mutable std::vector<const bio_ik::Goal *> all_goals;
 
@@ -362,6 +363,26 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
       int test;
   };*/
 
+  bool
+  searchPositionIK(const std::vector<geometry_msgs::msg::Pose>& ik_poses, const std::vector<double>& ik_seed_state,
+                   double timeout, const std::vector<double>& consistency_limits, std::vector<double>& solution,
+                   const IKCallbackFn& solution_callback, IKCostFn cost_function, moveit_msgs::msg::MoveItErrorCodes& error_code,
+                   const kinematics::KinematicsQueryOptions& options = kinematics::KinematicsQueryOptions(),
+                   const moveit::core::RobotState* context_state = nullptr) const override
+  {
+    moveit_cost_fn_goals.clear();
+    // make sure we aren't trying to call an empty function later
+    if (cost_function)
+    {
+      for (const auto& p : ik_poses)
+      {
+        moveit_cost_fn_goals.emplace_back(std::make_unique<IKCostFnGoal>(p, cost_function, robot_model_));
+      }
+    }
+    return searchPositionIK(ik_poses, ik_seed_state, timeout, consistency_limits, solution, solution_callback,
+                     error_code, options, context_state);
+  }
+
   virtual bool
   searchPositionIK(const std::vector<geometry_msgs::msg::Pose> &ik_poses,
                    const std::vector<double> &ik_seed_state, double timeout,
@@ -475,6 +496,9 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
       if (bio_ik_options)
         for (auto &goal : bio_ik_options->goals)
           all_goals.push_back(goal.get());
+
+      for (const auto& goal : moveit_cost_fn_goals)
+        all_goals.push_back(goal.get());
 
       {
         BLOCKPROFILER("problem init");

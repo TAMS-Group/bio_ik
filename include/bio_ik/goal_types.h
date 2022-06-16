@@ -43,6 +43,7 @@
 
 #include <moveit/collision_detection/collision_common.h>
 #include <moveit/collision_detection_fcl/collision_common.h>
+#include <moveit/kinematics_base/kinematics_base.h>
 
 #include <map>
 #include <unordered_set>
@@ -678,6 +679,41 @@ public:
         double w = position_weight;
         sum += w * w * (position - fb.getPosition()).length2();
         return sum;
+    }
+};
+
+class IKCostFnGoal : public Goal
+{
+    const geometry_msgs::msg::Pose pose_;
+    const kinematics::KinematicsBase::IKCostFn function_;
+    const moveit::core::RobotModelConstPtr robot_model_;
+public:
+    IKCostFnGoal(const geometry_msgs::msg::Pose& pose,  const kinematics::KinematicsBase::IKCostFn& function,
+                 const moveit::core::RobotModelConstPtr& robot_model, double weight = 1.0)
+        : Goal()
+        , pose_(pose)
+        , function_(function)
+        , robot_model_(robot_model)
+    {
+        setWeight(weight);
+    }
+    double evaluate(const GoalContext& context) const override
+    {
+        auto info = context.getRobotInfo();
+        moveit::core::RobotState robot_state(robot_model_);
+        auto jmg = context.getJointModelGroup();
+
+        std::vector<double> seed_state(context.getProblemVariableCount());
+        std::vector<double> sol_positions(context.getProblemVariableCount());
+        for (size_t i = 0; i < context.getProblemVariableCount(); ++i)
+        {
+            sol_positions[i] = context.getProblemVariablePosition(i);
+            // robot_state.setVariablePosition(i, context.getProblemVariablePosition(i));
+            seed_state[i] = context.getProblemVariableInitialGuess(i);
+        }
+        robot_state.setJointGroupPositions(&jmg, sol_positions);
+        robot_state.update();
+        return function_(pose_, robot_state, &jmg, seed_state);
     }
 };
 }
