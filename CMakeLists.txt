@@ -78,7 +78,6 @@ include_directories(
 
 set(SOURCES
     src/goal_types.cpp
-    src/kinematics_plugin.cpp
     src/problem.cpp
     src/ik_test.cpp
     src/ik_gradient.cpp
