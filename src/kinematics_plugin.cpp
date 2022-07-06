@@ -52,7 +52,7 @@
 #include <urdf_model/model.h>
 
 
-#include <tf2_eigen/tf2_eigen.h>
+#include <tf2_eigen/tf2_eigen.hpp>
 //#include <moveit/common_planning_interface_objects/common_objects.h>
 #include <moveit/kinematics_base/kinematics_base.h>
 #include <moveit/robot_model/robot_model.h>
@@ -562,7 +562,7 @@ struct BioIKKinematicsPlugin : kinematics::KinematicsBase {
     }
 
     // callback?
-    if (!solution_callback.empty()) {
+    if (solution_callback) {
       // run callback
       solution_callback(ik_poses.front(), solution, error_code);
 
