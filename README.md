@@ -14,8 +14,8 @@ in terms of success rate, precision and efficiency, and is actually usable for p
 
 ## Installation and Setup
 
-You will need ROS 2 version Galactic or newer: [https://docs.ros.org/en/galactic/Installation.html](https://docs.ros.org/en/galactic/Installation.html).
-This version of the software was developed on Ubuntu Linux 20.04 LTS with ROS 2 Galactic.
+You will need ROS 2 version Rolling or newer: [https://docs.ros.org/en/rolling/Installation.html](https://docs.ros.org/en/rolling/Installation.html).
+This version of the software was developed on Ubuntu Linux 22.04 LTS with ROS 2 Rolling.
 Newer versions of ROS 2 should work, but may need some adaptation.
 See below for version specific instructions.
 
@@ -62,7 +62,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
 * Run the moveit setup assistant to create the Moveit configuration files:
 
   ```
-  rosrun moveit_setup_assistant moveit_setup_assistant
+  ros2 run moveit_setup_assistant moveit_setup_assistant
 
   ```
 *  The setup assistant automatically searches for all available IK solver plugins
@@ -82,30 +82,30 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
     # example kinematics.yaml for the PR2 robot
     right_arm:
       # kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
-      # kinematics_solver_attempts: 1
+      # kinematics_solver_attempts: 1.0
       kinematics_solver: bio_ik/BioIKKinematicsPlugin
       kinematics_solver_search_resolution: 0.005
       kinematics_solver_timeout: 0.005
-      kinematics_solver_attempts: 1
+      kinematics_solver_attempts: 1.0
     left_arm:
       kinematics_solver: bio_ik/BioIKKinematicsPlugin
       kinematics_solver_search_resolution: 0.005
       kinematics_solver_timeout: 0.005
-      kinematics_solver_attempts: 1
+      kinematics_solver_attempts: 1.0
     all:
       kinematics_solver: bio_ik/BioIKKinematicsPlugin
       kinematics_solver_search_resolution: 0.005
       kinematics_solver_timeout: 0.02
-      kinematics_solver_attempts: 1
+      kinematics_solver_attempts: 1.0
 
     # optional bio_ik configuration parameters
-    #  center_joints_weight: 1
-    #  minimal_displacement_weight: 1
-    #  avoid_joint_limits_weight: 1
+    #  center_joints_weight: 1.0
+    #  minimal_displacement_weight: 1.0
+    #  avoid_joint_limits_weight: 1.0
   ```
 
 
-* For a first test, follow the [Quickstart in Rviz](https://moveit.picknik.ai/galactic/doc/tutorials/quickstart_in_rviz/quickstart_in_rviz_tutorial.html)
+* For a first test, follow the [Quickstart in Rviz](https://moveit.picknik.ai/rolling/doc/tutorials/quickstart_in_rviz/quickstart_in_rviz_tutorial.html)
   MoveIt2 tutorial. Before building your workspace, be sure to replace the kinematics solver for the Panda robot in
   `<colcon workspace>/src/moveit_resources/panda_moveit_config/config/kinematics.yaml` as shown below:
 
@@ -115,7 +115,7 @@ or used interactively from rviz using the MotionPlanning GUI plugin.
     kinematics_solver: bio_ik/BioIKKinematicsPlugin
     kinematics_solver_search_resolution: 0.005
     kinematics_solver_timeout: 0.005
-    kinematics_solver_attempts: 1
+    kinematics_solver_attempts: 1.0
   ```
 
   To use a solver class besides the default `bio2_memetic`, the ROS param `robot_description_kinematics.panda_arm.mode` must be set to one
@@ -343,7 +343,7 @@ all:
   kinematics_solver: bio_ik/BioIKKinematicsPlugin
   kinematics_solver_search_resolution: 0.005
   kinematics_solver_timeout: 0.02
-  kinematics_solver_attempts: 1
+  kinematics_solver_attempts: 1.0
   mode: gd_c
 ```
 
@@ -427,7 +427,7 @@ resulting in good search-space exploration.
 See [3] and [4] for more details. See [5] and [6] for an in-depth explanation of an 
 earlier evolutionary algorithm for animating video game characters.
 
-## Running the Self-Tests
+## Running the Self-Tests [NOT AVAILABLE IN ROS2]
 
 We have tested bio_ik on many different robot arms,
 both using the tranditional single end-effector API
