@@ -195,10 +195,45 @@ individual *goals*.
 The algorithm then tries to find a robot configuration
 that fulfills all given goals simultaneously by minimizing
 a quadratic error function built from the weighted individual goals.
-While the current Moveit API does not support multiple-goals tasks directly,
-it provides the KinematicQueryOptions class.
-Therefore, bio_ik simply provides a set of predefined motion goals,
-and a combination of the user-specified goals is passed via Moveit to the IK solver.
+While the current Moveit API does not support specifying the various derivations of bio_ik's `Goal` type directly (doing so would require creating a circular dependency),
+one may specify an instance of [`kinematics::KinematicsBase::IKCostFn`](https://github.com/ros-planning/moveit2/blob/1d67b519e6ef9ca1ebba494743791da998b72950/moveit_core/kinematics_base/include/moveit/kinematics_base/kinematics_base.h#L158) when querying for IK solutions. 
+In bio_ik, this cost function gets converted to a `IKCostFnGoal` type when the proper overload of `searchPositionIK` is called. 
+This is supported by MoveIt's `KinematicsBase::searchPositionIK` directly, `RobotState::setFromIK`, `CartesianInterpolator::computeCartesianPath`, and even MoveIt Task Constructor's `CartesianPath` solver. 
+It is the responsibility of the `IKCostFn` to provide its own weighting. 
+The cost function should return lower values when closer to the desired goal. 
+One may use a single `IKCostFn` to implement weighting of multiple custom goals. 
+Note that such a cost function goal will not eliminate the goal created for a pose passed to each IK call. 
+See below for an example of an `IKCostFn` instance that prioritizes the Yoshikawa manipulability of the robot. 
+Note that such a goal will create a trade-off between position accuracy and manipulability that may be tuned via the weighting.
+
+```c++
+  // empty, so it will be ignored
+  moveit::core::GroupStateValidityCallbackFn callback_fn;
+  // Jacobian -> Yoshikawa manipulability
+  const auto getManipulability = [](Eigen::MatrixXd jacobian) {
+    return sqrt((jacobian * jacobian.transpose()).determinant());
+  };
+  // the manipulability is usually < 0.1, so weighting usually needs to be pretty low here.
+  const double sing_weight = 0.00001;
+  const kinematics::KinematicsBase::IKCostFn sing_avoid_cost = [&sing_weight, &getManipulability](const geometry_msgs::msg::Pose& /*goal_pose*/,
+                                                                  const moveit::core::RobotState& solution_state,
+                                                                  moveit::core::JointModelGroup* jmg,
+                                                                  const std::vector<double>& seed_state) {
+    auto jac = solution_state.getJacobian(jmg);
+    // associate low manipulability with high cost
+    return sing_weight / getManipulability(jac);
+  };
+  kinematics::KinematicsQueryOptions opts;
+  opts.return_approximate_solution = true;
+  // when using an instance of IKCostFn, you may need to increase the timeout from the default specified in kinematics.yaml
+  // target_pose should be a real pose that we wish to achieve, and not empty as is shown in future examples.
+  current_state->setFromIK(joint_model_group, target_pose, 0.05, callback_fn, opts, sing_avoid_cost);
+```
+
+Alternatively, one may specify multiple goals via the `BioIKKinematicsQueryOptions`, which inherits from 
+MoveIt's `KinematicsQueryOptions`. Note that the recommended way to specify goals is in the form of an `IKCostFn`.
+bio_ik provides a set of predefined motion goals,
+and a combination of the user-specified goals may be passed to the IK solver.
 No API changes are required in Moveit, but using the IK solver now consists
 passing the weighted goals via the KinematicQueryOptions.
 The predefined goals include:
@@ -223,7 +258,7 @@ a suitable combination of individual goals.
 In the following example, we want to grasp and then _slowly turn
 a valve wheel_ with the left and right gripers of the PR2 robot:
 
-  ```
+  ```c++
     bio_ik::BioIKKinematicsQueryOptions ik_options;
     ik_options.replace = true;
     ik_options.return_approximate_solution = true;
@@ -251,7 +286,7 @@ by adding the MinimalDisplacementGoal.
 Fourth, we want to avoid torso lift motions, which are very slow on the PR2.
 All of this is specified easily:
 
- ```
+ ```c++
     auto* lookat_goal = new bio_ik::LookAtGoal();
     lookat_goal->setLinkName("sensor_mount_link");
     ik_options.goals.emplace_back(lookat_goal);
@@ -271,7 +306,7 @@ All of this is specified easily:
 
 For the actual turning motion, we calculate a set of required gripper
 poses in a loop:
-  ```
+  ```c++
     for(int i = 0; ; i++) {
         tf2::Vector3 center(0.7, 0, 1);
 
@@ -338,7 +373,7 @@ By default, BioIK uses a memetic global optimizer (`bio2_memetic`).
 A different solver class can be selected by setting the `mode` parameter in the `kinematics.yaml` file of your MoveIt robot configuration.
 
 Example:
-```
+```yaml
 all:
   kinematics_solver: bio_ik/BioIKKinematicsPlugin
   kinematics_solver_search_resolution: 0.005
@@ -456,7 +491,7 @@ simulator (if you installed Gazebo).
 
 Simply clone the PR2 description package (inside `pr2_common`)
 and the `pr2_bioik_moveit` package into your catkin workspace:
-  ```
+  ```bash
     roscd
     cd src
     git clone https://github.com/PR2/pr2_common.git
@@ -464,7 +499,7 @@ and the `pr2_bioik_moveit` package into your catkin workspace:
     catkin_make
   ```
 
-For the FK-IK-FK performance test, please run
+**This is not yet supported in ROS 2**. For the FK-IK-FK performance test, please run
 
   ```
   roslaunch pr2_bioik_moveit env_pr2.launch
