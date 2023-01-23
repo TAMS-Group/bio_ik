@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_eigen
   tf2_kdl
   tf2_geometry_msgs
+  tf_conversions
 )
 
 find_package(OpenMP)
