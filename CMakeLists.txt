@@ -119,9 +119,6 @@ target_link_libraries(
   PUBLIC
   ${FANN_LIBRARIES}
   ${OpenMP_LIBS}
-
-  -static-libgcc
-  -static-libstdc++
 )
 
 add_library(${PROJECT_NAME}_plugin SHARED
