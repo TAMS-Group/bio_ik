@@ -320,12 +320,10 @@ public:
     void setNormal(const tf2::Vector3& d) { normal = d.normalized(); }
     virtual double evaluate(const GoalContext& context) const
     {
-        // Get the position of the link
         auto link_position = context.getLinkFrame().getPosition();
         // Get the signed distance from the link to the plane
         double signed_dist = (link_position - position).dot(normal);
-        // Take the squared value of the signed distance
-        return std::pow(signed_dist, 2);
+        return signed_dist * signed_dist;
     }
 };
 
