@@ -298,6 +298,36 @@ public:
     }
 };
 
+class PlaneGoal : public LinkGoalBase
+{
+    tf2::Vector3 position;
+    tf2::Vector3 normal;
+
+public:
+    PlaneGoal()
+        : position(0, 0, 0)
+        , normal(0, 0, 1)
+    {
+    }
+    PlaneGoal(const std::string& link_name, const tf2::Vector3& position, const tf2::Vector3& normal, double weight = 1.0)
+        : LinkGoalBase(link_name, weight)
+        , position(position)
+        , normal(normal.normalized())
+    {
+    }
+    const tf2::Vector3& getPosition() const { return position; }
+    void setPosition(const tf2::Vector3& p) { position = p; }
+    const tf2::Vector3& getNormal() const { return normal; }
+    void setNormal(const tf2::Vector3& d) { normal = d.normalized(); }
+    virtual double evaluate(const GoalContext& context) const
+    {
+        auto link_position = context.getLinkFrame().getPosition();
+        // Get the signed distance from the link to the plane
+        double signed_dist = (link_position - position).dot(normal);
+        return signed_dist * signed_dist;
+    }
+};
+
 #if (MOVEIT_FCL_VERSION < FCL_VERSION_CHECK(0, 6, 0))
 class TouchGoal : public LinkGoalBase
 {
