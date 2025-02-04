@@ -85,6 +85,7 @@ endif()
 add_compile_options($<$<CONFIG:Release>:-O3>)
 add_compile_options($<$<CONFIG:Release>:-ftree-vectorize>)
 add_compile_options($<$<CONFIG:Release>:-ffast-math>)
+add_compile_options($<$<CONFIG:Release>:-fno-finite-math-only>)
 
 include_directories(
     include
